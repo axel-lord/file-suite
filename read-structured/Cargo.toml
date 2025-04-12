@@ -1,0 +1,17 @@
+[package]
+name = "read-structured"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+atty = "0.2.14"
+clap = { version = "4.5.1", features = ["derive"] }
+derive_more = "0.99.17"
+serde = "1.0.197"
+serde_json = "1.0.114"
+serde_yaml = "0.9.32"
+tap = "1.0.1"
+thiserror = "1.0.57"
+toml = "0.8.10"
