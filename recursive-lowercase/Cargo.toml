@@ -1,0 +1,38 @@
+[package]
+name = "recursive-lowercase"
+version = "0.1.0"
+edition = "2021"
+authors = ["Axel Lord"]
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+clap = { version = "4.5.18", features = ["derive"] }
+color-eyre = "0.6.3"
+env_logger = "0.11.5"
+log = "0.4.22"
+tokio = { version = "1.40.0", features = ["fs", "rt"] }
+insensitive-buf = { git = "https://github.com/axel-lord/insensitive-buf" }
+nix = { version = "0.29.0", features = ["fs"] }
+async-fs-utils = { git = "https://github.com/axel-lord/async-fs-utils" }
+thiserror = "1.0.64"
+libc = "0.2.159"
+tokio-stream = "0.1.16"
+
+[lints.rust]
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+allow_attributes = "warn"
+missing_docs_in_private_items = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+missing_safety_doc = "warn"
+missing_const_for_fn = "warn"
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
