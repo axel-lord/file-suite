@@ -1,0 +1,5 @@
+check-private-items = true
+
+[[disallowed-methods]]
+path ="bytemuck::cast"
+reason = "may panic, use bytemuck::must_cast instead"
