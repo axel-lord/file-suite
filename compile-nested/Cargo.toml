@@ -2,6 +2,8 @@
 name = "compile-nested"
 version = "0.1.0"
 edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Axel Lord"]
 
 [dependencies]
 clap = { version = "4.5.36", features = ["derive"] }
@@ -12,3 +14,6 @@ log = "0.4.27"
 rayon = "1.10.0"
 symlink = "0.1.0"
 walkdir = "2.5.0"
+
+[lints]
+workspace = true
