@@ -1,0 +1,16 @@
+[workspace]
+members = ["clap-complete-command", "clap-log-level", "compile-nested", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at"]
+resolver = "2"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+allow_attributes = "warn"
+missing_docs_in_private_items = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+missing_safety_doc = "warn"
+future_not_send = "warn"
+missing_const_for_fn = "warn"
