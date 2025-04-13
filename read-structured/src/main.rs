@@ -1,3 +1,4 @@
+use ::std::{io::IsTerminal, ops::Not};
 use std::{
     fs::File,
     io::{self, BufReader},
@@ -57,14 +58,14 @@ struct Cli {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, IsVariant, Default, ValueEnum)]
 enum Filetype {
     /// for json
-    #[display(fmt = "json")]
+    #[display("json")]
     #[default]
     Json,
     /// for yaml
-    #[display(fmt = "yaml")]
+    #[display("yaml")]
     Yaml,
     /// for toml
-    #[display(fmt = "toml")]
+    #[display("toml")]
     Toml,
 }
 
@@ -145,7 +146,9 @@ fn main() -> Result<(), Error> {
     } = Cli::parse();
 
     let mut found = 0;
-    atty::isnt(atty::Stream::Stdin)
+    io::stdin()
+        .is_terminal()
+        .not()
         .then(|| io::stdin().lock())
         .map(|r| {
             (
