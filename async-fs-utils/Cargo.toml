@@ -1,0 +1,21 @@
+[package]
+name = "async-fs-utils"
+version = "0.1.0"
+edition = "2024"
+authors = ["Axel Lord"]
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+log = { workspace = true }
+libc = { workspace = true }
+nix = { workspace = true, features = ["mman", "user", "fs", "dir"] }
+tokio = { workspace = true, features = ["rt"] }
+paste = { workspace = true }
+smallvec = { workspace = true, features = ["const_generics", "serde", "write", "union"] }
+reflink-at = { workspace = true }
+tokio-stream = { workspace = true, features = ["sync"] }
+async-fs-utils-attr = { path = "../async-fs-utils-attr/" }
+futures-core = { workspace = true }
+
+[lints]
+workspace = true
