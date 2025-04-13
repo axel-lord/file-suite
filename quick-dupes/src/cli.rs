@@ -1,7 +1,7 @@
 use ::std::{fs, num::NonZero, path::PathBuf, thread};
 
-use ::clap::{builder::ArgPredicate::Equals, Args, Parser, ValueEnum};
-use ::color_eyre::{eyre::eyre, Section};
+use ::clap::{Args, Parser, ValueEnum, builder::ArgPredicate::Equals};
+use ::color_eyre::{Section, eyre::eyre};
 use ::derive_more::IsVariant;
 use ::rayon::ThreadPoolBuilder;
 

@@ -14,7 +14,13 @@ pub struct Log {
     log_file: patharg::OutputArg,
 
     /// Highest log level.
-    #[arg(long, visible_alias = "ll", value_enum, default_value_t, hide_short_help = true)]
+    #[arg(
+        long,
+        visible_alias = "ll",
+        value_enum,
+        default_value_t,
+        hide_short_help = true
+    )]
     log_level: Filter,
 }
 
@@ -81,4 +87,3 @@ impl From<Filter> for LevelFilter {
         }
     }
 }
-

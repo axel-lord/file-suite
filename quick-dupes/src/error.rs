@@ -10,10 +10,6 @@ pub struct CanonicalizationError {
     pub err: ::std::io::Error,
 }
 
-pub fn log_if_err<F: FnOnce() -> Result<T, E>, T, E: Display>(
-    l: ::log::Level,
-    f: F,
-) -> Option<T> {
+pub fn log_if_err<F: FnOnce() -> Result<T, E>, T, E: Display>(l: ::log::Level, f: F) -> Option<T> {
     f().map_err(|err| ::log::log!(l, "\n{err}")).ok()
 }
-

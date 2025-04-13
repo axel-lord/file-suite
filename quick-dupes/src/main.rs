@@ -8,21 +8,21 @@ use ::std::{
     os::unix::ffi::OsStrExt,
     path::Path,
     sync::{
-        atomic::{AtomicUsize, Ordering::SeqCst},
         Arc,
+        atomic::{AtomicUsize, Ordering::SeqCst},
     },
     thread,
 };
 
 use ::clap::Parser;
-use ::color_eyre::{eyre::eyre, Section};
+use ::color_eyre::{Section, eyre::eyre};
 use ::derive_more::Constructor;
 use ::insensitive_buf::{Insensitive, InsensitiveBuf};
 use ::rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use ::rustc_hash::FxHashMap;
 use ::sha2::{
-    digest::{generic_array::GenericArray, OutputSizeUser},
     Digest, Sha256,
+    digest::{OutputSizeUser, generic_array::GenericArray},
 };
 use ::tinyvec::TinyVec;
 

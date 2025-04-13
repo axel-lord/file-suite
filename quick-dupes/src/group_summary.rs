@@ -3,7 +3,7 @@ use ::std::{borrow::Cow, fmt::Display, path::Path};
 use ::bytesize::ByteSize;
 use ::insensitive_buf::Insensitive;
 
-use crate::{cli::Filter, fmt_oneshot::FmtOneshot, HashArray, Key};
+use crate::{HashArray, Key, cli::Filter, fmt_oneshot::FmtOneshot};
 
 #[derive(Clone, Copy)]
 pub struct GroupSummary<'a> {
@@ -64,4 +64,3 @@ impl Display for GroupSummary<'_> {
         dstruct.finish()
     }
 }
-

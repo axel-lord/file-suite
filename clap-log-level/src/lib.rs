@@ -2,14 +2,14 @@
 
 use ::std::fmt::Display;
 
-use ::clap::{builder::PossibleValue, ValueEnum};
+use ::clap::{ValueEnum, builder::PossibleValue};
 
 /// Level newtype.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Level(pub ::log::Level);
 
-impl Default for Level{
+impl Default for Level {
     fn default() -> Self {
         Self(if cfg!(debug_assertions) {
             ::log::Level::Trace

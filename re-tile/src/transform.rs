@@ -110,7 +110,9 @@ pub fn transform(
         Some(TextState {
             index,
             divisor: NonZero::new(1).unwrap(),
-            font: ab_glyph::FontRef::try_from_slice(include_bytes!("../font/NotoSansMono-Bold.ttf"))?,
+            font: ab_glyph::FontRef::try_from_slice(include_bytes!(
+                "../font/NotoSansMono-Bold.ttf"
+            ))?,
             color: ::image::Rgba([0, 0, 0, 255]),
         })
     } else {
