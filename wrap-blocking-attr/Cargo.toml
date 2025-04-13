@@ -1,5 +1,5 @@
 [package]
-name = "async-fs-utils-attr"
+name = "wrap-blocking-attr"
 version = "0.1.0"
 edition = "2024"
 authors = ["Axel Lord"]
@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-async-fs-utils-attr-impl = { workspace = true }
+wrap-blocking-attr-impl = { path = "../wrap-blocking-attr-impl/" }
 
 [lints]
 workspace = true
