@@ -13,7 +13,7 @@ log = "0.4.27"
 tokio = { version = "1.44.2", features = ["fs", "rt"] }
 insensitive-buf = { git = "https://github.com/axel-lord/insensitive-buf" }
 nix = { version = "0.29.0", features = ["fs"] }
-async-fs-utils = { git = "https://github.com/axel-lord/async-fs-utils" }
+async-fs-utils = { path = "../async-fs-utils" }
 thiserror = "2.0.12"
 libc = "0.2.171"
 tokio-stream = "0.1.17"
