@@ -130,6 +130,9 @@ pub fn in_blocking(attr: TokenStream, item: TokenStream) -> ::syn::Result<TokenS
 }
 
 /// Typed implementation for [in_blocking].
+///
+/// # Errors
+/// If the given input cannot be correctly parsed.
 fn in_blocking_(attr: Vec<InBlockingAttr>, mut f: ItemFn) -> ::syn::Result<TokenStream> {
     let path_attr_kw: ::syn::Path = parse_quote!(path);
     let fd_attr_kw: ::syn::Path = parse_quote!(raw_fd);
