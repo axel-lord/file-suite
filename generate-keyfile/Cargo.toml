@@ -6,9 +6,9 @@ license = "MIT OR Apache-2.0"
 authors = ["Axel Lord"]
 
 [dependencies]
-clap = { version = "4.5.36" }
-getrandom = { version = "0.3.2", features = ["std"] }
-rustix = { version = "1.0.5", features = ["mm", "fs"] }
+clap = { workspace = true }
+getrandom = { workspace = true, features = ["std"] }
+rustix = { workspace = true, features = ["mm", "fs"] }
 
 [lints]
 workspace = true

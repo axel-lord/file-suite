@@ -6,25 +6,25 @@ license = "MIT OR Apache-2.0"
 authors = ["Axel Lord"]
 
 [dependencies]
-bytesize = "2.0.1"
-clap = { version = "4.5.36", features = ["derive"] }
-clap-log-level = { path = "../clap-log-level/" }
-color-eyre = "0.6.3"
-crossbeam = "0.8.4"
-derive_more = { version = "2.0.1", features = ["constructor", "is_variant"] }
-env_logger = "0.11.8"
-insensitive-buf = { path = "../insensitive-buf/" }
-libc = "0.2.171"
-log = "0.4.27"
-patharg = "0.4.0"
-rayon = "1.10.0"
-regex = "1.11.1"
-rusqlite = "0.34.0"
-rustc-hash = "2.1.1"
-sha2 = "0.10.8"
-thiserror = "2.0.12"
-tinyvec = { version = "1.9.0", features = ["std"] }
-walkdir = "2.5.0"
+bytesize = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+clap-log-level = { workspace = true }
+color-eyre = { workspace = true }
+crossbeam = { workspace = true }
+derive_more = { workspace = true, features = ["constructor", "is_variant"] }
+env_logger = { workspace = true }
+insensitive-buf = { workspace = true }
+libc = { workspace = true }
+log = { workspace = true }
+patharg = { workspace = true }
+rayon = { workspace = true }
+regex = { workspace = true }
+rusqlite = { workspace = true }
+rustc-hash = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+tinyvec = { workspace = true, features = ["std"] }
+walkdir = { workspace = true }
 
 [lints]
 workspace = true

@@ -6,8 +6,8 @@ license = "MIT OR Apache-2.0"
 authors = ["Axel Lord"]
 
 [dependencies]
-clap = { version = "4.5.36", features = ["derive"] }
-rayon = "1.10.0"
+clap = { workspace = true, features = ["derive"] }
+rayon = { workspace = true }
 
 [lints]
 workspace = true
