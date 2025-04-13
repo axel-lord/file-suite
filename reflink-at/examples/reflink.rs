@@ -8,7 +8,6 @@ use ::std::{
 };
 
 use ::clap::Parser;
-use ::mm_reflink::Mode;
 use ::nix::errno::Errno;
 
 /// Create a reflink.
@@ -45,14 +44,14 @@ fn main() -> ExitCode {
 fn run(Cli { dest, src }: Cli) -> color_eyre::Result<()> {
     let src_file = File::open(src)?;
     let stat = nix::sys::stat::fstat(src_file.as_raw_fd())?;
-    let mode = Mode::from_bits_truncate(stat.st_mode);
+    let mode = ::reflink_at::Mode::from_bits_truncate(stat.st_mode);
 
-    mm_reflink::reflink_at(
+    ::reflink_at::reflink_at(
         None,
         &dest,
         src_file.as_fd(),
         mode,
-        ::mm_reflink::OnExists::CreateNewOnly,
+        ::reflink_at::OnExists::CreateNewOnly,
     )?;
     Ok(())
 }
