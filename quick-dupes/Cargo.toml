@@ -8,7 +8,7 @@ authors = ["Axel Lord"]
 [dependencies]
 bytesize = "2.0.1"
 clap = { version = "4.5.36", features = ["derive"] }
-clap-log-level = { git = "https://github.com/axel-lord/clap-log-level", version = "0.1.0" }
+clap-log-level = { path = "../clap-log-level/" }
 color-eyre = "0.6.3"
 crossbeam = "0.8.4"
 derive_more = { version = "2.0.1", features = ["constructor", "is_variant"] }
