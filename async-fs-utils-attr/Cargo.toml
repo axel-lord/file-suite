@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-async-fs-utils-attr-impl = { path = "../async-fs-utils-attr-impl/" }
+async-fs-utils-attr-impl = { workspace = true }
 
 [lints]
 workspace = true

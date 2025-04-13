@@ -6,14 +6,14 @@ license = "MIT OR Apache-2.0"
 authors = ["Axel Lord"]
 
 [dependencies]
-clap = { version = "4.5.36", features = ["derive"] }
-color-eyre = "0.6.3"
-env_logger = "0.11.8"
-itertools = "0.14.0"
-log = "0.4.27"
-rayon = "1.10.0"
-symlink = "0.1.0"
-walkdir = "2.5.0"
+clap = { workspace = true, features = ["derive"] }
+color-eyre = { workspace = true }
+env_logger = { workspace = true }
+itertools = { workspace = true }
+log = { workspace = true }
+rayon = { workspace = true }
+symlink = { workspace = true }
+walkdir = { workspace = true }
 
 [lints]
 workspace = true

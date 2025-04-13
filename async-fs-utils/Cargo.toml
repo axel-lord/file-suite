@@ -12,9 +12,9 @@ nix = { workspace = true, features = ["mman", "user", "fs", "dir"] }
 tokio = { workspace = true, features = ["rt"] }
 paste = { workspace = true }
 smallvec = { workspace = true, features = ["const_generics", "serde", "write", "union"] }
-reflink-at = { path = "../reflink-at" }
+reflink-at = { workspace = true }
 tokio-stream = { workspace = true, features = ["sync"] }
-async-fs-utils-attr = { path = "../async-fs-utils-attr/" }
+async-fs-utils-attr = { workspace = true }
 futures-core = { workspace = true }
 
 [lints]

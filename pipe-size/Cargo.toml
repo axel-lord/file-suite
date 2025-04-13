@@ -6,8 +6,8 @@ license = "MIT OR Apache-2.0"
 authors = ["Axel Lord"]
 
 [dependencies]
-bytesize = "2.0.1"
-clap = { version = "4.5.36", features = ["derive"] }
+bytesize = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 
 [lints]
 workspace = true
