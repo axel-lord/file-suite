@@ -1,25 +1,15 @@
 [package]
 name = "clap-complete-command"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Axel Lord"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clap = { version = "4.5.21", features = ["derive"] }
-clap_complete = "4.5.38"
+clap = { version = "4.5.36", features = ["derive"] }
+clap_complete = "4.5.47"
 patharg = "0.4.0"
-thiserror = "2.0.3"
+thiserror = "2.0.12"
 
-[lints.rust]
-missing_docs = "warn"
-missing_debug_implementations = "warn"
-
-[lints.clippy]
-allow_attributes = "warn"
-missing_docs_in_private_items = "warn"
-missing_errors_doc = "warn"
-missing_panics_doc = "warn"
-missing_safety_doc = "warn"
-future_not_send = "warn"
-missing_const_for_fn = "warn"
+[lints]
+workspace = true

@@ -2,14 +2,12 @@
 name = "path-is-utf8"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Axel Lord"]
 
 [dependencies]
-clap = { version = "4.5.15", features = ["derive"] }
+clap = { version = "4.5.36", features = ["derive"] }
 rayon = "1.10.0"
 
-[profile.release]
-strip = true
-opt-level = "z"
-lto = true
-codegen-units = 1
-panic = "abort"
+[lints]
+workspace = true

@@ -1,33 +1,14 @@
 [package]
 name = "generate-keyfile"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Axel Lord"]
 
 [dependencies]
-clap = { version = "4.5.27" }
-getrandom = { version = "0.3.1", features = ["std"] }
-rustix = { version = "0.38.44", features = ["mm", "fs"] }
+clap = { version = "4.5.36" }
+getrandom = { version = "0.3.2", features = ["std"] }
+rustix = { version = "1.0.5", features = ["mm", "fs"] }
 
-[lints.rust]
-missing_docs = "warn"
-missing_debug_implementations = "warn"
-
-[lints.clippy]
-allow_attributes = "warn"
-missing_docs_in_private_items = "warn"
-missing_errors_doc = "warn"
-missing_panics_doc = "warn"
-missing_safety_doc = "warn"
-future_not_send = "warn"
-missing_const_for_fn = "warn"
-multiple_unsafe_ops_per_block = "warn"
-unused_unsafe = "warn"
-undocumented_unsafe_blocks = "warn"
-
-
-[profile.release]
-strip = true
-opt-level = "z"
-lto = "fat"
-codegen-units = 1
-panic = "abort"
+[lints]
+workspace = true
