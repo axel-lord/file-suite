@@ -6,8 +6,8 @@ use ::std::{
     sync::LazyLock,
 };
 
-use ::clap::{builder::PossibleValue, Parser, ValueEnum, ValueHint};
-use ::color_eyre::{eyre::eyre, Section};
+use ::clap::{Parser, ValueEnum, ValueHint, builder::PossibleValue};
+use ::color_eyre::{Section, eyre::eyre};
 use ::image::{ImageFormat, ImageReader};
 use ::tap::Pipe;
 
@@ -112,11 +112,23 @@ struct Cli {
     offset: isize,
 
     /// Horizontal alignment of text.
-    #[arg(long, visible_alias = "ty", value_enum, default_value_t, requires = "index")]
+    #[arg(
+        long,
+        visible_alias = "ty",
+        value_enum,
+        default_value_t,
+        requires = "index"
+    )]
     align_x_text: Align,
 
     /// Vertical alignment of text.
-    #[arg(long, visible_alias = "tx", value_enum, default_value_t, requires = "index")]
+    #[arg(
+        long,
+        visible_alias = "tx",
+        value_enum,
+        default_value_t,
+        requires = "index"
+    )]
     align_y_text: Align,
 
     /// Format to use for output.

@@ -3,12 +3,12 @@
 use ::proc_macro2::{Span, TokenStream};
 use ::quote::ToTokens;
 use ::syn::{
-    parse::{Parse, Parser},
-    parse2, parse_quote,
-    punctuated::Punctuated,
-    spanned::Spanned,
     Attribute, Expr, ExprLit, FnArg, ItemFn, Lit, LitStr, Meta, MetaNameValue, Pat, PatIdent,
     PatType, ReturnType, Stmt, Token, Type,
+    parse::{Parse, Parser},
+    parse_quote, parse2,
+    punctuated::Punctuated,
+    spanned::Spanned,
 };
 
 mod kw {

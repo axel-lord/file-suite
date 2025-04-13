@@ -7,13 +7,13 @@ use ::std::{
     ptr::null_mut,
 };
 
-use ::clap::{arg, value_parser, ArgMatches, Command};
+use ::clap::{ArgMatches, Command, arg, value_parser};
 use ::rustix::{
     fs::{
-        flock, ftruncate, linkat, open, renameat_with, unlink, AtFlags, FlockOperation, Mode,
-        OFlags, RenameFlags, CWD,
+        AtFlags, CWD, FlockOperation, Mode, OFlags, RenameFlags, flock, ftruncate, linkat, open,
+        renameat_with, unlink,
     },
-    mm::{mmap, munmap, MapFlags, ProtFlags},
+    mm::{MapFlags, ProtFlags, mmap, munmap},
 };
 
 /// Print error and exit application.

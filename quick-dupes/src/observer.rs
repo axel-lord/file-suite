@@ -1,11 +1,11 @@
 use ::std::{
     ops::ControlFlow::{self, Break, Continue},
-    sync::{atomic::Ordering::SeqCst, Arc},
+    sync::{Arc, atomic::Ordering::SeqCst},
     thread,
     time::Duration,
 };
 
-use ::color_eyre::{eyre::eyre, Section};
+use ::color_eyre::{Section, eyre::eyre};
 
 use crate::Shared;
 

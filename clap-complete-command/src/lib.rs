@@ -6,7 +6,7 @@ use ::std::{
 };
 
 use ::clap::Args;
-use ::clap_complete::{generate, Shell};
+use ::clap_complete::{Shell, generate};
 use ::patharg::OutputArg;
 
 /// Error type returned when failing to generate completions.
