@@ -14,7 +14,7 @@ paste = { workspace = true }
 smallvec = { workspace = true, features = ["const_generics", "serde", "write", "union"] }
 reflink-at = { workspace = true }
 tokio-stream = { workspace = true, features = ["sync"] }
-async-fs-utils-attr = { workspace = true }
+wrap-blocking-attr = { path = "../wrap-blocking-attr/" }
 futures-core = { workspace = true }
 
 [lints]

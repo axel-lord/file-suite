@@ -13,19 +13,19 @@ use ::std::{
 };
 use std::{pin::Pin, task::Poll};
 
-use ::async_fs_utils_attr::in_blocking;
 use ::futures_core::FusedStream;
 use ::nix::{
+    NixPath,
     dir::Dir,
     errno::Errno,
     fcntl::{AtFlags, OFlag, OpenHow, RenameFlags},
     sys::stat::{FileStat, Mode},
-    NixPath,
 };
 use ::reflink_at::{OnExists, ReflinkAtError};
 use ::smallvec::SmallVec;
 use ::tokio::task::{JoinError, JoinHandle};
 use ::tokio_stream::Stream;
+use ::wrap_blocking_attr::in_blocking;
 
 /// Re-export of nix that matches version used by crate.
 pub use nix;
