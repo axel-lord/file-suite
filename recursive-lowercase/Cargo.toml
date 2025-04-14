@@ -13,7 +13,6 @@ log = { workspace = true }
 tokio = { workspace = true, features = ["fs", "rt"] }
 insensitive-buf = { workspace = true }
 nix = { workspace = true, features = ["fs"] }
-async-fs-utils = { workspace = true }
 thiserror = { workspace = true }
 libc = { workspace = true }
 tokio-stream = { workspace = true }

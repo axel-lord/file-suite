@@ -1,5 +1,5 @@
 [workspace]
-members = ["clap-complete-command", "clap-log-level", "compile-nested", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "async-fs-utils", "wrap-blocking-attr", "wrap-blocking-attr-impl"]
+members = ["clap-complete-command", "clap-log-level", "compile-nested", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl"]
 resolver = "2"
 
 [profile.release]
@@ -35,7 +35,6 @@ syn = "2.0.79"
 tokio = "1.40.0"
 tokio-stream = "0.1.16"
 ab_glyph = "0.2.29"
-async-fs-utils = { path = "async-fs-utils" }
 bytemuck = "1.21.0"
 bytesize = "2.0.1"
 clap = "4.5.36"
