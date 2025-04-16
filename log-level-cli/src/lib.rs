@@ -2,10 +2,10 @@
 
 use ::std::{fmt::Display, fs::File, io::BufWriter};
 
-use ::clap::{Parser, ValueEnum, builder::PossibleValue};
+use ::clap::{builder::PossibleValue, Args, ValueEnum};
 
 /// Cli options to configure logging.
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 pub struct LogConfig {
     /// Where to output log, when -, stderr is used.
     #[arg(long, visible_alias = "lf", default_value = "-")]

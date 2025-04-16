@@ -7,9 +7,8 @@ authors = ["Axel Lord"]
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-log-level-cli = { path = "../log-level-cli" }
 color-eyre = { workspace = true }
-env_logger = { workspace = true }
+file-suite-common = { version = "0.1.0", path = "../file-suite-common" }
 itertools = { workspace = true }
 log = { workspace = true }
 rayon = { workspace = true }
