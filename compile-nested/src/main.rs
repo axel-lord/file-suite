@@ -1,3 +1,5 @@
+//! Combine A nested folder structure by hardlinkning the files into a given directory.
+
 use ::std::{
     collections::HashSet,
     ffi::OsString,
@@ -8,11 +10,11 @@ use ::std::{
 };
 
 use ::clap::Parser;
+use ::clap_log_level::LogConfig;
 use ::color_eyre::{Section, eyre::eyre};
-use ::log::LevelFilter;
+use ::itertools::Itertools;
 use ::rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use ::walkdir::WalkDir;
-use itertools::Itertools;
 
 /// Application to compile nested directory contents into a single directory.
 #[derive(Debug, Parser)]
@@ -28,20 +30,28 @@ struct Cli {
     /// Use symlinks instead of hardlinks.
     #[arg(long)]
     symlink: bool,
+
+    /// Log configuration.
+    #[command(flatten)]
+    log_config: LogConfig,
 }
 
+/// Application entry.
+///
+/// # Errors
+/// If a fatal error occurs or the panic handler cannot be installed.
 fn main() -> ::color_eyre::Result<()> {
     ::color_eyre::install()?;
-    ::env_logger::builder()
-        .filter_module("compile_nested", LevelFilter::Info)
-        .init();
 
     let Cli {
         outdir,
         indir,
         sep,
         symlink,
+        log_config
     } = Cli::parse();
+
+    log_config.init(["compile_nested"]);
 
     let inset = HashSet::<_, RandomState>::from_iter(indir.into_iter().filter_map(|path| {
         path.canonicalize()

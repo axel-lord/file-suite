@@ -1,8 +1,53 @@
 #![doc = include_str!("../README.md")]
 
-use ::std::fmt::Display;
+use ::std::{fmt::Display, fs::File, io::BufWriter};
 
-use ::clap::{ValueEnum, builder::PossibleValue};
+use ::clap::{Parser, ValueEnum, builder::PossibleValue};
+
+/// Cli options to configure logging.
+#[derive(Debug, Parser)]
+pub struct LogConfig {
+    /// Where to output log, when -, stderr is used.
+    #[arg(long, visible_alias = "lf", default_value = "-")]
+    pub log_file: OutputArg,
+    /// At what level to log.
+    #[arg(long, visible_alias = "ll", default_value_t)]
+    pub log_level: LevelFilter,
+}
+
+impl LogConfig {
+    /// Install configured logger.
+    ///
+    /// # Panics
+    /// If a logger has already been initialized or if the output file cannot be opened for writing/appending.
+    pub fn init<I, S>(self, modules: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        modules
+            .into_iter()
+            .fold(&mut ::env_logger::builder(), |builder, module| {
+                builder.filter_module(module.as_ref(), self.log_level.into_inner())
+            })
+            .target(match self.log_file {
+                OutputArg::Stdout => ::env_logger::Target::Stderr,
+                OutputArg::Path(path_buf) => ::env_logger::Target::Pipe(Box::new(BufWriter::new(
+                    File::options()
+                        .append(true)
+                        .create(true)
+                        .open(&path_buf)
+                        .unwrap_or_else(|err| {
+                            panic!(
+                                "could not open log file, '{path_buf}', {err}",
+                                path_buf = path_buf.display()
+                            )
+                        }),
+                ))),
+            })
+            .init();
+    }
+}
 
 /// Level newtype.
 #[repr(transparent)]
@@ -97,4 +142,5 @@ macro_rules! impl_value_enum {
         }
     };
 }
+use ::patharg::OutputArg;
 use impl_value_enum;
