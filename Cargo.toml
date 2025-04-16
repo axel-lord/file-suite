@@ -1,5 +1,5 @@
 [workspace]
-members = ["clap-complete-command", "clap-log-level", "compile-nested", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl"]
+members = ["clap-complete-command", "clap-log-level", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl"]
 resolver = "2"
 
 [profile.release]

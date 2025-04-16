@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+use ::core::panic;
 use ::std::{
     io::{BufWriter, Write},
     path::PathBuf,
@@ -31,7 +32,7 @@ fn get_binary() -> String {
     std::env::current_exe()
         .ok()
         .and_then(|bin| Some(bin.file_name()?.to_str()?.to_string()))
-        .unwrap_or_else(|| String::from(env!("CARGO_CRATE_NAME")))
+        .unwrap_or_else(|| "-".to_string())
 }
 
 /// Generate command line completions.

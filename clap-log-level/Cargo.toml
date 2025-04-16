@@ -6,9 +6,11 @@ authors = ["Axel Lord"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clap = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+env_logger = { workspace = true }
 log = { workspace = true }
 paste = { workspace = true }
+patharg = { workspace = true }
 
 [lints]
 workspace = true
