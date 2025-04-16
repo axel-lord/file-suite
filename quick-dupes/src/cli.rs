@@ -97,7 +97,7 @@ pub struct Filter {
 pub struct Log {
     /// Log level to use.
     #[arg(long, visible_alias = "ll", default_value_t)]
-    log_level: ::clap_log_level::LevelFilter,
+    log_level: ::log_level_cli::LevelFilter,
 
     /// File to write log to.
     #[arg(long, visible_alias = "lf", default_value_t = ::patharg::OutputArg::Stdout)]

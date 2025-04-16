@@ -1,5 +1,5 @@
 [workspace]
-members = ["clap-complete-command", "clap-log-level", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl"]
+members = ["clap-complete-command", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl"]
 resolver = "2"
 
 [profile.release]
@@ -38,7 +38,7 @@ ab_glyph = "0.2.29"
 bytemuck = "1.21.0"
 bytesize = "2.0.1"
 clap = "4.5.36"
-clap-log-level = { path = "clap-log-level" }
+log-level-cli = { path = "log-level-cli" }
 clap_complete = "4.5.47"
 color-eyre = "0.6.3"
 crossbeam = "0.8.4"

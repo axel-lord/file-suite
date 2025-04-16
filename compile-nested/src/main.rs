@@ -10,7 +10,7 @@ use ::std::{
 };
 
 use ::clap::Parser;
-use ::clap_log_level::LogConfig;
+use ::log_level_cli::LogConfig;
 use ::color_eyre::{Section, eyre::eyre};
 use ::itertools::Itertools;
 use ::rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};

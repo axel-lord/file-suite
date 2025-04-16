@@ -7,7 +7,7 @@ authors = ["Axel Lord"]
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-clap-log-level = { path = "../clap-log-level" }
+log-level-cli = { path = "../log-level-cli" }
 color-eyre = { workspace = true }
 env_logger = { workspace = true }
 itertools = { workspace = true }
