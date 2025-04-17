@@ -3,19 +3,25 @@
 use ::clap::{Args, Command, CommandFactory, FromArgMatches};
 use ::log_level_cli::LogConfig;
 
+/// Re-export of [::color_eyre::Result] for use in crates that do not use [color_eyre].
+pub type Result<T = ()> = ::color_eyre::Result<T>;
+
 /// Common cli required and provided functions.
 pub trait Cli {
+    /// Error used by cli.
+    type Err: Into<::color_eyre::Report> + Send + Sync;
+
     /// Run this cli.
     ///
     /// # Errors
     /// If the implementation whishes to.
-    fn run(self) -> ::color_eyre::Result<()>;
+    fn run(self) -> ::core::result::Result<(), Self::Err>;
 
     /// Attach [LogConfig], parse and call [run][Cli::run].
     ///
     /// # Errors
     /// If panic handler cannot be installed or the implementation whishes to.
-    fn start<I, S>(modules: I) -> ::color_eyre::Result<()>
+    fn start<I, S>(modules: I) -> self::Result
     where
         Self: CommandFactory + FromArgMatches,
         I: IntoIterator<Item = S>,
@@ -32,7 +38,7 @@ pub trait Cli {
 
         let cli = Self::from_arg_matches(&matches).unwrap_or_else(|err| err.exit());
 
-        cli.run()
+        cli.run().map_err(|err| err.into())
     }
 
     /// Get command with [LogConfig] attached.

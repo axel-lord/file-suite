@@ -1,10 +1,9 @@
 //! Main function.
 
-use ::clap::Parser;
-use ::recursive_lowercase::Cli;
-
+/// Executable entrypoint.
+///
+/// # Errors
+/// If the panic handler cannot be set up, or the applications fails.
 fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-    Cli::parse().run();
-    Ok(())
+    todo!()
 }
