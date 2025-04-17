@@ -18,6 +18,7 @@ use ::walkdir::WalkDir;
 
 /// Application to compile nested directory contents into a single directory.
 #[derive(Debug, Parser)]
+#[command(author, version, long_about = None)]
 struct Cli {
     /// Where to compile files to.
     outdir: PathBuf,
@@ -32,6 +33,8 @@ struct Cli {
 }
 
 impl ::file_suite_common::Cli for Cli {
+    type Err = ::color_eyre::Report;
+
     fn run(self) -> color_eyre::Result<()> {
         let Self {
             outdir,
