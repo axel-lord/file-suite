@@ -8,14 +8,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 color-eyre = { workspace = true }
-env_logger = { workspace = true }
 log = { workspace = true }
-tokio = { workspace = true, features = ["fs", "rt"] }
 insensitive-buf = { workspace = true }
-nix = { workspace = true, features = ["fs"] }
-thiserror = { workspace = true }
-libc = { workspace = true }
-tokio-stream = { workspace = true }
 
 [lints]
 workspace = true

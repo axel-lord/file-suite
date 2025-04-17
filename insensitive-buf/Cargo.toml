@@ -7,7 +7,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 serde = { workspace = true, features = ["derive"], optional = true }
-log = { workspace = true }
 tinyvec = { workspace = true, features = ["alloc"], optional = true }
 bytemuck = { workspace = true, features = ["derive"] }
 
