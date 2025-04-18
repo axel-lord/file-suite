@@ -1,10 +1,29 @@
 //! Common utilities for crates in workspace.
 
+use ::std::process::ExitCode;
+
 use ::clap::{Args, Command, CommandFactory, FromArgMatches};
 use ::log_level_cli::LogConfig;
 
 /// Re-export of [::color_eyre::Result] for use in crates that do not use [color_eyre].
 pub type Result<T = ()> = ::color_eyre::Result<T>;
+
+/// Error wrapping an exit code.
+#[derive(Debug, thiserror::Error, Clone, Copy, PartialEq)]
+#[error("exit code {:?}", .0)]
+pub struct ExitCodeError(pub ExitCode);
+
+impl From<ExitCode> for ExitCodeError {
+    fn from(value: ExitCode) -> Self {
+        Self(value)
+    }
+}
+
+impl From<u8> for ExitCodeError {
+    fn from(value: u8) -> Self {
+        Self(value.into())
+    }
+}
 
 /// Common cli required and provided functions.
 pub trait Cli {
