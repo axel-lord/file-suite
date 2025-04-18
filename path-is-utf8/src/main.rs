@@ -1,11 +1,19 @@
-use std::{
-    io::{stdout, Write},
-    path::{Path, PathBuf},
-    process::ExitCode,
+//! Check if a path is valid utf-8.
+
+use ::std::{
+    io::{self, Write},
+    os::unix::ffi::OsStrExt,
+    path::PathBuf,
+    process::{ExitCode, Termination},
 };
 
-use clap::Parser;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use ::clap::Parser;
+use ::file_suite_common::{Cli as _, ExitCodeError};
+use ::rayon::{
+    iter::{IntoParallelIterator, ParallelIterator},
+    slice::ParallelSliceMut,
+};
+use ::walkdir::{DirEntry, WalkDir};
 
 /// Check if a path is valid utf-8, and print it if not.
 #[derive(Parser)]
@@ -25,77 +33,114 @@ struct Cli {
     #[arg(long, short = '0')]
     print0: bool,
 
+    /// Include hidden files in recursive traversal.
+    #[arg(long, short)]
+    hidden: bool,
+
     /// Do not print anything.
     #[arg(long, short)]
     quiet: bool,
 }
 
-fn path_is_valid(path: &Path) -> bool {
-    let Some(name) = path.file_name() else {
-        return true;
-    };
-    name.to_str().is_some()
-}
+impl ::file_suite_common::Cli for Cli {
+    type Err = ::file_suite_common::ExitCodeError;
 
-fn main() -> ExitCode {
-    let Cli {
-        path,
-        recursive,
-        print0,
-        quiet,
-    } = Cli::parse();
+    fn run(self) -> ::core::result::Result<(), Self::Err> {
+        let Self {
+            path,
+            recursive,
+            print0,
+            quiet,
+            hidden,
+        } = self;
 
-    let mut path_list = Vec::new();
-
-    for path in path {
-        if recursive && path.is_dir() {
-            let mut path_stack = vec![path];
-            while let Some(path) = path_stack.pop() {
-                if let Ok(dir) = std::fs::read_dir(&path) {
-                    for entry in dir {
-                        let Ok(entry) = entry else {
-                            continue;
-                        };
-
-                        let path = entry.path();
-
-                        if path.is_dir() {
-                            path_stack.push(path)
-                        } else {
-                            path_list.push(path)
-                        }
+        if !recursive {
+            if quiet {
+                for path in path {
+                    if path.to_str().is_none() {
+                        return Err(ExitCode::FAILURE.into());
                     }
                 }
-                path_list.push(path);
+                return Ok(());
             }
-        } else {
-            path_list.push(path);
+
+            let mut invalid = path
+                .into_iter()
+                .filter(|path| path.to_str().is_some())
+                .peekable();
+
+            if invalid.peek().is_none() {
+                return Ok(());
+            }
+
+            let mut stdout = io::stdout().lock();
+            let term = if print0 { b"\0" } else { b"\n" };
+            for invalid in invalid {
+                stdout.write_all(invalid.as_os_str().as_bytes()).unwrap();
+                stdout.write_all(term).unwrap();
+            }
+
+            return Err(ExitCode::FAILURE.into());
         }
-    }
 
-    let mut invalid_paths = path_list
-        .into_par_iter()
-        .filter_map(|path| {
-            if path_is_valid(&path) {
-                None
-            } else {
-                Some(path.to_string_lossy().into_owned())
+        let is_hidden = |entry: &DirEntry| entry.file_name().as_bytes().starts_with(b".");
+
+        let invalid = path
+            .into_par_iter()
+            .flat_map_iter(|path| {
+                WalkDir::new(path)
+                    .into_iter()
+                    .filter_entry(|e| !hidden && !is_hidden(e))
+            })
+            .filter_map(|e| {
+                let path = e.ok()?.into_path();
+
+                if path.to_str().is_some() {
+                    None
+                } else {
+                    Some(path)
+                }
+            });
+
+        if quiet {
+            if invalid.any(|_| true) {
+                return Err(ExitCode::FAILURE.into());
             }
-        })
-        .collect::<Vec<_>>();
-    invalid_paths.sort();
+            return Ok(());
+        }
 
-    let code = if invalid_paths.is_empty() {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
+        let mut invalid = invalid.collect::<Vec<_>>();
+
+        if invalid.is_empty() {
+            return Ok(());
+        }
+
+        invalid.par_sort();
+
+        let mut stdout = io::stdout().lock();
+        let term = if print0 { b"\0" } else { b"\n" };
+
+        for invalid in invalid {
+            stdout.write_all(invalid.as_os_str().as_bytes()).unwrap();
+            stdout.write_all(term).unwrap();
+        }
+
+        Err(ExitCode::FAILURE.into())
+    }
+}
+
+/// Application entrypoint.
+///
+/// # Errors
+/// On failure.
+fn main() -> ExitCode {
+    let Err(err) = Cli::start(["path_is_utf8"]) else {
+        return ExitCode::SUCCESS;
     };
-    let term = if print0 { '\0' } else { '\n' };
-    let mut stdout = stdout().lock();
-    if !quiet {
-        for path in invalid_paths {
-            write!(stdout, "{path}{term}").expect("writing to stdout should give success")
-        }
+
+    if let Some(ExitCodeError(exit_code)) = err.downcast_ref::<ExitCodeError>() {
+        return *exit_code;
     }
-    code
+
+    Termination::report(Err::<(), _>(err))
 }
