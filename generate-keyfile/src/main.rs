@@ -216,5 +216,5 @@ fn with_fmt<T>(
 /// # Errors
 /// If any io should fail.
 fn main() -> ::file_suite_common::Result {
-    Cli::start(["generate_keyfile"])
+    ::file_suite_common::start::<Cli>(&["generate_keyfile"])
 }

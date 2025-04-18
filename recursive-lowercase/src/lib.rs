@@ -16,4 +16,3 @@ pub struct Cli {
     #[arg(required = true)]
     file: Vec<PathBuf>,
 }
-

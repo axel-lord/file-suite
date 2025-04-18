@@ -8,7 +8,7 @@ use ::std::{
 };
 
 use ::clap::Parser;
-use ::file_suite_common::{Run as _, ExitCodeError};
+use ::file_suite_common::ExitCodeError;
 use ::rayon::{
     iter::{IntoParallelIterator, ParallelIterator},
     slice::ParallelSliceMut,
@@ -134,7 +134,7 @@ impl ::file_suite_common::Run for Cli {
 /// # Errors
 /// On failure.
 fn main() -> ExitCode {
-    let Err(err) = Cli::start(["path_is_utf8"]) else {
+    let Err(err) = ::file_suite_common::start::<Cli>(&["path_is_utf8"]) else {
         return ExitCode::SUCCESS;
     };
 
