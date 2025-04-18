@@ -8,7 +8,7 @@ use ::std::{
 };
 
 use ::clap::Parser;
-use ::file_suite_common::{Cli as _, ExitCodeError};
+use ::file_suite_common::{Run as _, ExitCodeError};
 use ::rayon::{
     iter::{IntoParallelIterator, ParallelIterator},
     slice::ParallelSliceMut,
@@ -42,7 +42,7 @@ struct Cli {
     quiet: bool,
 }
 
-impl ::file_suite_common::Cli for Cli {
+impl ::file_suite_common::Run for Cli {
     type Err = ::file_suite_common::ExitCodeError;
 
     fn run(self) -> ::core::result::Result<(), Self::Err> {

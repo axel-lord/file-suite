@@ -11,7 +11,7 @@ use ::std::{
 
 use ::clap::Parser;
 use ::color_eyre::{Section, eyre::eyre};
-use ::file_suite_common::Cli as _;
+use ::file_suite_common::Run as _;
 use ::itertools::Itertools;
 use ::rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use ::walkdir::WalkDir;
@@ -32,7 +32,7 @@ struct Cli {
     symlink: bool,
 }
 
-impl ::file_suite_common::Cli for Cli {
+impl ::file_suite_common::Run for Cli {
     type Err = ::color_eyre::Report;
 
     fn run(self) -> color_eyre::Result<()> {

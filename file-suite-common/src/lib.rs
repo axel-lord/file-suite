@@ -26,7 +26,7 @@ impl From<u8> for ExitCodeError {
 }
 
 /// Common cli required and provided functions.
-pub trait Cli {
+pub trait Run {
     /// Error used by cli.
     type Err: Into<::color_eyre::Report> + Send + Sync;
 
