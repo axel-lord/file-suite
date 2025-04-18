@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-wrap-blocking-attr-impl = { path = "../wrap-blocking-attr-impl/" }
+wrap-blocking-attr-impl = { workspace = true }
 
 [lints]
 workspace = true

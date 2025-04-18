@@ -7,7 +7,7 @@ authors = ["Axel Lord"]
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-file-suite-common = { version = "0.1.0", path = "../file-suite-common" }
+file-suite-common = { workspace = true }
 getrandom = { workspace = true, features = ["std"] }
 rustix = { workspace = true, features = ["mm", "fs"] }
 

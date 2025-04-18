@@ -1,5 +1,5 @@
 [workspace]
-members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl"]
+members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite"]
 resolver = "2"
 
 [profile.release]
@@ -67,3 +67,8 @@ thiserror = "2.0.12"
 tinyvec = "1.9.0"
 toml = "0.8.20"
 walkdir = "2.5.0"
+compile-nested = { version = "0.2.0", path = "compile-nested" }
+file-suite-common = { version = "0.1.0", path = "file-suite-common" }
+generate-keyfile = { version = "0.2.0", path = "generate-keyfile" }
+path-is-utf8 = { version = "0.1.0", path = "path-is-utf8" }
+wrap-blocking-attr-impl = { path = "wrap-blocking-attr-impl" }
