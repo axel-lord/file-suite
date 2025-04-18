@@ -2,11 +2,17 @@
 
 use ::std::process::ExitCode;
 
-use ::clap::{Args, Command, CommandFactory, FromArgMatches};
-use ::log_level_cli::LogConfig;
+use ::clap::{CommandFactory, FromArgMatches};
+use ::color_eyre::Report;
+
+pub use crate::{run::Run, start::Start, startable::Startable};
+
+mod run;
+mod start;
+mod startable;
 
 /// Re-export of [::color_eyre::Result] for use in crates that do not use [color_eyre].
-pub type Result<T = ()> = ::color_eyre::Result<T>;
+pub type Result<T = ()> = ::std::result::Result<T, Report>;
 
 /// Error wrapping an exit code.
 #[derive(Debug, thiserror::Error, Clone, Copy, PartialEq)]
@@ -25,46 +31,15 @@ impl From<u8> for ExitCodeError {
     }
 }
 
-/// Common cli required and provided functions.
-pub trait Run {
-    /// Error used by cli.
-    type Err: Into<::color_eyre::Report> + Send + Sync;
-
-    /// Run this cli.
-    ///
-    /// # Errors
-    /// If the implementation whishes to.
-    fn run(self) -> ::core::result::Result<(), Self::Err>;
-
-    /// Attach [LogConfig], parse and call [run][Cli::run].
-    ///
-    /// # Errors
-    /// If panic handler cannot be installed or the implementation whishes to.
-    fn start<I, S>(modules: I) -> self::Result
-    where
-        Self: CommandFactory + FromArgMatches,
-        I: IntoIterator<Item = S>,
-        S: AsRef<str>,
-    {
-        ::color_eyre::install()?;
-
-        let command = Self::standalone_command();
-        let matches = command.get_matches();
-
-        let log_config = LogConfig::from_arg_matches(&matches).unwrap_or_else(|err| err.exit());
-
-        log_config.init(modules);
-
-        let cli = Self::from_arg_matches(&matches).unwrap_or_else(|err| err.exit());
-
-        cli.run().map_err(|err| err.into())
-    }
-
-    /// Get command with [LogConfig] attached.
-    fn standalone_command() -> Command
-    where
-        Self: CommandFactory,
-    {
-        LogConfig::augment_args(Self::command())
-    }
+/// Invoke [Start::start] for T as if it using [Startable].
+///
+/// # Errors
+/// If panic handler cannot be installed or the [Run::run] implementation needs to.
+pub fn start<T>(modules: &[&str]) -> Result
+where
+    T: Run + CommandFactory + FromArgMatches,
+    T::Err: Send + Sync,
+    Report: From<T::Err>,
+{
+    Startable::<T>::new().start(modules)
 }

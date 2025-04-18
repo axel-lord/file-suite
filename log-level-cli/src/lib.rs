@@ -2,7 +2,7 @@
 
 use ::std::{fmt::Display, fs::File, io::BufWriter};
 
-use ::clap::{builder::PossibleValue, Args, ValueEnum};
+use ::clap::{Args, ValueEnum, builder::PossibleValue};
 
 /// Cli options to configure logging.
 #[derive(Debug, Args)]

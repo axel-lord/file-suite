@@ -11,7 +11,6 @@ use ::std::{
 
 use ::clap::Parser;
 use ::color_eyre::{Section, eyre::eyre};
-use ::file_suite_common::Run as _;
 use ::itertools::Itertools;
 use ::rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use ::walkdir::WalkDir;
@@ -144,5 +143,5 @@ impl ::file_suite_common::Run for Cli {
 /// # Errors
 /// If a fatal error occurs or the panic handler cannot be installed.
 fn main() -> ::color_eyre::Result<()> {
-    Cli::start(["compile_nested"])
+    ::file_suite_common::start::<Cli>(&["compile_nested"])
 }
