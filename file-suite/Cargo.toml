@@ -1,16 +1,16 @@
 [package]
-name = "path-is-utf8"
+name = "file-suite"
 version = "0.1.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
-authors = ["Axel Lord"]
+edition = "2024"
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 color-eyre.workspace = true
+compile-nested = { workspace = true }
 file-suite-common = { workspace = true }
-rayon.workspace = true
-walkdir.workspace = true
+generate-keyfile = { workspace = true }
+log.workspace = true
+path-is-utf8 = { workspace = true }
 
 [lints]
 workspace = true

@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 color-eyre.workspace = true
-log-level-cli = { version = "0.1.0", path = "../log-level-cli" }
+log-level-cli = { workspace = true }
 thiserror.workspace = true
 
 [lints]
