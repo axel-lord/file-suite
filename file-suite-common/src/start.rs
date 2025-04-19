@@ -8,11 +8,11 @@ mod sealed {
     /// Sealed traits.
     pub trait Sealed {}
 
-    impl<T> Sealed for crate::Startable<T> {}
+    impl<T> Sealed for crate::startable::Startable<T> {}
 }
 
-/// Trait for types that may be created and ran, intended for use as a dynamic trait using a
-/// [Startable].
+/// Trait for types that may be created and ran, intended for use as a dynamic trait using
+/// [startable][crate::startable]
 pub trait Start: sealed::Sealed {
     /// Attach [LogConfig][::log_level_cli::LogConfig], parse and call [run][crate::Run::run].
     ///
