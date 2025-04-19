@@ -3,7 +3,6 @@
 use ::std::{num::NonZero, os::fd::AsRawFd, path::PathBuf, ptr::null_mut};
 
 use ::clap::Parser;
-use ::file_suite_common::Run as _;
 use ::rustix::{
     fs::{
         AtFlags, CWD, FlockOperation, Mode, OFlags, RenameFlags, flock, ftruncate, linkat, open,
