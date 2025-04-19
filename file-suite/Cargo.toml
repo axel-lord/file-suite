@@ -6,11 +6,11 @@ edition = "2024"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 color-eyre.workspace = true
-compile-nested = { workspace = true }
+compile-nested = { version = "0.2.0", path = "../compile-nested" }
 file-suite-common = { workspace = true }
-generate-keyfile = { workspace = true }
+generate-keyfile = { version = "0.2.0", path = "../generate-keyfile" }
 log.workspace = true
-path-is-utf8 = { workspace = true }
+path-is-utf8 = { version = "0.1.0", path = "../path-is-utf8" }
 
 [lints]
 workspace = true
