@@ -209,4 +209,3 @@ fn with_fmt<T>(
 ) -> T {
     f(fmt)
 }
-
