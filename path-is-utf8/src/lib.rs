@@ -33,7 +33,7 @@ pub struct Cli {
     print0: bool,
 
     /// Include hidden files in recursive traversal.
-    #[arg(long, short)]
+    #[arg(long, short = 'H')]
     hidden: bool,
 
     /// Do not print anything.

@@ -41,5 +41,5 @@ where
     T::Err: Send + Sync,
     Report: From<T::Err>,
 {
-    startable::<T>().start(modules)
+    startable::<T>().start_as_application(modules)
 }

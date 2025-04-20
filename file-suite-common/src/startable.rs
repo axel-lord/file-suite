@@ -32,10 +32,10 @@ where
     T::Err: Send + Sync,
     Report: From<T::Err>,
 {
-    fn start(&self, modules: &[&str]) -> crate::Result {
+    fn start_as_application(&self, modules: &[&str]) -> crate::Result {
         ::color_eyre::install()?;
 
-        let command = self.standalone_command();
+        let command = self.command_as_application();
         let matches = command.get_matches();
 
         let log_config = LogConfig::from_arg_matches(&matches).unwrap_or_else(|err| err.exit());
@@ -47,7 +47,16 @@ where
         cli.run().map_err(Report::from)
     }
 
-    fn standalone_command(&self) -> Command {
+    fn command_as_application(&self) -> Command {
         LogConfig::augment_args(T::command())
+    }
+
+    fn command_as_subcommand(&self) -> Command {
+        T::command()
+    }
+
+    fn start_as_subcommand(&self, matches: &clap::ArgMatches) -> crate::Result {
+        let cli = T::from_arg_matches(matches).unwrap_or_else(|err| err.exit());
+        cli.run().map_err(Report::from)
     }
 }
