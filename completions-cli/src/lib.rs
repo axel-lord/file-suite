@@ -19,10 +19,6 @@ pub enum Error {
     /// Output could not be flushed.
     #[error("could not flush output [], {0}")]
     FlushOutput(::std::io::Error, Option<PathBuf>),
-
-    /// No name could be found for the binary.
-    #[error("could not get name of binary for completions")]
-    NoBinName,
 }
 
 /// Get shell specified by SHELL variable or bash.
@@ -32,7 +28,7 @@ fn get_shell() -> Shell {
 
 /// Generate command line completions.
 #[derive(Debug, Args)]
-pub struct Completions {
+pub struct CompletionConfig {
     /// Shell to generate completions for.
     ///
     /// Defaults to shell specified by the SHELL environment
@@ -49,22 +45,23 @@ pub struct Completions {
     output: OutputArg,
 }
 
-impl Completions {
+impl CompletionConfig {
     /// Generate completions using provided options.
     ///
     /// # Errors
     /// If the file cannot be opened.
-    pub fn generate(self, command: &mut ::clap::Command) -> Result<(), Error> {
+    pub fn generate(
+        self,
+        command: &mut ::clap::Command,
+        name: impl FnOnce() -> String,
+    ) -> Result<(), Error> {
         let mut file = self
             .output
             .create()
             .map_err(|err| Error::OpenOutput(err, self.output.clone().into_path()))?
             .map_right(BufWriter::new);
 
-        let name = self
-            .binary_name
-            .or_else(|| command.get_bin_name().map(String::from))
-            .ok_or(Error::NoBinName)?;
+        let name = self.binary_name.unwrap_or_else(name);
 
         generate(self.shell, command, name, &mut file);
 
