@@ -1,5 +1,5 @@
 [workspace]
-members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite"]
+members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "file-suite-proc-impl"]
 resolver = "2"
 default-members = ["file-suite"]
 
