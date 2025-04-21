@@ -6,12 +6,7 @@ use ::file_suite::Cli;
 use ::file_suite_common::{ExitCodeError, start};
 
 fn main() -> ExitCode {
-    let Err(err) = start::<Cli>(&[
-        "file_suite",
-        "path_is_utf8",
-        "compile_nested",
-        "generate_keyfile",
-    ]) else {
+    let Err(err) = start::<Cli>(::file_suite::MODULES) else {
         return ExitCode::SUCCESS;
     };
 

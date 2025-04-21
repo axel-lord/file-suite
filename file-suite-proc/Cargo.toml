@@ -1,0 +1,15 @@
+[package]
+name = "file-suite-proc"
+version = "0.1.0"
+edition = "2024"
+authors = ["Axel Lord"]
+license = "MIT OR Apache-2.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+file-suite-proc-impl = { path = "../file-suite-proc-impl" }
+
+[lints]
+workspace = true
