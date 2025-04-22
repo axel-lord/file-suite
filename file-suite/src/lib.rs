@@ -9,7 +9,7 @@ use ::file_suite_common::{Run, Start, startable};
 use ::file_suite_proc::kebab_paste;
 use ::paste::paste;
 
-subcmd!(generate_keyfile, compile_nested, path_is_utf8);
+subcmd!(generate_keyfile, compile_nested, path_is_utf8, pipe_size);
 
 /// Application for containing an amount of file-system related utilities.
 #[derive(Debug, Parser)]
@@ -74,20 +74,19 @@ macro_rules! subcmd {
             }
         }
 
-        }
-
-        paste! {
-
         #[doc = "Selection of cli tool."]
         #[derive(Debug, Subcommand)]
         enum CliSubcmd {
             #[doc = "generate completions for a tool."]
             Completions(CmpSubcmd),
             $(
-            #[doc = "use the " $mod " tool."]
-            [< $mod:camel >](::$mod::Cli),
+            -!($mod[snake] -> [pascal])(::$mod::Cli),
             )*
         }
+
+        }
+
+        paste! {
 
         impl Run for CliSubcmd {
             type Err = Report;
