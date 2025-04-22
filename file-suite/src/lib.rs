@@ -6,6 +6,8 @@ use ::clap::{Args, Parser, Subcommand, ValueEnum};
 use ::color_eyre::Report;
 use ::completions_cli::CompletionConfig;
 use ::file_suite_common::{Run, Start, startable};
+use ::file_suite_proc::kebab_paste;
+use ::paste::paste;
 
 subcmd!(generate_keyfile, compile_nested, path_is_utf8);
 
@@ -54,9 +56,27 @@ impl Run for CmpSubcmd {
 macro_rules! subcmd {
     ($($mod:ident),* $(,)?) => {
         #[doc = "Modules to allow logging for."]
-        pub static MODULES: &[&str] = &["file_suite" $(, stringify!($mod))*];
+        pub const MODULES: &[&str] = &["file_suite" $(, stringify!($mod))*];
 
-        ::paste::paste! {
+        kebab_paste! {
+
+        #[doc = "Get cli and used modules from tool name."]
+        pub fn get_cli(name: &str) -> (fn() -> &'static dyn Start, &'static [&'static str]) {
+            // Quick path for compilation tool.
+            if name == "file-suite" {
+                return (|| startable::<$crate::Cli>(), MODULES);
+            }
+            match name {
+                $(
+                -!($mod[snake] -> str[kebab]) => (|| startable::<::$mod::Cli>(), &[-!($mod -> str)]),
+                )*
+                _ => (|| startable::<$crate::Cli>(), MODULES),
+            }
+        }
+
+        }
+
+        paste! {
 
         #[doc = "Selection of cli tool."]
         #[derive(Debug, Subcommand)]
