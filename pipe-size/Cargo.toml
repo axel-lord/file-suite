@@ -8,7 +8,9 @@ authors = ["Axel Lord"]
 [dependencies]
 bytesize = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+color-eyre.workspace = true
 file-suite-common = { version = "0.1.0", path = "../file-suite-common" }
+log.workspace = true
 
 [lints]
 workspace = true
