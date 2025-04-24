@@ -68,7 +68,7 @@ macro_rules! subcmd {
             }
             match name {
                 $(
-                -!($mod[snake] -> str[kebab]) => (|| startable::<::$mod::Cli>(), &[-!($mod -> str)]),
+                --!($mod[snake] -> str[kebab]) => (|| startable::<::$mod::Cli>(), &[--!($mod -> str)]),
                 )*
                 _ => (|| startable::<$crate::Cli>(), MODULES),
             }
@@ -80,7 +80,7 @@ macro_rules! subcmd {
             #[doc = "generate completions for a tool."]
             Completions(CmpSubcmd),
             $(
-            -!($mod[snake] -> [pascal])(::$mod::Cli),
+            --!($mod[snake] -> [pascal])(::$mod::Cli),
             )*
         }
 

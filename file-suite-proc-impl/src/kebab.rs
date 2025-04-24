@@ -1,5 +1,5 @@
 //! [parse_kebab] implementation.
-use ::proc_macro2::{Group, TokenStream, TokenTree};
+use ::proc_macro2::{Group, Span, TokenStream, TokenTree};
 use ::quote::ToTokens;
 use ::syn::{
     Ident, LitStr, Token, bracketed, custom_punctuation,
@@ -9,7 +9,10 @@ use ::syn::{
     token::Bracket,
 };
 
-use crate::{kw, util::Either};
+use crate::{
+    kw,
+    util::{Either, token_lookahead},
+};
 
 /// Parse kebab macro input.
 ///
@@ -24,47 +27,44 @@ pub(super) fn parse_kebab(input: ParseStream) -> ::syn::Result<TokenStream> {
 /// # Errors
 /// If given invalid input.
 pub(super) fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
-    let mut it = input.into_iter().peekable();
+    let mut it = input.into_iter();
+    let mut it = token_lookahead::<3>(&mut it);
     let mut out = TokenStream::default();
 
-    while let Some(token) = it.next() {
-        let punct = match token {
-            TokenTree::Punct(punct) if punct.as_char() == '-' => punct,
-            TokenTree::Group(grp) => {
-                let mut newgrp = Group::new(grp.delimiter(), kebab_paste(grp.stream())?);
-                newgrp.set_span(grp.span());
-
-                newgrp.to_tokens(&mut out);
-                continue;
-            }
-            tk => {
-                tk.to_tokens(&mut out);
-                continue;
-            }
+    loop {
+        let Some(next) = it.peek::<0>() else {
+            break;
         };
 
-        if !it.peek().is_some_and(|nxt| {
-            let TokenTree::Punct(pnct) = nxt else {
-                return false;
+        if matches!(next, TokenTree::Group(..)) {
+            let Some(TokenTree::Group(group)) = it.next() else {
+                unreachable!()
             };
-            pnct.as_char() == '!'
-        }) {
-            punct.to_tokens(&mut out);
+            let mut new_group = Group::new(group.delimiter(), kebab_paste(group.stream())?);
+            new_group.set_span(group.span());
+            new_group.to_tokens(&mut out);
             continue;
         }
 
-        let last = it.next().unwrap_or_else(|| unreachable!());
+        use crate::util::tcmp::pseq;
+        if !it.matches(pseq!('-', '-', '!')) {
+            it.next()
+                .unwrap_or_else(|| unreachable!())
+                .to_tokens(&mut out);
+            continue;
+        }
 
-        const MSG: &str = "expected delimited group following '-!'";
-        let Some(tree) = it.next() else {
-            return Err(::syn::Error::new(last.span(), MSG));
+        let Some(last) = it.discard().next_back() else {
+            unreachable!();
         };
 
-        let TokenTree::Group(grp) = tree else {
-            return Err(::syn::Error::new(tree.span(), MSG));
+        let err = |span: Span| ::syn::Error::new(span, "expected delimited group following '-!'");
+        let tree = it.next().ok_or_else(|| err(last.span()))?;
+        let TokenTree::Group(group) = tree else {
+            return Err(err(tree.span()));
         };
 
-        kebab_inner.parse2(grp.stream())?.to_tokens(&mut out);
+        kebab_inner.parse2(group.stream())?.to_tokens(&mut out);
     }
 
     Ok(out)
@@ -336,10 +336,11 @@ fn parse_input(input: ParseStream) -> ::syn::Result<Vec<String>> {
             break;
         }
 
-        custom_punctuation!(KebabExcl, -!);
+        custom_punctuation!(KebabExcl, --!);
         _ = lookahead.peek(KebabExcl); // Workaround to give correct error message.
-        if input.peek(Token![-]) && input.peek2(Token![!]) {
-            let _: (Token![-], Token![!]) = (input.parse()?, input.parse()?);
+        if input.peek(Token![-]) && input.peek2(Token![-]) && input.peek3(Token![!]) {
+            let _: (Token![-], Token![-], Token![!]) =
+                (input.parse()?, input.parse()?, input.parse()?);
             let content;
             parenthesized!(content in input);
 

@@ -80,8 +80,7 @@ impl Run for Cli {
             tx.send(()).unwrap();
         });
         if carriage_return {
-            let mut stderr = stderr.lock();
-            _ = writeln!(stderr);
+            _ = writeln!(::std::io::stderr());
         }
         Ok(())
     }
