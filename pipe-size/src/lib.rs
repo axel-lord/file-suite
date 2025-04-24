@@ -1,13 +1,12 @@
 #![doc = include_str!("../README.md")]
 
-use ::std::convert::Infallible;
-use std::fmt::Write as _;
-use std::io::Write;
-use std::sync::{atomic::AtomicU64, mpsc::TryRecvError};
-
+use ::bytesize::ByteSize;
+use ::clap::Parser;
 use ::file_suite_common::Run;
-use bytesize::ByteSize;
-use clap::Parser;
+use ::std::{
+    io::{self, ErrorKind, Read, Write},
+    time::{Duration, Instant},
+};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -15,73 +14,80 @@ use clap::Parser;
 /// on a timer, stdin is piped to stout
 pub struct Cli {
     /// How many bytes will pass through,
-    /// percentage will be printed if provided
+    /// percentage will be printed if provided.
     #[arg(short, long)]
     size: Option<u64>,
 
-    #[arg(long)]
-    /// How long to sleep between prints
-    sleep: Option<f64>,
+    /// Size of buffer used when piping stdin to stdout.
+    #[arg(short, long, default_value_t = 4096)]
+    bufsize: usize,
 
-    /// If carriage return should be used instead of line break.
-    #[arg(short = 'r', long)]
-    carriage_return: bool,
+    /// How long to sleep between prints, in seconds.
+    #[arg(long, default_value = "1")]
+    sleep: f64,
 }
 
 impl Run for Cli {
-    type Err = Infallible;
+    type Err = ::color_eyre::Report;
 
     fn run(self) -> Result<(), Self::Err> {
         let Self {
-            size: _,
+            size,
             sleep,
-            carriage_return,
+            bufsize,
         } = self;
 
-        let count = AtomicU64::new(0);
-        let count = &count;
-        let sleep = sleep.unwrap_or(0.1);
-        let stderr = std::io::stderr();
-        let stderr = &stderr;
+        let mut buf = ::std::iter::repeat_n(0u8, bufsize).collect::<Box<[u8]>>();
 
-        std::thread::scope(|s| {
-            let (tx, rx) = std::sync::mpsc::channel::<()>();
-            s.spawn(move || {
-                let sleep_time = std::time::Duration::from_secs_f64(sleep);
-                let mut width = 0;
-                let mut stderr = stderr.lock();
-                let mut buf = String::new();
-                while let Err(TryRecvError::Empty) = rx.try_recv() {
-                    buf.clear();
-                    _ = write!(
-                        &mut buf,
-                        "{}",
-                        ByteSize(count.load(std::sync::atomic::Ordering::Relaxed)),
-                    );
+        let duration = Duration::from_secs_f64(sleep);
 
-                    width = width.max(buf.len());
+        let mut stdin = io::stdin().lock();
+        let mut stdout = io::stdout().lock();
+        let mut checkpoint = Instant::now();
+        let mut written = 0usize;
 
-                    let _ = write!(
-                        stderr,
-                        "{: <width$}{}",
-                        buf,
-                        if carriage_return { '\r' } else { '\n' },
-                    );
-
-                    std::thread::sleep(sleep_time);
+        loop {
+            let count = match stdin.read(&mut buf) {
+                Ok(count) => count,
+                Err(err) => {
+                    if !matches!(err.kind(), ErrorKind::Interrupted) {
+                        continue;
+                    }
+                    return Err(err.into());
                 }
-            });
+            };
 
-            for _ in 0..4096 {
-                let _ = count.fetch_add(1024, std::sync::atomic::Ordering::Relaxed);
-                std::thread::sleep(std::time::Duration::from_millis(10));
+            if count == 0 {
+                break;
             }
 
-            tx.send(()).unwrap();
-        });
-        if carriage_return {
-            _ = writeln!(::std::io::stderr());
+            written += count;
+            stdout.write_all(&buf[..count])?;
+
+            if Instant::now().duration_since(checkpoint) >= duration {
+                if let Some(s) = size {
+                    ::log::info!(
+                        "{} of {} written",
+                        ByteSize(u64::try_from(written)?),
+                        ByteSize(s)
+                    );
+                } else {
+                    ::log::info!("{} written", ByteSize(u64::try_from(written)?))
+                }
+                checkpoint = Instant::now();
+            }
         }
+
+        if let Some(s) = size {
+            ::log::info!(
+                "finished writing {} of {}",
+                ByteSize(u64::try_from(written)?),
+                ByteSize(s)
+            );
+        } else {
+            ::log::info!("finished writing {}", ByteSize(u64::try_from(written)?),);
+        }
+
         Ok(())
     }
 }
