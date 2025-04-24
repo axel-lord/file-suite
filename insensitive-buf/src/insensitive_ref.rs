@@ -179,6 +179,7 @@ impl AsRef<::std::path::Path> for Insensitive {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::missing_panics_doc)]
 
     use super::*;
 
