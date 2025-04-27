@@ -2,10 +2,13 @@ use ::std::{fmt::Display, path::PathBuf};
 
 use ::thiserror::Error;
 
+/// Error used when a path cannot be canonicalized.
 #[derive(Debug, Error)]
 #[error("{path:?} could not be canonicalized, {err}")]
 pub struct CanonicalizationError {
+    /// Path that could not be canonicalized.
     pub path: PathBuf,
+    /// IO error that occurred.
     #[source]
     pub err: ::std::io::Error,
 }
