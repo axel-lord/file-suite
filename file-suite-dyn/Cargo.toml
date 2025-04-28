@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+file-suite-proc = { version = "0.1.0", path = "../file-suite-proc" }
 
 [lints]
 workspace = true

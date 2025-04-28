@@ -31,7 +31,6 @@ mod kw {
     custom_keyword!(str);
     custom_keyword!(ident);
     custom_keyword!(snake);
-    custom_keyword!(none);
     custom_keyword!(kebab);
     custom_keyword!(space);
     custom_keyword!(split);
@@ -41,4 +40,5 @@ mod kw {
     custom_keyword!(lower);
     custom_keyword!(concat);
     custom_keyword!(keep);
+    custom_keyword!(count);
 }

@@ -1,15 +1,20 @@
 //! Conversion utilities using [Any]
 
-use ::std::any::Any;
+use ::std::any::{Any, TypeId};
 
 /// Trait for types which may be converted to from a boxed [Any] value.
-pub trait FromAny: Sized {
+pub trait FromAny
+where
+    Self: TryFrom<Box<dyn Any>, Error = Box<dyn Any>> + Sized,
+{
     /// Try to convert a boxed [Any] to self.
     ///
     /// # Errors
     /// If the boxed [Any] value does not meet the expectations of Self, the boxed [Any] value
     /// is returned.
-    fn try_from_any(value: Box<dyn Any>) -> Result<Self, Box<dyn Any>>;
+    fn try_from_any(value: Box<dyn Any>) -> Result<Self, Box<dyn Any>> {
+        Self::try_from(value)
+    }
 
     /// Convert a boxed [Any] to self.
     ///
@@ -58,10 +63,18 @@ pub trait FromAny: Sized {
     }
 }
 
+impl<T> FromAny for T where T: Sized + TryFrom<Box<dyn Any>, Error = Box<dyn Any>> {}
+
 /// Trait fro types which may be converted into a boxed [Any] value.
-pub trait IntoAny: Sized {
+pub trait IntoAny
+where
+    Self: Sized,
+    Box<dyn Any>: From<Self>,
+{
     /// Convert a value to a boxed [Any] instance.
-    fn into_any(self) -> Box<dyn Any>;
+    fn into_any(self) -> Box<dyn Any> {
+        self.into()
+    }
 
     /// Try to convert Self to another value implementing [FromAny].
     ///
@@ -83,5 +96,32 @@ pub trait IntoAny: Sized {
         T: FromAny,
     {
         T::from_any(self.into_any())
+    }
+}
+
+impl<T> IntoAny for T
+where
+    T: Sized,
+    Box<dyn Any>: From<T>,
+{
+}
+
+/// Initialize polymorphic values.
+pub trait TypeInit
+where
+    Self: Sized,
+{
+    /// Get a value with it's contents initialized to the given type.
+    fn type_init(id: TypeId) -> Option<Self>;
+
+    /// Initialize self from T.
+    fn init_from<T>(value: &mut T) -> Option<Self>
+    where
+        T: Any,
+        Self: AsMut<dyn Any>,
+    {
+        let mut s = Self::type_init(TypeId::of::<T>())?;
+        ::std::mem::swap(value, s.as_mut().downcast_mut::<T>()?);
+        Some(s)
     }
 }
