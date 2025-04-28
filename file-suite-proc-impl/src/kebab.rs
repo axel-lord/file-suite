@@ -5,7 +5,7 @@ use ::syn::{
     Ident, LitStr, Token, bracketed, custom_punctuation,
     ext::IdentExt,
     parenthesized,
-    parse::{End, ParseStream, Parser},
+    parse::{End, Parse, ParseStream, Parser},
     token::Bracket,
 };
 
@@ -73,8 +73,6 @@ pub(super) fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
 /// How input values should be split
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 enum InputSplit {
-    /// Values should be concatenated.
-    None,
     /// Values should be split as they are given.
     #[default]
     Split,
@@ -88,6 +86,81 @@ enum InputSplit {
     Snake,
     /// Values should be split by spaces.
     Space,
+    /// Values should be counted.
+    Count,
+}
+
+impl InputSplit {
+    /// Transform args given to input into desired form.
+    fn transform_args(self, args: Vec<String>) -> Vec<String> {
+        match self {
+            InputSplit::Split => args,
+            InputSplit::Pascal => args
+                .iter()
+                .flat_map(|s| {
+                    s.split(char::is_uppercase)
+                        .skip(if s.starts_with(char::is_uppercase) {
+                            1
+                        } else {
+                            0
+                        })
+                })
+                .map(String::from)
+                .collect(),
+            InputSplit::Camel => args
+                .iter()
+                .flat_map(|s| s.split(char::is_uppercase))
+                .map(String::from)
+                .collect(),
+            InputSplit::Kebab => args
+                .iter()
+                .flat_map(|s| s.split('-'))
+                .map(String::from)
+                .collect(),
+            InputSplit::Snake => args
+                .iter()
+                .flat_map(|s| s.split('_'))
+                .map(String::from)
+                .collect(),
+            InputSplit::Space => args
+                .iter()
+                .flat_map(|s| s.split(' '))
+                .map(String::from)
+                .collect(),
+            InputSplit::Count => Vec::from([args.len().to_string()]),
+        }
+    }
+}
+
+impl Parse for InputSplit {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+
+        if lookahead.peek(kw::split) {
+            let _: kw::split = input.parse()?;
+            Ok(Self::Split)
+        } else if lookahead.peek(kw::camel) {
+            let _: kw::camel = input.parse()?;
+            Ok(Self::Camel)
+        } else if lookahead.peek(kw::pascal) {
+            let _: kw::pascal = input.parse()?;
+            Ok(Self::Pascal)
+        } else if lookahead.peek(kw::kebab) {
+            let _: kw::kebab = input.parse()?;
+            Ok(Self::Kebab)
+        } else if lookahead.peek(kw::snake) {
+            let _: kw::snake = input.parse()?;
+            Ok(Self::Snake)
+        } else if lookahead.peek(kw::space) {
+            let _: kw::space = input.parse()?;
+            Ok(Self::Space)
+        } else if lookahead.peek(kw::count) {
+            let _: kw::count = input.parse()?;
+            Ok(Self::Count)
+        } else {
+            Err(lookahead.error())
+        }
+    }
 }
 
 /// How output should be combined.
@@ -366,57 +439,11 @@ fn parse_input(input: ParseStream) -> ::syn::Result<Vec<String>> {
             let content;
             bracketed!(content in input);
 
-            let lookahead = content.lookahead1();
-
-            if lookahead.peek(End) {
+            if content.is_empty() {
                 continue;
             }
 
-            'case_match: {
-                if lookahead.peek(kw::none) {
-                    let _: kw::none = content.parse()?;
-                    split = InputSplit::None;
-                    break 'case_match;
-                }
-
-                if lookahead.peek(kw::split) {
-                    let _: kw::split = content.parse()?;
-                    split = InputSplit::Split;
-                    break 'case_match;
-                }
-
-                if lookahead.peek(kw::camel) {
-                    let _: kw::camel = content.parse()?;
-                    split = InputSplit::Camel;
-                    break 'case_match;
-                }
-
-                if lookahead.peek(kw::pascal) {
-                    let _: kw::pascal = content.parse()?;
-                    split = InputSplit::Pascal;
-                    break 'case_match;
-                }
-
-                if lookahead.peek(kw::kebab) {
-                    let _: kw::kebab = content.parse()?;
-                    split = InputSplit::Kebab;
-                    break 'case_match;
-                }
-
-                if lookahead.peek(kw::snake) {
-                    let _: kw::snake = content.parse()?;
-                    split = InputSplit::Snake;
-                    break 'case_match;
-                }
-
-                if lookahead.peek(kw::space) {
-                    let _: kw::space = content.parse()?;
-                    split = InputSplit::Space;
-                    break 'case_match;
-                }
-
-                return Err(lookahead.error());
-            }
+            split = content.parse()?;
 
             if !content.is_empty() {
                 return Err(content.error("no more input expected for input split specification"));
@@ -427,42 +454,7 @@ fn parse_input(input: ParseStream) -> ::syn::Result<Vec<String>> {
         return Err(lookahead.error());
     }
 
-    Ok(match split {
-        InputSplit::None => Vec::from([args.join("")]),
-        InputSplit::Split => args,
-        InputSplit::Pascal => args
-            .iter()
-            .flat_map(|s| {
-                s.split(char::is_uppercase)
-                    .skip(if s.starts_with(char::is_uppercase) {
-                        1
-                    } else {
-                        0
-                    })
-            })
-            .map(String::from)
-            .collect(),
-        InputSplit::Camel => args
-            .iter()
-            .flat_map(|s| s.split(char::is_uppercase))
-            .map(String::from)
-            .collect(),
-        InputSplit::Kebab => args
-            .iter()
-            .flat_map(|s| s.split('-'))
-            .map(String::from)
-            .collect(),
-        InputSplit::Snake => args
-            .iter()
-            .flat_map(|s| s.split('_'))
-            .map(String::from)
-            .collect(),
-        InputSplit::Space => args
-            .iter()
-            .flat_map(|s| s.split(' '))
-            .map(String::from)
-            .collect(),
-    })
+    Ok(split.transform_args(args))
 }
 
 #[cfg(test)]
