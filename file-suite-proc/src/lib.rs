@@ -4,9 +4,7 @@ use ::proc_macro::TokenStream;
 
 /// Convert between case, and string literal/ident.
 /// Also handles concatenation respecting given case.
-///
-/// # Errors
-/// If given invalid input, be it illegal literals or the wrong pattern.
+#[doc = include_str!("../KEBABEXPR.md")]
 #[proc_macro]
 pub fn kebab(input: TokenStream) -> TokenStream {
     ::file_suite_proc_impl::kebab(input.into())
@@ -15,9 +13,7 @@ pub fn kebab(input: TokenStream) -> TokenStream {
 }
 
 /// Find kebab expressions in input tokens and replace them with kebabed result.
-///
-/// # Errors
-/// If the kebab expressions are malformed.
+#[doc = include_str!("../KEBABEXPR.md")]
 #[proc_macro]
 pub fn kebab_paste(input: TokenStream) -> TokenStream {
     ::file_suite_proc_impl::kebab_paste(input.into())

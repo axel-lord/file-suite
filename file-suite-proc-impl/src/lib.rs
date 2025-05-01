@@ -22,23 +22,3 @@ pub fn kebab(input: TokenStream) -> ::syn::Result<TokenStream> {
 pub fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
     kebab::kebab_paste(input)
 }
-
-mod kw {
-    //! Custom keywords.
-
-    use ::syn::custom_keyword;
-
-    custom_keyword!(str);
-    custom_keyword!(ident);
-    custom_keyword!(snake);
-    custom_keyword!(kebab);
-    custom_keyword!(space);
-    custom_keyword!(split);
-    custom_keyword!(camel);
-    custom_keyword!(pascal);
-    custom_keyword!(upper);
-    custom_keyword!(lower);
-    custom_keyword!(concat);
-    custom_keyword!(keep);
-    custom_keyword!(count);
-}

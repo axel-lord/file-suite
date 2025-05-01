@@ -6,6 +6,7 @@ use ::std::any::Any;
 use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
 
+any_of!(AnyOf3: A B C);
 any_of!(Either: A B);
 
 /// Use [From] implementations betweed A, B and a boxed dyn [Any] to convert between to values.
@@ -90,4 +91,4 @@ impl<$($ty_nm: ToTokens),*> ToTokens for $nm<$($ty_nm),*> {
 }
 };
 }
-use any_of;
+pub(crate) use any_of;
