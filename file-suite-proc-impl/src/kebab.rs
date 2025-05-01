@@ -2,20 +2,17 @@
 use ::proc_macro2::{Group, Span, TokenStream, TokenTree};
 use ::quote::ToTokens;
 use ::syn::{
-    Ident, LitInt, LitStr, bracketed,
-    parse::{End, ParseStream, Parser},
-    token::Bracket,
+    Ident, LitInt, LitStr,
+    parse::{ParseStream, Parser},
 };
 
 use crate::{
     kebab::{
         input::KebabInput,
-        output::{Case, Combine, Ty},
+        output::{KebabOutput, TyKind},
     },
     util::{AnyOf3, token_lookahead},
 };
-
-use self::output::{CaseKind, CombineKind, TyKind};
 
 mod input;
 
@@ -86,90 +83,32 @@ fn kebab_inner(input: ParseStream) -> ::syn::Result<AnyOf3<LitStr, Ident, LitInt
     // let (args, arrow) = parse_input(input)?;
     let kebab_input = input.parse::<KebabInput>()?;
 
-    // Only parse output if input ended by arrow.
-    let (ty, comb, case) = if kebab_input.has_arrow() {
-        parse_output_pattern(input)?
-    } else {
-        Default::default()
-    };
+    let kebab_output = kebab_input
+        .has_arrow()
+        .then(|| input.parse::<KebabOutput>())
+        .transpose()?
+        .unwrap_or_default();
 
     if !input.is_empty() {
         return Err(input.error("no further macro input expected"));
     }
 
-    let joined = comb.join(case.apply(kebab_input.split_args()));
+    let split = kebab_input.split().unwrap_or_default();
+    let combine = kebab_output.combine().unwrap_or_default();
+    let case = kebab_output.case().unwrap_or_default();
+    let ty = kebab_output
+        .ty()
+        .or_else(|| split.default_ty())
+        .or_else(|| combine.default_ty())
+        .unwrap_or_default();
+
+    let joined = combine.join(case.apply(kebab_input.split_args()));
 
     Ok(match ty {
         TyKind::Ident => AnyOf3::B(Ident::new(&joined, out_span)),
         TyKind::LitStr => AnyOf3::A(LitStr::new(&joined, out_span)),
+        TyKind::LitInt => AnyOf3::C(LitInt::new(&joined, out_span)),
     })
-}
-
-/// Parse output pattern of kebab.
-///
-/// # Errors
-/// If given an invalid pattern.
-fn parse_output_pattern(input: ParseStream) -> ::syn::Result<(TyKind, CombineKind, CaseKind)> {
-    let lookahead = input.lookahead1();
-
-    // Empty input is ok, and results in default values.
-    if lookahead.peek(End) {
-        return Ok(Default::default());
-    }
-
-    let ty = Ty::lookahead_parse(input, &lookahead)?;
-
-    // If type was not used only brackets '[' may follow.
-    if ty.is_none() && !lookahead.peek(Bracket) {
-        return Err(lookahead.error());
-    }
-
-    // let mut ty = None;
-    let mut comb = None;
-    let mut case = None;
-
-    if input.peek(Bracket) {
-        let content;
-        bracketed!(content in input);
-
-        loop {
-            let lookahead = content.lookahead1();
-
-            if lookahead.peek(End) {
-                break;
-            }
-
-            if comb.is_some() && case.is_some() {
-                return Err(content.error("no further input expected"));
-            }
-
-            if comb.is_none() {
-                comb = Combine::lookahead_parse(&content, &lookahead)?
-                    .as_deref()
-                    .copied();
-                if comb.is_some() {
-                    continue;
-                }
-            }
-
-            if case.is_none() {
-                case = Case::lookahead_parse(&content, &lookahead)?
-                    .as_deref()
-                    .copied();
-                if case.is_some() {
-                    continue;
-                }
-            }
-
-            return Err(lookahead.error());
-        }
-    }
-
-    Ok((
-        ty.as_deref().copied().unwrap_or_default(),
-        comb.unwrap_or_default(),
-        case.unwrap_or_default(),
-    ))
 }
 
 #[cfg(test)]

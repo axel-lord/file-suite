@@ -1,5 +1,6 @@
-//! [InputSplit] impl.
+//! [KebabInput] impl.
 
+use ::quote::ToTokens;
 use ::syn::{
     Ident, LitStr, Token, bracketed, custom_punctuation,
     ext::IdentExt,
@@ -9,7 +10,7 @@ use ::syn::{
 };
 
 use crate::{
-    kebab::kebab_inner,
+    kebab::{kebab_inner, output::TyKind},
     util::{AnyOf3, Either, kw_kind},
 };
 
@@ -19,7 +20,7 @@ pub struct KebabInput {
     /// Arguments of expression.
     pub args: Vec<Either<Ident, LitStr>>,
     /// How to split arguments.
-    pub split: Option<(Bracket, Split)>,
+    pub split_group: Option<SplitGroup>,
     /// Optional trailing arrow.
     pub arrow: Option<Token![->]>,
 }
@@ -31,12 +32,12 @@ impl KebabInput {
     }
 
     /// Get the parsed split if any.
-    pub const fn split(&self) -> Option<SplitKind> {
-        if let Some((_, split)) = &self.split {
-            Some(split.kind)
-        } else {
-            None
-        }
+    pub fn split(&self) -> Option<SplitKind> {
+        self.split_group
+            .as_ref()
+            .and_then(|g| g.split)
+            .as_deref()
+            .copied()
     }
 
     /// Get args split according to parsed [SplitKind] or default.
@@ -56,7 +57,11 @@ impl KebabInput {
 impl Parse for KebabInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut out = Self::default();
-        let Self { args, split, arrow } = &mut out;
+        let Self {
+            args,
+            split_group,
+            arrow,
+        } = &mut out;
 
         custom_punctuation!(KebabExcl, --!);
         loop {
@@ -92,24 +97,51 @@ impl Parse for KebabInput {
             } else if lookahead.peek(LitStr) {
                 args.push(Either::B(input.parse()?));
             } else if lookahead.peek(Bracket) {
-                let content;
-                let bracket = bracketed!(content in input);
-
-                if !content.is_empty() {
-                    *split = Some((bracket, content.parse()?));
-
-                    if !content.is_empty() {
-                        return Err(
-                            content.error("no more input expected for input split specification")
-                        );
-                    }
-                }
+                *split_group = Some(input.parse()?);
             } else {
                 return Err(lookahead.error());
             }
         }
 
         Ok(out)
+    }
+}
+
+/// Split specification of input.
+#[derive(Debug)]
+pub struct SplitGroup {
+    /// Bracket deliminating group.
+    pub bracket: Bracket,
+    /// Split in group.
+    pub split: Option<Split>,
+}
+
+impl Parse for SplitGroup {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let content;
+        Ok(Self {
+            bracket: bracketed!(content in input),
+            split: if content.is_empty() {
+                None
+            } else {
+                let split = content.parse()?;
+
+                if !content.is_empty() {
+                    return Err(
+                        content.error("no more input expected for input split specification")
+                    );
+                }
+
+                Some(split)
+            },
+        })
+    }
+}
+
+impl ToTokens for SplitGroup {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        self.bracket
+            .surround(tokens, |tokens| self.split.to_tokens(tokens));
     }
 }
 
@@ -175,5 +207,13 @@ impl SplitKind {
                 .collect(),
             SplitKind::Count => Vec::from([args.len().to_string()]),
         }
+    }
+
+    /// Preferred [TyKind] of variant.
+    pub const fn default_ty(self) -> Option<TyKind> {
+        Some(match self {
+            Self::Count => TyKind::LitInt,
+            _ => return None,
+        })
     }
 }
