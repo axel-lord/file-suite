@@ -35,26 +35,34 @@ where
 /// Generate an enum that may be one of a set of types.
 /// Where `$nm` is the name of the type and `$ty` are the variant names.
 /// # Example
-/// ```
-/// any_of!(Either: L R);
 ///
-/// // Creates.
+/// ```
+/// use ::file_suite_dyn::any_of;
+/// any_of!(Either: L R);
+/// ```
+/// ```
 /// pub enum Either<L, R> {
 ///     L(L),
 ///     R(R),
 /// }
 ///
+/// ```
+/// ```
+/// use ::file_suite_dyn::any_of;
 /// any_of!(AnyOf2: A B);
-///
-/// // Creates
+/// ```
+/// ```
 /// pub enum AnyOf2<A, B> {
 ///     A(A),
 ///     B(B),
 /// }
 ///
+/// ```
+/// ```
+/// use ::file_suite_dyn::any_of;
 /// any_of!(AnyOf3: A B C);
-///
-/// // Creates
+/// ```
+/// ```
 /// pub enum AnyOf3<A, B, C> {
 ///     A(A),
 ///     B(B),
@@ -66,7 +74,7 @@ macro_rules! any_of {
     ($nm:ident: $($ty:ident)+) => {
         $crate::kebab_paste! {
 
-        #[doc = --!( "Value that may be one of " --!( $($ty)* [count] -> str) " types." -> str)]
+        #[doc = --!( "Value that may be one of " --!( $($ty)* -> str[count]) " types." -> str)]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum $nm<$($ty),*> {$(
             #[doc = --!( "Value has type " $ty "." -> str)]
