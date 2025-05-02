@@ -10,7 +10,7 @@ use ::syn::{
 };
 
 use crate::{
-    kebab::{kebab_inner, output::TyKind},
+    kebab::kebab_inner,
     util::{AnyOf3, Either, kw_kind},
 };
 
@@ -163,8 +163,6 @@ kw_kind!(
         Snake snake,
         /// Values should be split by spaces.
         Space space,
-        /// Values should be counted.
-        Count count,
     }
 );
 
@@ -205,15 +203,6 @@ impl SplitKind {
                 .flat_map(|s| s.split(' '))
                 .map(String::from)
                 .collect(),
-            SplitKind::Count => Vec::from([args.len().to_string()]),
         }
-    }
-
-    /// Preferred [TyKind] of variant.
-    pub const fn default_ty(self) -> Option<TyKind> {
-        Some(match self {
-            Self::Count => TyKind::LitInt,
-            _ => return None,
-        })
     }
 }

@@ -93,12 +93,10 @@ fn kebab_inner(input: ParseStream) -> ::syn::Result<AnyOf3<LitStr, Ident, LitInt
         return Err(input.error("no further macro input expected"));
     }
 
-    let split = kebab_input.split().unwrap_or_default();
     let combine = kebab_output.combine().unwrap_or_default();
     let case = kebab_output.case().unwrap_or_default();
     let ty = kebab_output
         .ty()
-        .or_else(|| split.default_ty())
         .or_else(|| combine.default_ty())
         .unwrap_or_default();
 
