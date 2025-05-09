@@ -1,3 +1,5 @@
+//! Application to find duplicate files.
+
 use ::std::{
     borrow::Cow,
     collections::hash_map::Entry::{Occupied, Vacant},
@@ -26,9 +28,15 @@ use ::sha2::{
 };
 use ::tinyvec::TinyVec;
 
+/// Command line interface.
 mod cli;
+
+/// Error types.
 mod error;
+
+/// Format helper.
 mod fmt_oneshot;
+
 mod group_summary;
 mod observer;
 
@@ -39,8 +47,10 @@ use crate::{
     observer::Observer,
 };
 
+/// Convenient type alias for verbose type.
 type VecHashMap<K, V> = FxHashMap<K, TinyVec<[V; 3]>>;
 
+/// Function used when folding vec hashmap.
 fn fold_vec_hashmap<K: Hash + Eq, V: Default>(
     mut map: VecHashMap<K, V>,
     (key, value): (K, V),
@@ -49,6 +59,7 @@ fn fold_vec_hashmap<K: Hash + Eq, V: Default>(
     map
 }
 
+/// Function used in reduction of vec hashmap.
 fn reduce_vec_hashmap<K: Hash + Eq, V: Default>(
     a: VecHashMap<K, V>,
     b: VecHashMap<K, V>,

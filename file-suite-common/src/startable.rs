@@ -15,7 +15,7 @@ where
     T::Err: Send + Sync,
     Report: From<T::Err>,
 {
-    let startable = Startable { _p: PhantomData };
+    let startable = Startable::new();
     let boxed = Box::<Startable<T>>::new(startable);
     Box::<dyn Start>::leak(boxed)
 }
@@ -24,6 +24,13 @@ where
 pub(crate) struct Startable<T> {
     /// Allow for T to exist.
     _p: PhantomData<fn() -> T>,
+}
+
+impl<T> Startable<T> {
+    /// Create a new instance.
+    pub const fn new() -> Self {
+        Self { _p: PhantomData }
+    }
 }
 
 impl<T> Start for Startable<T>
