@@ -5,6 +5,7 @@ use ::std::process::ExitCode;
 use ::clap::{CommandFactory, FromArgMatches};
 use ::color_eyre::Report;
 
+use crate::startable::Startable;
 pub use crate::{run::Run, start::Start, startable::startable};
 
 mod run;
@@ -41,5 +42,5 @@ where
     T::Err: Send + Sync,
     Report: From<T::Err>,
 {
-    startable::<T>().start_as_application(modules)
+    Startable::<T>::new().start_as_application(modules)
 }
