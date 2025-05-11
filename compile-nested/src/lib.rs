@@ -32,7 +32,7 @@ pub struct Cli {
 }
 
 impl ::file_suite_common::Run for Cli {
-    type Err = ::color_eyre::Report;
+    type Error = ::color_eyre::Report;
 
     fn run(self) -> color_eyre::Result<()> {
         let Self {

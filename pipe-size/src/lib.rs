@@ -28,9 +28,9 @@ pub struct Cli {
 }
 
 impl Run for Cli {
-    type Err = ::color_eyre::Report;
+    type Error = ::color_eyre::Report;
 
-    fn run(self) -> Result<(), Self::Err> {
+    fn run(self) -> Result<(), Self::Error> {
         let Self {
             size,
             sleep,

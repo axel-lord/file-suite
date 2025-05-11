@@ -47,7 +47,7 @@ macro_rules! kw_kind {
                 lookahead: &::syn::parse::Lookahead1
             ) -> ::syn::Result<Option<Self>> {
                 let (kind, span) = $(if lookahead.peek(kw::$kw_nm) {
-                    ($ki_nm::$va_nm, kw::$kw_nm::parse(input)?.span)
+                    ($ki_nm::$va_nm, <kw::$kw_nm as ::syn::parse::Parse>::parse(input)?.span)
                 } else)* {
                     return Ok(None);
                 };

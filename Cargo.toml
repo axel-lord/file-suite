@@ -24,34 +24,38 @@ future_not_send = "warn"
 missing_const_for_fn = "warn"
 
 [workspace.dependencies]
-futures-core = "0.3.30"
-libc = "0.2.158"
-log = "0.4.22"
-nix = "0.29.0"
-paste = "1.0.15"
-proc-macro2 = "1.0.86"
-quote = "1.0.37"
-smallvec = "1.13.2"
-syn = "2.0.79"
-tokio = "1.40.0"
-tokio-stream = "0.1.16"
 ab_glyph = "0.2.29"
 bytemuck = "1.21.0"
 bytesize = "2.0.1"
 clap = "4.5.36"
-log-level-cli = { path = "log-level-cli" }
 clap_complete = "4.5.47"
 color-eyre = "0.6.3"
+compile-nested = { version = "0.2.0", path = "compile-nested" }
+completions-cli = { version = "0.1.0", path = "completions-cli" }
 crossbeam = "0.8.4"
 derive_more = "2.0.1"
 either = "1.15.0"
 env_logger = "0.11.8"
+file-suite-common = { version = "0.1.0", path = "file-suite-common" }
+file-suite-proc = { path = "file-suite-proc" }
+file-suite-proc-impl = { path = "file-suite-proc-impl" }
+futures-core = "0.3.30"
+generate-keyfile = { version = "0.2.0", path = "generate-keyfile" }
 getrandom = "0.3.2"
 image = "0.25.6"
 imageproc = "0.25.0"
 insensitive-buf = { path = "insensitive-buf" }
 itertools = "0.14.0"
+libc = "0.2.158"
+log = "0.4.22"
+log-level-cli = { path = "log-level-cli" }
+nix = "0.29.0"
+paste = "1.0.15"
+path-is-utf8 = { version = "0.1.0", path = "path-is-utf8" }
 patharg = "0.4.0"
+pipe-size = { version = "0.1.0", path = "pipe-size" }
+proc-macro2 = "1.0.86"
+quote = "1.0.37"
 rayon = "1.10.0"
 reflink-at = { path = "reflink-at" }
 regex = "1.11.1"
@@ -62,14 +66,14 @@ serde = "1.0.219"
 serde_json = "1.0.140"
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
+smallvec = "1.13.2"
 symlink = "0.1.0"
+syn = "2.0.79"
 tap = "1.0.1"
 thiserror = "2.0.12"
 tinyvec = "1.9.0"
+tokio = "1.40.0"
+tokio-stream = "0.1.16"
 toml = "0.8.20"
 walkdir = "2.5.0"
-compile-nested = { version = "0.2.0", path = "compile-nested" }
-file-suite-common = { version = "0.1.0", path = "file-suite-common" }
-generate-keyfile = { version = "0.2.0", path = "generate-keyfile" }
-path-is-utf8 = { version = "0.1.0", path = "path-is-utf8" }
 wrap-blocking-attr-impl = { path = "wrap-blocking-attr-impl" }

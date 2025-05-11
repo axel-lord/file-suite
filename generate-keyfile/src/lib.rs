@@ -38,9 +38,9 @@ pub struct Cli {
 }
 
 impl ::file_suite_common::Run for Cli {
-    type Err = ::std::convert::Infallible;
+    type Error = ::std::convert::Infallible;
 
-    fn run(self) -> Result<(), Self::Err> {
+    fn run(self) -> Result<(), Self::Error> {
         let Cli {
             size,
             force,

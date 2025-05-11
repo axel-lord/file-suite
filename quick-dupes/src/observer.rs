@@ -15,7 +15,7 @@ pub struct Observer {
 }
 
 impl Observer {
-    pub fn new(shared: Arc<Shared>) -> Self {
+    pub const fn new(shared: Arc<Shared>) -> Self {
         Self { shared, current: 0 }
     }
 

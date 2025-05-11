@@ -1,29 +1,45 @@
 //! [parse_kebab] implementation.
+#![deny(clippy::todo)]
+
 use ::proc_macro2::{Group, Span, TokenStream, TokenTree};
 use ::quote::ToTokens;
-use ::syn::{
-    Ident, LitInt, LitStr,
-    parse::{ParseStream, Parser},
-};
+use ::syn::parse::{ParseStream, Parser};
 
 use crate::{
     kebab::{
         input::KebabInput,
-        output::{KebabOutput, TyKind},
+        output::KebabOutput,
+        value::{TypedValue, Value},
     },
-    util::{AnyOf3, token_lookahead},
+    util::token_lookahead,
 };
 
 mod input;
 
 mod output;
 
+mod value;
+
+mod split;
+
+mod combine;
+
+mod case;
+
 /// Parse kebab macro input.
 ///
 /// # Errors
 /// If the input cannot be kebabed.
 pub(super) fn parse_kebab(input: ParseStream) -> ::syn::Result<TokenStream> {
-    kebab_inner(input).map(|e| e.to_token_stream())
+    kebab_inner(input).and_then(|e| {
+        let mut tokens = TokenStream::default();
+
+        for value in e {
+            TypedValue::try_from(value)?.to_tokens(&mut tokens);
+        }
+
+        Ok(tokens)
+    })
 }
 
 /// Parse kebab input in the same manner as paste, with one enclosing macro call.
@@ -68,7 +84,9 @@ pub(super) fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
             return Err(err(tree.span()));
         };
 
-        kebab_inner.parse2(group.stream())?.to_tokens(&mut out);
+        for value in kebab_inner.parse2(group.stream())? {
+            TypedValue::try_from(value)?.to_tokens(&mut out);
+        }
     }
 
     Ok(out)
@@ -78,9 +96,8 @@ pub(super) fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
 ///
 /// # Errors
 /// If given input cannot be parsed.
-fn kebab_inner(input: ParseStream) -> ::syn::Result<AnyOf3<LitStr, Ident, LitInt>> {
-    let out_span = input.span();
-    // let (args, arrow) = parse_input(input)?;
+fn kebab_inner(input: ParseStream) -> ::syn::Result<Vec<Value>> {
+    // let out_span = input.span();
     let kebab_input = input.parse::<KebabInput>()?;
 
     let kebab_output = kebab_input
@@ -98,50 +115,47 @@ fn kebab_inner(input: ParseStream) -> ::syn::Result<AnyOf3<LitStr, Ident, LitInt
     let ty = kebab_output
         .ty()
         .or_else(|| combine.default_ty())
+        .or_else(|| kebab_input.default_ty())
         .unwrap_or_default();
 
-    let joined = combine.join(case.apply(kebab_input.split_args()));
+    let mut joined = combine.join(case.apply(kebab_input.split_args()));
+    for value in &mut joined {
+        value.set_ty(ty);
+    }
 
-    Ok(match ty {
-        TyKind::Ident => AnyOf3::B(Ident::new(&joined, out_span)),
-        TyKind::LitStr => AnyOf3::A(LitStr::new(&joined, out_span)),
-        TyKind::LitInt => AnyOf3::C(LitInt::new(&joined, out_span)),
-    })
+    Ok(joined)
 }
 
 #[cfg(test)]
 mod tests {
     #![allow(clippy::missing_panics_doc, missing_docs)]
 
-    use ::proc_macro2::Span;
     use ::quote::quote;
     use ::syn::parse::Parser;
 
     use super::*;
 
-    fn id_exp(s: &str) -> AnyOf3<LitStr, Ident, LitInt> {
-        AnyOf3::B(Ident::new(s, Span::call_site()))
-    }
-
-    fn litstr_exp(s: &str) -> AnyOf3<LitStr, Ident, LitInt> {
-        AnyOf3::A(LitStr::new(s, Span::call_site()))
-    }
-
     #[test]
     fn kebab_concat() {
         let val = kebab_inner.parse2(quote! {A B C});
-        assert_eq!(val.unwrap(), id_exp("ABC"));
+        assert_eq!(val.unwrap(), vec![Value::new_ident("ABC").ty_eq()]);
 
         let val = kebab_inner.parse2(quote! {"Hello" There "N" ice});
-        assert_eq!(val.unwrap(), id_exp("HelloThereNice"));
+        assert_eq!(
+            val.unwrap(),
+            vec![Value::new_ident("HelloThereNice").ty_eq()]
+        );
 
         let val = kebab_inner.parse2(quote! {"Value" Concat -> str});
-        assert_eq!(val.unwrap(), litstr_exp("ValueConcat"));
+        assert_eq!(val.unwrap(), vec![Value::new_litstr("ValueConcat").ty_eq()]);
     }
 
     #[test]
     fn kebab_nested() {
         let val = kebab_inner.parse2(quote! {A B -!(Hello There -> str[space]) -> str});
-        assert_eq!(val.unwrap(), litstr_exp("ABHello There"));
+        assert_eq!(
+            val.unwrap(),
+            vec![Value::new_litstr("ABHello There").ty_eq()]
+        );
     }
 }

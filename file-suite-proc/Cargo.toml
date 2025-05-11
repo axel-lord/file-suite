@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-file-suite-proc-impl = { path = "../file-suite-proc-impl" }
+file-suite-proc-impl = { workspace = true }
 
 [lints]
 workspace = true
