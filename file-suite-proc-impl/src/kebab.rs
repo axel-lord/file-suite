@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn kebab_nested() {
-        let val = kebab_inner.parse2(quote! {A B -!(Hello There -> str[space]) -> str});
+        let val = kebab_inner.parse2(quote! {A B --!(Hello There -> str[space]) -> str});
         assert_eq!(
             val.unwrap(),
             vec![Value::new_litstr("ABHello There").ty_eq()]
