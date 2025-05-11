@@ -3,6 +3,8 @@
 use ::std::{fmt::Display, fs::File, io::BufWriter};
 
 use ::clap::{Args, ValueEnum, builder::PossibleValue};
+use ::file_suite_proc::kebab_paste;
+use ::patharg::OutputArg;
 
 /// Cli options to configure logging.
 #[derive(Debug, Args)]
@@ -49,7 +51,7 @@ impl LogConfig {
     }
 }
 
-/// Level newtype.
+/// [Level][::log::Level] newtype.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Level(pub ::log::Level);
@@ -66,7 +68,7 @@ impl Default for Level {
 
 impl_value_enum!(Level(::log::Level), Trace, Debug, Info, Warn, Error);
 
-/// LevelFilter newtype.
+/// [LevelFilter][::log::LevelFilter] newtype.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LevelFilter(pub ::log::LevelFilter);
@@ -94,13 +96,13 @@ impl_value_enum!(
 /// Implement Display and ValueEnum for LogLevel.
 macro_rules! impl_value_enum {
     ($nm:ident($ty:ty), $($var:ident),*) => {
-        paste::paste! {
+        kebab_paste! {
+
         impl $nm {
-            #[doc = concat!("Convert to internal [", stringify!($ty), "]")]
+            #[doc = --!("Convert to internal [" --!(! $ty) "]" -> str)]
             pub const fn into_inner(self) -> $ty {
                 self.0
             }
-        }
         }
 
         impl ValueEnum for $nm {
@@ -111,14 +113,14 @@ macro_rules! impl_value_enum {
             }
 
             fn to_possible_value(&self) -> Option<PossibleValue> {
-                paste::paste! {
                 Some(match self.0 {$(
                     $ty::$var => PossibleValue::new(stringify!($var)).aliases([
-                        stringify!([< $var:lower >]), stringify!([< $var:upper >])
+                        --!($var -> str[lower]), --!($var -> str[upper])
                     ]),
                 )*})
-                }
             }
+        }
+
         }
 
         impl Display for $nm {
@@ -142,5 +144,4 @@ macro_rules! impl_value_enum {
         }
     };
 }
-use ::patharg::OutputArg;
 use impl_value_enum;

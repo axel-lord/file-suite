@@ -1,4 +1,11 @@
 //! Application to find duplicate files.
+#![allow(
+    missing_docs,
+    clippy::allow_attributes,
+    clippy::missing_docs_in_private_items,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc
+)]
 
 use ::std::{
     borrow::Cow,

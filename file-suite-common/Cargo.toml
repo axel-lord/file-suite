@@ -3,10 +3,15 @@ name = "file-suite-common"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["derive"]
+derive = ["dep:file-suite-proc"]
+
 [dependencies]
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true }
 color-eyre.workspace = true
-log-level-cli = { workspace = true }
+file-suite-proc = { workspace = true, optional = true }
+log-level-cli.workspace = true
 thiserror.workspace = true
 
 [lints]

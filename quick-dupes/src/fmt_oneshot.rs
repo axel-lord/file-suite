@@ -1,12 +1,14 @@
 use ::std::{cell::Cell, fmt::Display};
 
+/// Oneshot formatter,
 pub struct FmtOneshot<F>(Cell<Option<F>>);
 
 impl<F> FmtOneshot<F>
 where
     F: for<'a> FnMut(&mut ::std::fmt::Formatter<'a>) -> ::std::fmt::Result,
 {
-    pub fn new(f: F) -> Self {
+    /// Construct a new oneshot formatter from the fgiven formatting function.
+    pub const fn new(f: F) -> Self {
         Self(Cell::new(Option::Some(f)))
     }
 }

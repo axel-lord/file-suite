@@ -12,8 +12,8 @@ use crate::{Run, Start};
 pub fn startable<T>() -> &'static dyn Start
 where
     T: Run + CommandFactory + FromArgMatches + 'static,
-    T::Err: Send + Sync,
-    Report: From<T::Err>,
+    T::Error: Send + Sync,
+    Report: From<T::Error>,
 {
     let startable = Startable::new();
     let boxed = Box::<Startable<T>>::new(startable);
@@ -36,8 +36,8 @@ impl<T> Startable<T> {
 impl<T> Start for Startable<T>
 where
     T: Run + CommandFactory + FromArgMatches,
-    T::Err: Send + Sync,
-    Report: From<T::Err>,
+    T::Error: Send + Sync,
+    Report: From<T::Error>,
 {
     fn start_as_application(&self, modules: &[&str]) -> crate::Result {
         ::color_eyre::install()?;

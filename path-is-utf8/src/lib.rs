@@ -42,9 +42,9 @@ pub struct Cli {
 }
 
 impl ::file_suite_common::Run for Cli {
-    type Err = ::file_suite_common::ExitCodeError;
+    type Error = ::file_suite_common::ExitCodeError;
 
-    fn run(self) -> ::core::result::Result<(), Self::Err> {
+    fn run(self) -> ::core::result::Result<(), Self::Error> {
         let Self {
             path,
             recursive,

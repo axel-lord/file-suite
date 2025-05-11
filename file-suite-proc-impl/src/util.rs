@@ -2,13 +2,7 @@
 
 use ::std::iter;
 
-pub(crate) use self::{
-    any_of::{AnyOf3, Either},
-    kw_kind::kw_kind,
-    lookahead::token_lookahead,
-};
-
-mod any_of;
+pub(crate) use self::{kw_kind::kw_kind, lookahead::token_lookahead};
 
 mod lookahead;
 

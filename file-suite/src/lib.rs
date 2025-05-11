@@ -7,25 +7,17 @@ use ::color_eyre::Report;
 use ::completions_cli::CompletionConfig;
 use ::file_suite_common::{Run, Start, startable};
 use ::file_suite_proc::kebab_paste;
-use ::paste::paste;
 
 subcmd!(generate_keyfile, compile_nested, path_is_utf8, pipe_size);
 
 /// Application for containing an amount of file-system related utilities.
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, Run)]
+#[run(error = Report)]
 #[command(author, version, long_about = None)]
 pub struct Cli {
     /// Tool to use.
     #[command(subcommand)]
     subcmd: CliSubcmd,
-}
-
-impl Run for Cli {
-    type Err = Report;
-
-    fn run(self) -> Result<(), Self::Err> {
-        self.subcmd.run()
-    }
 }
 
 /// Completion generation.
@@ -41,9 +33,9 @@ struct CmpSubcmd {
 }
 
 impl Run for CmpSubcmd {
-    type Err = Report;
+    type Error = Report;
 
-    fn run(self) -> Result<(), Self::Err> {
+    fn run(self) -> Result<(), Self::Error> {
         self.completion_config
             .generate(&mut self.tool.startable().command_as_application(), || {
                 self.tool.mod_name().replace("_", "-")
@@ -75,7 +67,8 @@ macro_rules! subcmd {
         }
 
         #[doc = "Selection of cli tool."]
-        #[derive(Debug, Subcommand)]
+        #[derive(Debug, Subcommand, Run)]
+        #[run(error = Report)]
         enum CliSubcmd {
             #[doc = "generate completions for a tool."]
             Completions(CmpSubcmd),
@@ -84,31 +77,13 @@ macro_rules! subcmd {
             )*
         }
 
-        }
-
-        paste! {
-
-        impl Run for CliSubcmd {
-            type Err = Report;
-
-            fn run(self) -> Result<(), Self::Err> {
-                match self {
-                    Self::Completions(sub) => sub.run()?,
-                    $(
-                    Self:: [< $mod:camel >](sub) => sub.run()?,
-                    )*
-                };
-                Ok(())
-            }
-        }
-
         #[doc = "Module to generate completions for"]
         #[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq, Hash, Default)]
         enum CompletionTarget {
             #[default]
             FileSuite,
             $(
-            [< $mod:camel >],
+            --!($mod [snake] -> [pascal]),
             )*
         }
 
@@ -118,7 +93,7 @@ macro_rules! subcmd {
                 match self {
                     Self::FileSuite => startable::<Cli>(),
                     $(
-                    Self::[< $mod:camel >] => startable::<::$mod::Cli>(),
+                    Self::  --!($mod [snake] -> [pascal]) => startable::<::$mod::Cli>(),
                     )*
                 }
             }
@@ -128,7 +103,7 @@ macro_rules! subcmd {
                 match self {
                     Self::FileSuite => "file_suite",
                     $(
-                    Self::[< $mod:camel >] => stringify!($mod),
+                    Self:: --!($mod [snake] -> [pascal]) => --!($mod -> str),
                     )*
                 }
             }

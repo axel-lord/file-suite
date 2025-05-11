@@ -20,3 +20,11 @@ pub fn kebab_paste(input: TokenStream) -> TokenStream {
         .unwrap_or_else(|err| err.into_compile_error())
         .into()
 }
+
+#[expect(missing_docs)]
+#[proc_macro_derive(Run, attributes(run))]
+pub fn derive_run(input: TokenStream) -> TokenStream {
+    ::file_suite_proc_impl::derive_run(input.into())
+        .unwrap_or_else(|err| err.into_compile_error())
+        .into()
+}

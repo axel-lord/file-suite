@@ -8,6 +8,15 @@ use ::color_eyre::Report;
 use crate::startable::Startable;
 pub use crate::{run::Run, start::Start, startable::startable};
 
+/// Derive [Run] for enums.
+///
+/// If the `#[run(Error = Error)]` attribute is not used the
+/// Error used will be the one used by the first Field or
+/// ::core::convert::infallible if none exist, a suitable
+/// value may be [::color_eyre::Report].
+#[cfg(feature = "derive")]
+pub use ::file_suite_proc::Run;
+
 mod run;
 mod start;
 mod startable;
@@ -32,15 +41,15 @@ impl From<u8> for ExitCodeError {
     }
 }
 
-/// Invoke [Start::start] for T as if it using [startable].
+/// Invoke [Start::start_as_application] for T as if it using [startable].
 ///
 /// # Errors
 /// If panic handler cannot be installed or the [Run::run] implementation needs to.
 pub fn start<T>(modules: &[&str]) -> Result
 where
     T: Run + CommandFactory + FromArgMatches + 'static,
-    T::Err: Send + Sync,
-    Report: From<T::Err>,
+    T::Error: Send + Sync,
+    Report: From<T::Error>,
 {
     Startable::<T>::new().start_as_application(modules)
 }

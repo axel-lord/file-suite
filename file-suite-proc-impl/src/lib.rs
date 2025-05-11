@@ -1,7 +1,7 @@
 //! Proc macros used by file-suite.
 
 use ::proc_macro2::TokenStream;
-use ::syn::parse::Parser as _;
+use ::syn::parse::Parser;
 
 mod kebab;
 
@@ -22,3 +22,13 @@ pub fn kebab(input: TokenStream) -> ::syn::Result<TokenStream> {
 pub fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
     kebab::kebab_paste(input)
 }
+
+/// Derive Run for an enum with only single field or empty variants.
+///
+/// # Errors
+/// If given invalid input.
+pub fn derive_run(input: TokenStream) -> ::syn::Result<TokenStream> {
+    run::derive_run(::syn::parse2(input)?)
+}
+
+mod run;

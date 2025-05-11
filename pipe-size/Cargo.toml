@@ -9,7 +9,7 @@ authors = ["Axel Lord"]
 bytesize = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 color-eyre.workspace = true
-file-suite-common = { version = "0.1.0", path = "../file-suite-common" }
+file-suite-common = { workspace = true }
 log.workspace = true
 
 [lints]

@@ -1,24 +1,28 @@
 //! [KebabInput] impl.
 
+use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
 use ::syn::{
-    Ident, LitStr, Token, bracketed, custom_punctuation,
+    Ident, LitInt, LitStr, Token, bracketed, custom_punctuation,
     ext::IdentExt,
     parenthesized,
     parse::{End, Parse, ParseStream},
     token::Bracket,
 };
 
-use crate::{
-    kebab::kebab_inner,
-    util::{AnyOf3, Either, kw_kind},
+use crate::kebab::{
+    kebab_inner,
+    split::Split,
+    value::{TyKind, Value},
 };
 
 /// Kebab expression input.
 #[derive(Debug, Default)]
 pub struct KebabInput {
+    /// Optional leading exclamation.
+    pub excl: Option<Token![!]>,
     /// Arguments of expression.
-    pub args: Vec<Either<Ident, LitStr>>,
+    pub args: Vec<Value>,
     /// How to split arguments.
     pub split_group: Option<SplitGroup>,
     /// Optional trailing arrow.
@@ -32,25 +36,29 @@ impl KebabInput {
     }
 
     /// Get the parsed split if any.
-    pub fn split(&self) -> Option<SplitKind> {
-        self.split_group
-            .as_ref()
-            .and_then(|g| g.split)
-            .as_deref()
-            .copied()
+    pub const fn split(&self) -> Option<&Split> {
+        if let Some(SplitGroup {
+            split: Some(split), ..
+        }) = &self.split_group
+        {
+            Some(split)
+        } else {
+            None
+        }
+    }
+
+    /// Suggest default output type.
+    pub const fn default_ty(&self) -> Option<TyKind> {
+        if self.excl.is_some() {
+            Some(TyKind::LitStr)
+        } else {
+            None
+        }
     }
 
     /// Get args split according to parsed [SplitKind] or default.
-    pub fn split_args(&self) -> Vec<String> {
-        self.split().unwrap_or_default().transform_args(
-            self.args
-                .iter()
-                .map(|arg| match arg {
-                    Either::A(id) => id.to_string(),
-                    Either::B(lit) => lit.value(),
-                })
-                .collect(),
-        )
+    pub fn split_args(&self) -> Vec<Value> {
+        Split::transform_args(self.split(), &self.args)
     }
 }
 
@@ -58,10 +66,24 @@ impl Parse for KebabInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut out = Self::default();
         let Self {
+            excl,
             args,
             split_group,
             arrow,
         } = &mut out;
+
+        // Stringify contents.
+        if input.peek(Token![!]) {
+            let span = input.span();
+            *excl = Some(input.parse()?);
+
+            let mut value = Value::from(input.parse::<TokenStream>()?.to_string());
+            value.set_span(span);
+
+            args.push(value);
+
+            return Ok(out);
+        }
 
         custom_punctuation!(KebabExcl, --!);
         loop {
@@ -82,20 +104,15 @@ impl Parse for KebabInput {
                 <Token![!]>::parse(input)?;
                 let content;
                 parenthesized!(content in input);
-                match kebab_inner(&content)? {
-                    AnyOf3::A(a) => Either::A(a),
-                    AnyOf3::B(b) => Either::B(b),
-                    AnyOf3::C(c) => {
-                        return Err(::syn::Error::new_spanned(
-                            c,
-                            "int output may not be used in nested expressions",
-                        ));
-                    }
-                };
+                for value in kebab_inner(&content)? {
+                    args.push(value);
+                }
             } else if lookahead.peek(Ident) {
-                args.push(Either::A(Ident::parse_any(input)?));
+                args.push(Value::from(&Ident::parse_any(input)?));
             } else if lookahead.peek(LitStr) {
-                args.push(Either::B(input.parse()?));
+                args.push(Value::from(&input.parse::<LitStr>()?));
+            } else if lookahead.peek(LitInt) {
+                args.push(Value::try_from(&input.parse::<LitInt>()?)?);
             } else if lookahead.peek(Bracket) {
                 *split_group = Some(input.parse()?);
             } else {
@@ -142,67 +159,5 @@ impl ToTokens for SplitGroup {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         self.bracket
             .surround(tokens, |tokens| self.split.to_tokens(tokens));
-    }
-}
-
-kw_kind!(
-    /// A Split that was parsed an as such has a span.
-    Split
-    /// How input values should be split
-    SplitKind (Default) {
-        /// Values should be split as they are given.
-        [default]
-        Split split,
-        /// Values should be split by camelCase or PascalCase convention.
-        Pascal pascal,
-        /// Values should be split by camelCase convention.
-        Camel camel,
-        /// Values should be split by dashes.
-        Kebab kebab,
-        /// Values should be split by underscores.
-        Snake snake,
-        /// Values should be split by spaces.
-        Space space,
-    }
-);
-
-impl SplitKind {
-    /// Transform args given to input into desired form.
-    pub fn transform_args(self, args: Vec<String>) -> Vec<String> {
-        match self {
-            SplitKind::Split => args,
-            SplitKind::Pascal => args
-                .iter()
-                .flat_map(|s| {
-                    s.split(char::is_uppercase)
-                        .skip(if s.starts_with(char::is_uppercase) {
-                            1
-                        } else {
-                            0
-                        })
-                })
-                .map(String::from)
-                .collect(),
-            SplitKind::Camel => args
-                .iter()
-                .flat_map(|s| s.split(char::is_uppercase))
-                .map(String::from)
-                .collect(),
-            SplitKind::Kebab => args
-                .iter()
-                .flat_map(|s| s.split('-'))
-                .map(String::from)
-                .collect(),
-            SplitKind::Snake => args
-                .iter()
-                .flat_map(|s| s.split('_'))
-                .map(String::from)
-                .collect(),
-            SplitKind::Space => args
-                .iter()
-                .flat_map(|s| s.split(' '))
-                .map(String::from)
-                .collect(),
-        }
     }
 }
