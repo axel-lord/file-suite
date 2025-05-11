@@ -3,9 +3,7 @@
 use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
 use ::syn::{
-    Ident, LitInt, LitStr, Token, bracketed, custom_punctuation,
-    ext::IdentExt,
-    parenthesized,
+    Token, bracketed, custom_punctuation, parenthesized,
     parse::{End, Parse, ParseStream},
     token::Bracket,
 };
@@ -107,12 +105,8 @@ impl Parse for KebabInput {
                 for value in kebab_inner(&content)? {
                     args.push(value);
                 }
-            } else if lookahead.peek(Ident) {
-                args.push(Value::from(&Ident::parse_any(input)?));
-            } else if lookahead.peek(LitStr) {
-                args.push(Value::from(&input.parse::<LitStr>()?));
-            } else if lookahead.peek(LitInt) {
-                args.push(Value::try_from(&input.parse::<LitInt>()?)?);
+            } else if let Some(value) = Value::lookahead_parse(input, &lookahead)? {
+                args.push(value);
             } else if lookahead.peek(Bracket) {
                 *split_group = Some(input.parse()?);
             } else {
