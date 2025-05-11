@@ -4,7 +4,11 @@ use ::std::{borrow::Borrow, fmt::Display, ops::Deref};
 
 use ::proc_macro2::{Literal, Span, TokenStream};
 use ::quote::{IdentFragment, ToTokens};
-use ::syn::{Ident, LitInt, LitStr, ext::IdentExt, parse::Parser};
+use ::syn::{
+    Ident, LitInt, LitStr,
+    ext::IdentExt,
+    parse::{Lookahead1, ParseStream, Parser},
+};
 
 use crate::util::kw_kind;
 
@@ -65,6 +69,25 @@ pub struct Value {
 }
 
 impl Value {
+    /// Parse an instance if lookahead peek matches.
+    ///
+    /// # Errors
+    /// If a valid value peeked by lookahead cannot be parsed.
+    pub fn lookahead_parse(
+        input: ParseStream,
+        lookahead: &Lookahead1,
+    ) -> ::syn::Result<Option<Self>> {
+        Ok(Some(if lookahead.peek(Ident) {
+            Self::from(&input.call(Ident::parse_any)?)
+        } else if lookahead.peek(LitStr) {
+            Self::from(&input.parse::<LitStr>()?)
+        } else if lookahead.peek(LitInt) {
+            Self::try_from(&input.parse::<LitInt>()?)?
+        } else {
+            return Ok(None);
+        }))
+    }
+
     /// Set  the type used for output.
     pub const fn set_ty(&mut self, ty: TyKind) -> &mut Self {
         self.ty = ty;
