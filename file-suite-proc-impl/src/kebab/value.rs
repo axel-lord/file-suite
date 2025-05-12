@@ -166,7 +166,7 @@ impl Value {
     ///
     /// # Errors
     /// If the value and type are not compatible.
-    pub fn try_into_typed(&self) -> ::syn::Result<TypedValue> {
+    pub fn try_to_typed(&self) -> ::syn::Result<TypedValue> {
         self.try_into()
     }
 
@@ -327,7 +327,7 @@ impl TryFrom<Value> for TypedValue {
     type Error = ::syn::Error;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        value.try_into_typed()
+        value.try_to_typed()
     }
 }
 

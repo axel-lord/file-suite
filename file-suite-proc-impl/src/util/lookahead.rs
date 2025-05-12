@@ -8,26 +8,19 @@ use proc_macro2::TokenStream;
 use crate::util::tcmp::TokenEq;
 
 /// Lookahead iterator for tokens.
-pub struct Lookahead<'it, const COUNT: usize = 3> {
+pub struct TokenLookahead<I: IntoIterator<Item = TokenTree>, const COUNT: usize = 3> {
     /// Lookahead storage.
     st: LookaheadStorage<COUNT>,
     /// Iterator.
-    it: &'it mut dyn Iterator<Item = TokenTree>,
+    it: I::IntoIter,
 }
 
-/// Get a new lookahead iterator for tokens.
-pub fn token_lookahead<const COUNT: usize>(
-    it: &mut dyn Iterator<Item = TokenTree>,
-) -> Lookahead<COUNT> {
-    Lookahead::new(it)
-}
-
-impl<'it, const COUNT: usize> Lookahead<'it, COUNT> {
+impl<I: IntoIterator<Item = TokenTree>, const COUNT: usize> TokenLookahead<I, COUNT> {
     /// Get a new lookahead iterator.
-    fn new(it: &'it mut dyn Iterator<Item = TokenTree>) -> Self {
+    pub fn new(it: I) -> Self {
         Self {
             st: LookaheadStorage::default(),
-            it,
+            it: it.into_iter(),
         }
     }
 
@@ -75,7 +68,7 @@ impl<'it, const COUNT: usize> Lookahead<'it, COUNT> {
     }
 }
 
-impl<const COUNT: usize> Iterator for Lookahead<'_, COUNT> {
+impl<I: IntoIterator<Item = TokenTree>, const COUNT: usize> Iterator for TokenLookahead<I, COUNT> {
     type Item = TokenTree;
 
     fn next(&mut self) -> Option<Self::Item> {
