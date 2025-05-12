@@ -1,5 +1,4 @@
 //! [parse_kebab] implementation.
-#![deny(clippy::todo)]
 
 use ::proc_macro2::{Group, Span, TokenStream, TokenTree};
 use ::quote::ToTokens;

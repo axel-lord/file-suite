@@ -10,7 +10,7 @@ use ::syn::{
 use crate::{
     kebab::{
         case::{Case, CaseKind},
-        combine::{Combine, CombineKind},
+        combine::{CombineKeyword, CombineKeywordKind},
         value::{Ty, TyKind},
     },
     util::do_n_times_then,
@@ -27,7 +27,7 @@ pub struct KebabOutput {
 
 impl KebabOutput {
     /// Get parsed [CombineKind] if any.
-    pub fn combine(&self) -> Option<CombineKind> {
+    pub fn combine(&self) -> Option<CombineKeywordKind> {
         self.combine_case_group
             .as_ref()
             .and_then(|g| g.combine)
@@ -98,7 +98,7 @@ pub struct CombineCaseGroup {
     /// Case specified.
     pub case: Option<Case>,
     /// Combine specified.
-    pub combine: Option<Combine>,
+    pub combine: Option<CombineKeyword>,
 }
 
 impl ToTokens for CombineCaseGroup {
@@ -133,7 +133,7 @@ impl Parse for CombineCaseGroup {
             }
 
             if combine.is_none() {
-                if let value @ Some(_) = Combine::lookahead_parse(input, &lookahead)? {
+                if let value @ Some(_) = CombineKeyword::lookahead_parse(input, &lookahead)? {
                     combine = value;
                     continue;
                 };
