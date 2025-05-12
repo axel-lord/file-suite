@@ -3,15 +3,17 @@
 use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
 use ::syn::{
-    Token, bracketed, custom_punctuation, parenthesized,
+    MacroDelimiter, Token, custom_punctuation,
     parse::{End, Parse, ParseStream},
-    token::Bracket,
 };
 
-use crate::kebab::{
-    kebab_inner,
-    split::Split,
-    value::{TyKind, Value},
+use crate::{
+    kebab::{
+        kebab_inner,
+        split::Split,
+        value::{TyKind, Value},
+    },
+    util::{MacroDelimExt, macro_delimited},
 };
 
 /// Kebab expression input.
@@ -101,13 +103,13 @@ impl Parse for KebabInput {
                 <Token![-]>::parse(input)?;
                 <Token![!]>::parse(input)?;
                 let content;
-                parenthesized!(content in input);
+                macro_delimited!(content in input);
                 for value in kebab_inner(&content)? {
                     args.push(value);
                 }
             } else if let Some(value) = Value::lookahead_parse(input, &lookahead)? {
                 args.push(value);
-            } else if lookahead.peek(Bracket) {
+            } else if MacroDelimiter::peek(&lookahead) {
                 *split_group = Some(input.parse()?);
             } else {
                 return Err(lookahead.error());
@@ -122,7 +124,7 @@ impl Parse for KebabInput {
 #[derive(Debug)]
 pub struct SplitGroup {
     /// Bracket deliminating group.
-    pub bracket: Bracket,
+    pub delim: MacroDelimiter,
     /// Split in group.
     pub split: Option<Split>,
 }
@@ -131,7 +133,7 @@ impl Parse for SplitGroup {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
         Ok(Self {
-            bracket: bracketed!(content in input),
+            delim: macro_delimited!(content in input),
             split: if content.is_empty() {
                 None
             } else {
@@ -151,7 +153,7 @@ impl Parse for SplitGroup {
 
 impl ToTokens for SplitGroup {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        self.bracket
+        self.delim
             .surround(tokens, |tokens| self.split.to_tokens(tokens));
     }
 }

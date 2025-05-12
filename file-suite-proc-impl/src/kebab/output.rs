@@ -2,9 +2,8 @@
 
 use ::quote::ToTokens;
 use ::syn::{
-    bracketed,
+    MacroDelimiter,
     parse::{End, Parse},
-    token::Bracket,
 };
 
 use crate::{
@@ -13,7 +12,7 @@ use crate::{
         combine::{CombineKeyword, CombineKeywordKind},
         value::{Ty, TyKind},
     },
-    util::do_n_times_then,
+    util::{MacroDelimExt, do_n_times_then, macro_delimited},
 };
 
 /// Kebab expression output.
@@ -71,7 +70,7 @@ impl Parse for KebabOutput {
                     ty,
                     ..Default::default()
                 })
-            } else if lookahead.peek(Bracket) {
+            } else if MacroDelimiter::peek(&lookahead) {
                 Ok(Self {
                     ty,
                     combine_case_group: Some(input.parse()?),
@@ -79,7 +78,7 @@ impl Parse for KebabOutput {
             } else {
                 Err(lookahead.error())
             }
-        } else if lookahead.peek(Bracket) {
+        } else if MacroDelimiter::peek(&lookahead) {
             Ok(Self {
                 combine_case_group: Some(input.parse()?),
                 ..Default::default()
@@ -94,7 +93,7 @@ impl Parse for KebabOutput {
 #[derive(Debug)]
 pub struct CombineCaseGroup {
     /// Bracket deliminating group.
-    pub bracket: Bracket,
+    pub delim: MacroDelimiter,
     /// Case specified.
     pub case: Option<Case>,
     /// Combine specified.
@@ -103,7 +102,7 @@ pub struct CombineCaseGroup {
 
 impl ToTokens for CombineCaseGroup {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        self.bracket.surround(tokens, |tokens| {
+        self.delim.surround(tokens, |tokens| {
             self.case.to_tokens(tokens);
             self.combine.to_tokens(tokens);
         });
@@ -113,7 +112,7 @@ impl ToTokens for CombineCaseGroup {
 impl Parse for CombineCaseGroup {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let content;
-        let bracket = bracketed!(content in input);
+        let delim = macro_delimited!(content in input);
         let input = &content;
 
         let mut case = None;
@@ -150,7 +149,7 @@ impl Parse for CombineCaseGroup {
         }
 
         Ok(Self {
-            bracket,
+            delim,
             case,
             combine,
         })
