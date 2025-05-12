@@ -2,11 +2,17 @@
 
 use ::std::iter;
 
-pub(crate) use self::{kw_kind::kw_kind, lookahead::token_lookahead};
+pub(crate) use self::{
+    delimited::{MacroDelimExt, macro_delimited},
+    kw_kind::kw_kind,
+    lookahead::token_lookahead,
+};
 
 mod lookahead;
 
 mod kw_kind;
+
+mod delimited;
 
 pub mod tcmp;
 
