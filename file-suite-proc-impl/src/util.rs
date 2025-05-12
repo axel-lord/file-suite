@@ -5,14 +5,17 @@ use ::std::iter;
 pub(crate) use self::{
     delimited::{MacroDelimExt, macro_delimited},
     kw_kind::kw_kind,
-    lookahead::token_lookahead,
 };
+
+pub use self::lookahead::TokenLookahead;
 
 mod lookahead;
 
 mod kw_kind;
 
 mod delimited;
+
+pub mod fold_tokens;
 
 pub mod tcmp;
 

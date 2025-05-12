@@ -1,16 +1,17 @@
 //! [parse_kebab] implementation.
 
-use ::proc_macro2::{Group, Span, TokenStream, TokenTree};
+use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
-use ::syn::parse::{ParseStream, Parser};
+use ::syn::parse::ParseStream;
 
 use crate::{
     kebab::{
         input::KebabInput,
         output::KebabOutput,
+        paste::KebabPaste,
         value::{TypedValue, Value},
     },
-    util::token_lookahead,
+    util::fold_tokens::fold_token_stream,
 };
 
 mod input;
@@ -24,6 +25,8 @@ mod split;
 mod combine;
 
 mod case;
+
+mod paste;
 
 /// Parse kebab macro input.
 ///
@@ -46,49 +49,7 @@ pub(super) fn parse_kebab(input: ParseStream) -> ::syn::Result<TokenStream> {
 /// # Errors
 /// If given invalid input.
 pub(super) fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
-    let mut it = input.into_iter();
-    let mut it = token_lookahead::<3>(&mut it);
-    let mut out = TokenStream::default();
-
-    loop {
-        let Some(next) = it.peek::<0>() else {
-            break;
-        };
-
-        if matches!(next, TokenTree::Group(..)) {
-            let Some(TokenTree::Group(group)) = it.next() else {
-                unreachable!()
-            };
-            let mut new_group = Group::new(group.delimiter(), kebab_paste(group.stream())?);
-            new_group.set_span(group.span());
-            new_group.to_tokens(&mut out);
-            continue;
-        }
-
-        use crate::util::tcmp::pseq;
-        if !it.matches(pseq!('-', '-', '!')) {
-            it.next()
-                .unwrap_or_else(|| unreachable!())
-                .to_tokens(&mut out);
-            continue;
-        }
-
-        let Some(last) = it.discard().next_back() else {
-            unreachable!();
-        };
-
-        let err = |span: Span| ::syn::Error::new(span, "expected delimited group following '-!'");
-        let tree = it.next().ok_or_else(|| err(last.span()))?;
-        let TokenTree::Group(group) = tree else {
-            return Err(err(tree.span()));
-        };
-
-        for value in kebab_inner.parse2(group.stream())? {
-            TypedValue::try_from(value)?.to_tokens(&mut out);
-        }
-    }
-
-    Ok(out)
+    fold_token_stream(&mut KebabPaste, input)
 }
 
 /// Inner kebab value.
