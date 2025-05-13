@@ -1,6 +1,6 @@
 //! Casing conversion part of expression.
 
-use crate::{kebab::value::Value, util::kw_kind};
+use crate::{util::kw_kind, value::Value};
 
 kw_kind!(
     /// A parsed output case (has span).

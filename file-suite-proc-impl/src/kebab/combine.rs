@@ -7,8 +7,8 @@ use ::syn::{
 };
 
 use crate::{
-    kebab::value::{TyKind, Value},
     util::kw_kind,
+    value::{TyKind, Value},
 };
 
 /// Part of expression deciding how output should be combined.

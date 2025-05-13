@@ -5,20 +5,14 @@ use ::quote::ToTokens;
 use ::syn::parse::ParseStream;
 
 use crate::{
-    kebab::{
-        input::KebabInput,
-        output::KebabOutput,
-        paste::KebabPaste,
-        value::{TypedValue, Value},
-    },
+    kebab::{input::KebabInput, output::KebabOutput, paste::KebabPaste},
     util::fold_tokens::fold_token_stream,
+    value::{TypedValue, Value},
 };
 
 mod input;
 
 mod output;
-
-mod value;
 
 mod split;
 

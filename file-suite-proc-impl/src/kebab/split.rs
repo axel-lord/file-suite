@@ -7,7 +7,7 @@ use ::syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::{kebab::value::Value, util::kw_kind};
+use crate::{util::kw_kind, value::Value};
 
 /// Convert to string and collect to vec.
 fn collect_strings<I, S>(i: I) -> Vec<String>
