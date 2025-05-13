@@ -7,6 +7,8 @@ mod kebab;
 
 mod util;
 
+mod value;
+
 /// Convert between cases, for strings and identifiers.
 ///
 /// # Errors

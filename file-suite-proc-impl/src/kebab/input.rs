@@ -8,12 +8,9 @@ use ::syn::{
 };
 
 use crate::{
-    kebab::{
-        kebab_inner,
-        split::Split,
-        value::{TyKind, Value},
-    },
+    kebab::{kebab_inner, split::Split},
     util::{MacroDelimExt, macro_delimited},
+    value::{TyKind, Value},
 };
 
 /// Kebab expression input.

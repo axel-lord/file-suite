@@ -10,9 +10,9 @@ use crate::{
     kebab::{
         case::{Case, CaseKind},
         combine::{CombineKeyword, CombineKeywordKind},
-        value::{Ty, TyKind},
     },
     util::{MacroDelimExt, do_n_times_then, macro_delimited},
+    value::{Ty, TyKind},
 };
 
 /// Kebab expression output.
