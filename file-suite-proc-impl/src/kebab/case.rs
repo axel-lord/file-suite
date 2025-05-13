@@ -6,18 +6,19 @@ kw_kind!(
     /// A parsed output case (has span).
     Case
     /// How output case should be modified.
+    [expect(non_camel_case_types)]
     CaseKind (Default) {
         /// Keep case as is.
         [default]
-        Keep keep,
+        keep,
         /// Use camelCase.
-        Camel camel,
+        camel,
         /// Use PascalCase.
-        Pascal pascal,
+        pascal,
         /// Use UPPERCASE.
-        Upper upper,
+        upper,
         /// Use LOWERCASE.
-        Lower lower,
+        lower,
     }
 );
 
@@ -35,8 +36,8 @@ impl CaseKind {
                 .collect()
         }
         match self {
-            CaseKind::Keep => (),
-            CaseKind::Camel => {
+            CaseKind::keep => (),
+            CaseKind::camel => {
                 let mut values = values.iter_mut();
                 if let Some(first) = values.next() {
                     first.remap_value(|value| value.to_lowercase());
@@ -45,17 +46,17 @@ impl CaseKind {
                     value.remap_value(|value| capitalize(&value));
                 }
             }
-            CaseKind::Pascal => {
+            CaseKind::pascal => {
                 for value in values.iter_mut() {
                     value.remap_value(|value| capitalize(&value));
                 }
             }
-            CaseKind::Upper => {
+            CaseKind::upper => {
                 for value in values.iter_mut() {
                     value.remap_value(|value| value.to_uppercase());
                 }
             }
-            CaseKind::Lower => {
+            CaseKind::lower => {
                 for value in values.iter_mut() {
                     value.remap_value(|value| value.to_lowercase());
                 }

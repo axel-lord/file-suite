@@ -4,17 +4,21 @@
 macro_rules! kw_kind {
     (
         $(#[doc = $wr_doc:expr])?
+        $([ $($wr_ty_attr:tt)* ])*
         $wr_nm:ident
         $(#[doc = $ki_doc:expr])?
+        $([ $($ki_ty_attr:tt)* ])*
         $ki_nm:ident
         $(( $($add_derive:ident)? ))?
         {$(
             $(#[doc = $va_doc:expr])?
             $([$($attr:tt)*])*
-            $va_nm:ident $kw_nm:ident
+            $kw_nm:ident
         ),+ $(,)?}) => {
+
         $(#[doc = $wr_doc])*
         #[derive(Clone, Copy, Debug)]
+        $( #[$($wr_ty_attr)*] )*
         pub struct $wr_nm {
             #[doc = "Keyword variant that was parsed."]
             pub kind: $ki_nm,
@@ -22,12 +26,14 @@ macro_rules! kw_kind {
             pub span: ::proc_macro2::Span,
         }
 
+
         $(#[doc = $ki_doc])*
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash $($(, $add_derive)*)*)]
+        $( #[$($ki_ty_attr)*] )*
         pub enum $ki_nm {$(
             $(#[doc = $va_doc])*
             $(#[$($attr)*])*
-            $va_nm,
+            $kw_nm,
         )*}
 
         const _: () = {
@@ -47,7 +53,7 @@ macro_rules! kw_kind {
                 lookahead: &::syn::parse::Lookahead1
             ) -> ::syn::Result<Option<Self>> {
                 let (kind, span) = $(if lookahead.peek(kw::$kw_nm) {
-                    ($ki_nm::$va_nm, <kw::$kw_nm as ::syn::parse::Parse>::parse(input)?.span)
+                    ($ki_nm::$kw_nm, <kw::$kw_nm as ::syn::parse::Parse>::parse(input)?.span)
                 } else)* {
                     return Ok(None);
                 };
@@ -59,7 +65,7 @@ macro_rules! kw_kind {
         impl ::quote::ToTokens for $wr_nm {
             fn to_tokens(&self, tokens: &mut ::proc_macro2::TokenStream) {
                 match self.kind {$(
-                    $ki_nm::$va_nm => kw::$kw_nm(self.span).to_tokens(tokens),
+                    $ki_nm::$kw_nm => kw::$kw_nm(self.span).to_tokens(tokens),
                 )*}
             }
         }
