@@ -16,14 +16,15 @@ kw_kind!(
     /// A parsed output type (has span).
     Ty
     /// What kind of output tokens to produce.
+    [expect(non_camel_case_types)]
     TyKind (Default) {
         /// Output an identifier.
         [default]
-        Ident ident,
+        ident,
         /// Output a string literal.
-        LitStr str,
+        str,
         /// Output an integer literal.
-        LitInt int,
+        int,
     }
 );
 
@@ -127,7 +128,7 @@ impl Value {
         Self {
             value: i.into(),
             span: None,
-            ty: TyKind::Ident,
+            ty: TyKind::ident,
         }
     }
 
@@ -136,7 +137,7 @@ impl Value {
         Self {
             value: i.into(),
             span: None,
-            ty: TyKind::LitStr,
+            ty: TyKind::str,
         }
     }
 
@@ -145,7 +146,7 @@ impl Value {
         Self {
             value: i.into(),
             span: None,
-            ty: TyKind::LitInt,
+            ty: TyKind::int,
         }
     }
 
@@ -236,7 +237,7 @@ impl From<String> for Value {
         Self {
             value,
             span: None,
-            ty: TyKind::LitStr,
+            ty: TyKind::str,
         }
     }
 }
@@ -254,7 +255,7 @@ impl TryFrom<&LitInt> for Value {
         Ok(Self {
             value: value.base10_parse::<isize>()?.to_string(),
             span: Some(value.span()),
-            ty: TyKind::LitInt,
+            ty: TyKind::int,
         })
     }
 }
@@ -270,7 +271,7 @@ impl From<&Ident> for Value {
         Self {
             value: Wrap(value).to_string(),
             span: Some(value.span()),
-            ty: TyKind::Ident,
+            ty: TyKind::ident,
         }
     }
 }
@@ -280,7 +281,7 @@ impl From<&LitStr> for Value {
         Self {
             value: value.value(),
             span: Some(value.span()),
-            ty: TyKind::LitStr,
+            ty: TyKind::str,
         }
     }
 }
@@ -302,14 +303,14 @@ impl TryFrom<&Value> for TypedValue {
     fn try_from(value: &Value) -> Result<Self, Self::Error> {
         let span = value.span().unwrap_or_else(Span::call_site);
         Ok(match value.ty {
-            TyKind::Ident => {
+            TyKind::ident => {
                 let ident = Ident::parse_any
                     .parse_str(&value.value)
                     .map_err(|err| ::syn::Error::new(span, err))?;
                 Self::Ident(ident)
             }
-            TyKind::LitStr => Self::LitStr(::syn::LitStr::new(&value.value, span)),
-            TyKind::LitInt => {
+            TyKind::str => Self::LitStr(::syn::LitStr::new(&value.value, span)),
+            TyKind::int => {
                 let mut lit = Literal::isize_unsuffixed(
                     value
                         .value

@@ -115,24 +115,25 @@ kw_kind!(
     /// A Split that was parsed an as such has a span.
     SplitKeyword
     /// How input values should be split
+    [expect(non_camel_case_types)]
     SplitKeywordKind (Default) {
         /// Values should be split as they are given.
         [default]
-        Split split,
+        split,
         /// Values should be split by camelCase or PascalCase convention.
-        Pascal pascal,
+        pascal,
         /// Values should be split by camelCase convention.
-        Camel camel,
+        camel,
         /// Values should be split by dashes.
-        Kebab kebab,
+        kebab,
         /// Values should be split by underscores.
-        Snake snake,
+        snake,
         /// Values should be split by spaces, ' '.
-        Space space,
+        space,
         /// Values should be split by double colons, '::'.
-        Path path,
+        path,
         /// Values should be split by dots, '.'.
-        Dot dot,
+        dot,
     }
 );
 
@@ -140,8 +141,8 @@ impl SplitKeywordKind {
     /// Transform args given to input into desired form.
     pub fn transform_args(self, args: &[Value]) -> Vec<Value> {
         match self {
-            Self::Split => Vec::from(args),
-            Self::Pascal => Value::split(args, |s| {
+            Self::split => Vec::from(args),
+            Self::pascal => Value::split(args, |s| {
                 collect_strings(s.split(char::is_uppercase).skip(
                     if s.starts_with(char::is_uppercase) {
                         1
@@ -150,12 +151,12 @@ impl SplitKeywordKind {
                     },
                 ))
             }),
-            Self::Camel => Value::split(args, |s| collect_strings(s.split(char::is_uppercase))),
-            Self::Kebab => Value::split(args, |s| collect_strings(s.split('-'))),
-            Self::Snake => Value::split(args, |s| collect_strings(s.split('_'))),
-            Self::Space => Value::split(args, |s| collect_strings(s.split(' '))),
-            Self::Path => Value::split(args, |s| collect_strings(s.split("::"))),
-            Self::Dot => Value::split(args, |s| collect_strings(s.split('.'))),
+            Self::camel => Value::split(args, |s| collect_strings(s.split(char::is_uppercase))),
+            Self::kebab => Value::split(args, |s| collect_strings(s.split('-'))),
+            Self::snake => Value::split(args, |s| collect_strings(s.split('_'))),
+            Self::space => Value::split(args, |s| collect_strings(s.split(' '))),
+            Self::path => Value::split(args, |s| collect_strings(s.split("::"))),
+            Self::dot => Value::split(args, |s| collect_strings(s.split('.'))),
         }
     }
 }

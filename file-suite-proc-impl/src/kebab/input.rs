@@ -47,7 +47,7 @@ impl KebabInput {
     /// Suggest default output type.
     pub const fn default_ty(&self) -> Option<TyKind> {
         if self.excl.is_some() {
-            Some(TyKind::LitStr)
+            Some(TyKind::int)
         } else {
             None
         }

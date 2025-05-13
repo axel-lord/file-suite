@@ -67,50 +67,51 @@ kw_kind!(
     /// Keyword for how output should be combined.
     CombineKeyword
     /// How output should be combined.
+    [expect(non_camel_case_types)]
     CombineKeywordKind (Default) {
         /// Values should be concatenated without any separator.
         [default]
-        Concat concat,
+        concat,
         /// Values should be joined by a dash,
-        Kebab kebab,
+        kebab,
         /// Values should be joined by an underscore.
-        Snake snake,
+        snake,
         /// Values should be joined by a space.
-        Space space,
+        space,
         /// Values should be counted.
-        Count count,
+        count,
         /// Only the first value should be used.
-        First first,
+        first,
         /// Only the last value should be used.
-        Last last,
+        last,
         /// Values should not be combined.
-        Split split,
+        split,
     }
 );
 
 impl CombineKeywordKind {
     /// Join input arguments.
     pub fn join(self, values: Vec<Value>) -> Vec<Value> {
-        if matches!(self, CombineKeywordKind::Split) {
+        if matches!(self, CombineKeywordKind::split) {
             values
         } else {
             vec![Value::join(values, |values| match self {
-                Self::Concat => values.join(""),
-                Self::Kebab => values.join("-"),
-                Self::Snake => values.join("_"),
-                Self::Space => values.join(" "),
-                Self::Count => values.len().to_string(),
-                Self::First => values
+                Self::concat => values.join(""),
+                Self::kebab => values.join("-"),
+                Self::snake => values.join("_"),
+                Self::space => values.join(" "),
+                Self::count => values.len().to_string(),
+                Self::first => values
                     .into_iter()
                     .next()
                     .map(String::from)
                     .unwrap_or_default(),
-                Self::Last => values
+                Self::last => values
                     .into_iter()
                     .next_back()
                     .map(String::from)
                     .unwrap_or_default(),
-                Self::Split => unreachable!(),
+                Self::split => unreachable!(),
             })]
         }
     }
@@ -118,8 +119,8 @@ impl CombineKeywordKind {
     /// Preferred [TyKind] of variant.
     pub const fn default_ty(self) -> Option<TyKind> {
         Some(match self {
-            Self::Count => TyKind::LitInt,
-            Self::Space | Self::Kebab => TyKind::LitStr,
+            Self::count => TyKind::int,
+            Self::space | Self::kebab => TyKind::int,
             _ => return None,
         })
     }
