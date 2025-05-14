@@ -7,7 +7,7 @@ use ::syn::{
 };
 
 use crate::{
-    util::kw_kind,
+    util::{kw_kind, lookahead_parse::LookaheadParse},
     value::{TyKind, Value},
 };
 

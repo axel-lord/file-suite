@@ -44,12 +44,8 @@ macro_rules! kw_kind {
             ::syn::custom_keyword!($kw_nm);
         )*}
 
-        impl $wr_nm {
-            /// Parse an instance if lookahead peek matches.
-            ///
-            /// # Errors
-            /// If a valid keyword peeked by lookahead cannot be parsed.
-            pub fn lookahead_parse(
+        impl $crate::util::lookahead_parse::LookaheadParse for $wr_nm {
+            fn lookahead_parse(
                 input: ::syn::parse::ParseStream,
                 lookahead: &::syn::parse::Lookahead1
             ) -> ::syn::Result<Option<Self>> {
@@ -68,17 +64,6 @@ macro_rules! kw_kind {
                 match self.kind {$(
                     $ki_nm::$kw_nm => kw::$kw_nm(self.span).to_tokens(tokens),
                 )*}
-            }
-        }
-
-        impl ::syn::parse::Parse for $wr_nm {
-            fn parse(input: ::syn::parse::ParseStream) -> ::syn::Result<Self> {
-                let lookahead = input.lookahead1();
-                if let Some(value) = Self::lookahead_parse(input, &lookahead)? {
-                    Ok(value)
-                } else {
-                    Err(lookahead.error())
-                }
             }
         }
 

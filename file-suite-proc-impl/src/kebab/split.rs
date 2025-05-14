@@ -7,7 +7,10 @@ use ::syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::{util::kw_kind, value::Value};
+use crate::{
+    util::{kw_kind, lookahead_parse::LookaheadParse},
+    value::Value,
+};
 
 /// Convert to string and collect to vec.
 fn collect_strings<I, S>(i: I) -> Vec<String>
