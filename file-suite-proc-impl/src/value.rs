@@ -2,15 +2,11 @@
 
 use ::std::{borrow::Borrow, fmt::Display, ops::Deref};
 
-use ::proc_macro2::{Literal, Span, TokenStream};
-use ::quote::{IdentFragment, ToTokens};
-use ::syn::{
-    Ident, LitInt, LitStr,
-    ext::IdentExt,
-    parse::{Lookahead1, ParseStream, Parser},
-};
+use ::proc_macro2::Span;
+use ::quote::IdentFragment;
+use ::syn::{Ident, LitBool, LitInt, LitStr};
 
-use crate::util::kw_kind;
+use crate::{typed_value::TypedValue, util::kw_kind};
 
 kw_kind!(
     /// A parsed output type (has span).
@@ -25,6 +21,8 @@ kw_kind!(
         str,
         /// Output an integer literal.
         int,
+        /// Output a boolean.
+        bool,
     }
 );
 
@@ -70,29 +68,15 @@ pub struct Value {
 }
 
 impl Value {
-    /// Parse an instance if lookahead peek matches.
-    ///
-    /// # Errors
-    /// If a valid value peeked by lookahead cannot be parsed.
-    pub fn lookahead_parse(
-        input: ParseStream,
-        lookahead: &Lookahead1,
-    ) -> ::syn::Result<Option<Self>> {
-        Ok(Some(if lookahead.peek(Ident) {
-            Self::from(&input.call(Ident::parse_any)?)
-        } else if lookahead.peek(LitStr) {
-            Self::from(&input.parse::<LitStr>()?)
-        } else if lookahead.peek(LitInt) {
-            Self::try_from(&input.parse::<LitInt>()?)?
-        } else {
-            return Ok(None);
-        }))
-    }
-
     /// Set  the type used for output.
     pub const fn set_ty(&mut self, ty: TyKind) -> &mut Self {
         self.ty = ty;
         self
+    }
+
+    /// Get the type used for output.
+    pub const fn ty(&self) -> TyKind {
+        self.ty
     }
 
     /// Push a span to be used.
@@ -286,58 +270,35 @@ impl From<&LitStr> for Value {
     }
 }
 
-/// A typed [KebabValue] which may be converted to tokens.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypedValue {
-    /// Value is an [identifier][Ident].
-    Ident(Ident),
-    /// Value is a [string literal][LitStr].
-    LitStr(LitStr),
-    /// Value i an [integer literal][LitInt]
-    LitInt(LitInt),
-}
+impl From<&LitBool> for Value {
+    fn from(value: &LitBool) -> Self {
+        let LitBool { value, span } = value;
 
-impl TryFrom<&Value> for TypedValue {
-    type Error = ::syn::Error;
-
-    fn try_from(value: &Value) -> Result<Self, Self::Error> {
-        let span = value.span().unwrap_or_else(Span::call_site);
-        Ok(match value.ty {
-            TyKind::ident => {
-                let ident = Ident::parse_any
-                    .parse_str(&value.value)
-                    .map_err(|err| ::syn::Error::new(span, err))?;
-                Self::Ident(ident)
-            }
-            TyKind::str => Self::LitStr(::syn::LitStr::new(&value.value, span)),
-            TyKind::int => {
-                let mut lit = Literal::isize_unsuffixed(
-                    value
-                        .value
-                        .parse()
-                        .map_err(|err| ::syn::Error::new(span, err))?,
-                );
-                lit.set_span(span);
-                Self::LitInt(lit.into())
-            }
-        })
-    }
-}
-
-impl TryFrom<Value> for TypedValue {
-    type Error = ::syn::Error;
-
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        value.try_to_typed()
-    }
-}
-
-impl ToTokens for TypedValue {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            TypedValue::Ident(ident) => ident.to_tokens(tokens),
-            TypedValue::LitStr(lit_str) => lit_str.to_tokens(tokens),
-            TypedValue::LitInt(lit_int) => lit_int.to_tokens(tokens),
+        Self {
+            value: value.to_string(),
+            span: Some(*span),
+            ty: TyKind::bool,
         }
+    }
+}
+
+impl TryFrom<&TypedValue> for Value {
+    type Error = ::syn::Error;
+
+    fn try_from(value: &TypedValue) -> Result<Self, Self::Error> {
+        match value {
+            TypedValue::Ident(ident) => Ok(Value::from(ident)),
+            TypedValue::LitStr(lit_str) => Ok(Value::from(lit_str)),
+            TypedValue::LitInt(lit_int) => Value::try_from(lit_int),
+            TypedValue::LitBool(lit_bool) => Ok(Value::from(lit_bool)),
+        }
+    }
+}
+
+impl TryFrom<TypedValue> for Value {
+    type Error = ::syn::Error;
+
+    fn try_from(value: TypedValue) -> Result<Self, Self::Error> {
+        value.try_to_value()
     }
 }

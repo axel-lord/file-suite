@@ -6,8 +6,9 @@ use ::syn::parse::ParseStream;
 
 use crate::{
     kebab::{input::KebabInput, output::KebabOutput, paste::KebabPaste},
+    typed_value::TypedValue,
     util::fold_tokens::fold_token_stream,
-    value::{TypedValue, Value},
+    value::Value,
 };
 
 mod input;
