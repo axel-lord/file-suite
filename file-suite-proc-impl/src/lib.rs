@@ -9,6 +9,8 @@ mod util;
 
 mod value;
 
+mod typed_value;
+
 /// Convert between cases, for strings and identifiers.
 ///
 /// # Errors

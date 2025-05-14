@@ -9,6 +9,7 @@ use ::syn::{
 
 use crate::{
     kebab::{kebab_inner, split::Split},
+    typed_value::TypedValue,
     util::{MacroDelimExt, macro_delimited},
     value::{TyKind, Value},
 };
@@ -104,7 +105,10 @@ impl Parse for KebabInput {
                 for value in kebab_inner(&content)? {
                     args.push(value);
                 }
-            } else if let Some(value) = Value::lookahead_parse(input, &lookahead)? {
+            } else if let Some(value) = TypedValue::lookahead_parse(input, &lookahead)?
+                .map(Value::try_from)
+                .transpose()?
+            {
                 args.push(value);
             } else if MacroDelimiter::peek(&lookahead) {
                 *split_group = Some(input.parse()?);
