@@ -10,12 +10,12 @@ use crate::{typed_value::TypedValue, util::kw_kind};
 
 kw_kind!(
     /// A parsed output type (has span).
-    Ty
+    Ty;
     /// What kind of output tokens to produce.
-    [expect(non_camel_case_types)]
-    TyKind (Default) {
+    #[expect(non_camel_case_types)]
+    TyKind: Default {
         /// Output an identifier.
-        [default]
+        #[default]
         ident,
         /// Output a string literal.
         str,

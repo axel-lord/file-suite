@@ -116,12 +116,12 @@ impl Parse for Split {
 
 kw_kind!(
     /// A Split that was parsed an as such has a span.
-    SplitKeyword
+    SplitKeyword;
     /// How input values should be split
-    [expect(non_camel_case_types)]
-    SplitKeywordKind (Default) {
+    #[expect(non_camel_case_types)]
+    SplitKeywordKind: Default {
         /// Values should be split as they are given.
-        [default]
+        #[default]
         split,
         /// Values should be split by camelCase or PascalCase convention.
         pascal,
