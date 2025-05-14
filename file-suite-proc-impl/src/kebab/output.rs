@@ -11,7 +11,7 @@ use crate::{
         case::{Case, CaseKind},
         combine::{CombineKeyword, CombineKeywordKind},
     },
-    util::{MacroDelimExt, do_n_times_then, macro_delimited},
+    util::{MacroDelimExt, do_n_times_then, lookahead_parse::LookaheadParse, macro_delimited},
     value::{Ty, TyKind},
 };
 
