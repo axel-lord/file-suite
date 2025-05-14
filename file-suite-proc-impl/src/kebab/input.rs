@@ -10,7 +10,7 @@ use ::syn::{
 use crate::{
     kebab::{kebab_inner, split::Split},
     typed_value::TypedValue,
-    util::{MacroDelimExt, macro_delimited},
+    util::{MacroDelimExt, lookahead_parse::LookaheadParse, macro_delimited},
     value::{TyKind, Value},
 };
 

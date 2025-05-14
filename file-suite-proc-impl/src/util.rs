@@ -15,6 +15,8 @@ mod kw_kind;
 
 mod delimited;
 
+pub mod lookahead_parse;
+
 pub mod fold_tokens;
 
 pub mod tcmp;

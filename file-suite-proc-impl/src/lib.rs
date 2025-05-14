@@ -5,11 +5,13 @@ use ::syn::parse::Parser;
 
 mod kebab;
 
-mod util;
+mod run;
 
-mod value;
+pub mod util;
 
-mod typed_value;
+pub mod value;
+
+pub mod typed_value;
 
 /// Convert between cases, for strings and identifiers.
 ///
@@ -34,5 +36,3 @@ pub fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
 pub fn derive_run(input: TokenStream) -> ::syn::Result<TokenStream> {
     run::derive_run(::syn::parse2(input)?)
 }
-
-mod run;
