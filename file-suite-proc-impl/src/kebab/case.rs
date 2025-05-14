@@ -4,12 +4,12 @@ use crate::{util::kw_kind, value::Value};
 
 kw_kind!(
     /// A parsed output case (has span).
-    Case
+    Case;
     /// How output case should be modified.
-    [expect(non_camel_case_types)]
-    CaseKind (Default) {
+    #[expect(non_camel_case_types)]
+    CaseKind: Default {
         /// Keep case as is.
-        [default]
+        #[default]
         keep,
         /// Use camelCase.
         camel,

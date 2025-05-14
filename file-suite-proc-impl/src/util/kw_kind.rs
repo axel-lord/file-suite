@@ -3,21 +3,19 @@
 /// Create an enum and a wrapper for parsing a set of keywords.
 macro_rules! kw_kind {
     (
-        $(#[doc = $wr_doc:expr])?
-        $([ $($wr_ty_attr:tt)* ])*
+        $(#[ $($wr_ty_attr:tt)* ])*
         $wr_nm:ident
-        $(( $($wr_add_derive:ident)? ))?
-        $(#[doc = $ki_doc:expr])?
-        $([ $($ki_ty_attr:tt)* ])*
+        $(: $($wr_add_derive:path),+ )?
+        ;
+
+        $(#[ $($ki_ty_attr:tt)* ])*
         $ki_nm:ident
-        $(( $($ki_add_derive:ident)? ))?
+        $(: $($ki_add_derive:path),+ )?
         {$(
-            $(#[doc = $va_doc:expr])?
-            $([$($attr:tt)*])*
+            $(#[$($attr:tt)*])*
             $kw_nm:ident
         ),+ $(,)?}) => {
 
-        $(#[doc = $wr_doc])*
         #[derive(Clone, Copy, Debug $($(, $wr_add_derive)*)*)]
         $( #[$($wr_ty_attr)*] )*
         pub struct $wr_nm {
@@ -28,11 +26,9 @@ macro_rules! kw_kind {
         }
 
 
-        $(#[doc = $ki_doc])*
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash $($(, $ki_add_derive)*)*)]
         $( #[$($ki_ty_attr)*] )*
         pub enum $ki_nm {$(
-            $(#[doc = $va_doc])*
             $(#[$($attr)*])*
             $kw_nm,
         )*}

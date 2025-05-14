@@ -65,12 +65,12 @@ impl ToTokens for Combine {
 
 kw_kind!(
     /// Keyword for how output should be combined.
-    CombineKeyword
+    CombineKeyword;
     /// How output should be combined.
-    [expect(non_camel_case_types)]
-    CombineKeywordKind (Default) {
+    #[expect(non_camel_case_types)]
+    CombineKeywordKind: Default {
         /// Values should be concatenated without any separator.
-        [default]
+        #[default]
         concat,
         /// Values should be joined by a dash,
         kebab,
