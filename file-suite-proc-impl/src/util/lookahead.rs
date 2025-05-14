@@ -8,6 +8,7 @@ use proc_macro2::TokenStream;
 use crate::util::tcmp::TokenEq;
 
 /// Lookahead iterator for tokens.
+#[derive(Debug, Clone)]
 pub struct TokenLookahead<I: IntoIterator<Item = TokenTree>, const COUNT: usize = 3> {
     /// Lookahead storage.
     st: LookaheadStorage<COUNT>,

@@ -5,10 +5,13 @@ use ::quote::ToTokens;
 use ::syn::{
     Ident, LitBool, LitInt, LitStr,
     ext::IdentExt,
-    parse::{Lookahead1, Parse, ParseStream, Parser},
+    parse::{Lookahead1, ParseStream, Parser},
 };
 
-use crate::value::{TyKind, Value};
+use crate::{
+    util::lookahead_parse::LookaheadParse,
+    value::{TyKind, Value},
+};
 
 /// A typed [KebabValue] which may be converted to tokens.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,25 +27,6 @@ pub enum TypedValue {
 }
 
 impl TypedValue {
-    /// Parse an instance if lookahead peek matches.
-    ///
-    /// # Errors
-    /// If a valid value peeked by lookahead cannot be parsed.
-    pub fn lookahead_parse(
-        input: ParseStream,
-        lookahead: &Lookahead1,
-    ) -> ::syn::Result<Option<Self>> {
-        Ok(Some(if lookahead.peek(Ident) {
-            Self::Ident(input.call(Ident::parse_any)?)
-        } else if lookahead.peek(LitStr) {
-            Self::LitStr(input.parse()?)
-        } else if lookahead.peek(LitInt) {
-            Self::LitInt(input.parse()?)
-        } else {
-            return Ok(None);
-        }))
-    }
-
     /// Try to convert into a regular [Value].
     ///
     /// # Errors
@@ -52,14 +36,17 @@ impl TypedValue {
     }
 }
 
-impl Parse for TypedValue {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
-        if let Some(value) = Self::lookahead_parse(input, &lookahead)? {
-            Ok(value)
+impl LookaheadParse for TypedValue {
+    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
+        Ok(Some(if lookahead.peek(Ident) {
+            Self::Ident(input.call(Ident::parse_any)?)
+        } else if lookahead.peek(LitStr) {
+            Self::LitStr(input.parse()?)
+        } else if lookahead.peek(LitInt) {
+            Self::LitInt(input.parse()?)
         } else {
-            Err(lookahead.error())
-        }
+            return Ok(None);
+        }))
     }
 }
 

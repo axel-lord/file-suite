@@ -6,10 +6,11 @@ macro_rules! kw_kind {
         $(#[doc = $wr_doc:expr])?
         $([ $($wr_ty_attr:tt)* ])*
         $wr_nm:ident
+        $(( $($wr_add_derive:ident)? ))?
         $(#[doc = $ki_doc:expr])?
         $([ $($ki_ty_attr:tt)* ])*
         $ki_nm:ident
-        $(( $($add_derive:ident)? ))?
+        $(( $($ki_add_derive:ident)? ))?
         {$(
             $(#[doc = $va_doc:expr])?
             $([$($attr:tt)*])*
@@ -17,7 +18,7 @@ macro_rules! kw_kind {
         ),+ $(,)?}) => {
 
         $(#[doc = $wr_doc])*
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Copy, Debug $($(, $wr_add_derive)*)*)]
         $( #[$($wr_ty_attr)*] )*
         pub struct $wr_nm {
             #[doc = "Keyword variant that was parsed."]
@@ -28,7 +29,7 @@ macro_rules! kw_kind {
 
 
         $(#[doc = $ki_doc])*
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash $($(, $add_derive)*)*)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash $($(, $ki_add_derive)*)*)]
         $( #[$($ki_ty_attr)*] )*
         pub enum $ki_nm {$(
             $(#[doc = $va_doc])*
