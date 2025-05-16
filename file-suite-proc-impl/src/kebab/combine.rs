@@ -3,7 +3,7 @@
 use ::quote::ToTokens;
 use ::syn::{
     LitChar, LitStr,
-    parse::{Lookahead1, Parse, ParseStream},
+    parse::{Lookahead1, ParseStream},
 };
 
 use crate::{
@@ -22,12 +22,8 @@ pub enum Combine {
     Keyword(CombineKeyword),
 }
 
-impl Combine {
-    /// Parse an instance if lookahead peek matches.
-    ///
-    /// # Errors
-    /// If a valid value peeked by lookahead cannot be parsed.
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> ::syn::Result<Option<Self>> {
+impl LookaheadParse for Combine {
+    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
         Ok(Some(
             if let Some(value) = CombineKeyword::lookahead_parse(input, lookahead)? {
                 Self::Keyword(value)
@@ -39,17 +35,6 @@ impl Combine {
                 return Ok(None);
             },
         ))
-    }
-}
-
-impl Parse for Combine {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
-        if let Some(value) = Self::lookahead_parse(input, &lookahead)? {
-            Ok(value)
-        } else {
-            Err(lookahead.error())
-        }
     }
 }
 

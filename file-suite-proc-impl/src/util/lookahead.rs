@@ -41,13 +41,9 @@ impl<I: IntoIterator<Item = TokenTree>, const COUNT: usize> TokenLookahead<I, CO
         Some(&mut st.buf[N])
     }
 
-    /// Check if a sequence of [TokenEq] matches future results.
-    pub fn matches<const N: usize>(&mut self, seq: [&dyn TokenEq; N]) -> bool {
-        const {
-            if N > COUNT {
-                panic!("match sequence should not be longer than COUNT")
-            }
-        }
+    /// Implementation of matches functions, has no compile time sanity checks.
+    #[inline]
+    fn matches_impl<'a>(&mut self, seq: impl IntoIterator<Item = &'a dyn TokenEq>) -> bool {
         let Self { st, it } = self;
         for (i, seq) in seq.into_iter().enumerate() {
             while i >= st.len() {
@@ -61,6 +57,40 @@ impl<I: IntoIterator<Item = TokenTree>, const COUNT: usize> TokenLookahead<I, CO
         }
 
         true
+    }
+
+    /// Check if a sequence of [TokenEq] matches future results.
+    pub fn matches<const N: usize>(&mut self, seq: [&dyn TokenEq; N]) -> bool {
+        const {
+            if N > COUNT {
+                panic!("match sequence should not be longer than COUNT")
+            }
+        }
+        self.matches_impl(seq)
+    }
+
+    /// Check if a sequence of [TokenEq] matches value and future results.
+    pub fn matches_after<const N: usize, V>(&mut self, value: V, seq: [&dyn TokenEq; N]) -> bool
+    where
+        TokenTree: From<V>,
+    {
+        const {
+            if N == 0 {
+                panic!("match sequence should not be empty")
+            }
+            if N > (COUNT + 1) {
+                panic!("match sequence should not be longer than COUNT + 1")
+            }
+        }
+        let mut seq = seq.into_iter();
+        if !seq
+            .next()
+            .is_some_and(|seq| seq.token_cmp(&TokenTree::from(value)))
+        {
+            return false;
+        }
+
+        self.matches_impl(seq)
     }
 
     /// Discard all peeked at values.

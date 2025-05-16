@@ -3,7 +3,11 @@
 use ::proc_macro2::TokenStream;
 use ::syn::parse::Parser;
 
+use crate::{array_expr::ArrayExprPaste, util::fold_tokens::fold_token_stream};
+
 mod kebab;
+
+mod array_expr;
 
 mod run;
 
@@ -27,6 +31,15 @@ pub fn kebab(input: TokenStream) -> ::syn::Result<TokenStream> {
 /// If the kebab expressions are malformed.
 pub fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
     kebab::kebab_paste(input)
+}
+
+/// Find array expression in input tokens and compute them, replacing them with their result.
+///
+/// # Errors
+/// If the expression cannot be parsed.
+/// Or if it cannot be computed.
+pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
+    fold_token_stream(&mut ArrayExprPaste, input)
 }
 
 /// Derive Run for an enum with only single field or empty variants.

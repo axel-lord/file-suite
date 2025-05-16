@@ -1,4 +1,4 @@
-//! [KebabValue] impl.
+//! [Value] impl.
 
 use ::std::{borrow::Borrow, fmt::Display, ops::Deref};
 
