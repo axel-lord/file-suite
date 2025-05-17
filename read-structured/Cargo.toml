@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-derive_more = { workspace = true, features = ["display"] }
+derive_more = { workspace = true, features = ["display", "is_variant"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }

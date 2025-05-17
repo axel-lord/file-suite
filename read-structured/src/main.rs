@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use ::std::{io::IsTerminal, ops::Not};
 use std::{
     fs::File,
@@ -69,22 +71,32 @@ enum Filetype {
     Toml,
 }
 
+/// Input source.
 #[derive(Clone, Debug, IsVariant)]
+#[expect(dead_code)]
 enum InputSrc {
+    /// Take input from stdin.
     Stdin,
+    /// Open a path.
     Path(PathBuf),
 }
 
+/// Error type of crate.
 #[derive(Debug, Error)]
 enum Error {
+    /// Forwarded yaml error.
     #[error(transparent)]
     Yaml(#[from] serde_yaml::Error),
+    /// Forwarded toml error.
     #[error(transparent)]
     Toml(#[from] toml::de::Error),
+    /// Forwarded json error.
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    /// Forwarded io error.
     #[error(transparent)]
     Io(#[from] io::Error),
+    /// Nothing matched.
     #[error("found no matches")]
     NoMatches,
 }
@@ -118,6 +130,10 @@ impl TryFrom<&Path> for Filetype {
     }
 }
 
+/// Read a str to a value.
+///
+/// # Errors
+/// If the str cannot be parsed using the passed Filetype.
 fn read_to_value(reader: &str, file_type: Filetype) -> Result<Value, Error> {
     match file_type {
         Filetype::Json => serde_json::from_str::<Value>(reader)?,
@@ -134,6 +150,10 @@ fn call<T, F: FnOnce() -> T>(f: F) -> T {
     f()
 }
 
+/// Application entrypoint.
+///
+/// # Errors
+/// On application errors.
 fn main() -> Result<(), Error> {
     let Cli {
         input,
