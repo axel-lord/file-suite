@@ -49,6 +49,9 @@ impl ValueEnum for Format {
 }
 
 /// Parse a width hight tuple.
+///
+/// # Errors
+/// If values cannot be parsed as integers.
 fn parse_dimensions(dim: &str) -> Result<[NonZero<u16>; 2], std::num::ParseIntError> {
     if let Some((w, h)) = dim.split_once('x') {
         Ok([w.parse()?, h.parse()?])
@@ -144,6 +147,13 @@ struct Cli {
     completions: completions::Completions,
 }
 
+/// Application entrypoint.
+///
+/// # Errors
+/// On any application error.
+///
+/// # Panics
+///
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let Cli {
@@ -167,8 +177,8 @@ fn main() -> color_eyre::Result<()> {
         return completions.generate(output);
     }
 
-    let from = from.expect("from should exist since completions is false");
-    let to = to.expect("to should exist since completions is false");
+    let from = from.ok_or_else(|| eyre!("from should exist since completions is false"))?;
+    let to = to.ok_or_else(|| eyre!("to should exist since completions is false"))?;
 
     let mut buf = Vec::new();
     match input {

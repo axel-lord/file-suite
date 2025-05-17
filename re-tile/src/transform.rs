@@ -51,6 +51,9 @@ struct TextState {
 }
 
 /// Re-tile image.
+///
+/// # Errors
+/// If transform cannot be performed.
 #[expect(clippy::too_many_arguments)]
 pub fn transform(
     image: DynamicImage,
@@ -109,7 +112,13 @@ pub fn transform(
     let mut text_config = if let Some(index) = index_start {
         Some(TextState {
             index,
-            divisor: NonZero::new(1).unwrap(),
+            divisor: const {
+                if let Some(value) = NonZero::new(1) {
+                    value
+                } else {
+                    unreachable!()
+                }
+            },
             font: ab_glyph::FontRef::try_from_slice(include_bytes!(
                 "../font/NotoSansMono-Bold.ttf"
             ))?,
@@ -145,7 +154,9 @@ pub fn transform(
                     let (text_w, text_h) = text_size(scale, font, &text);
 
                     if text_w <= to_w / 2 && text_h <= to_h / 2 {
-                        *divisor = NonZero::new(d).unwrap();
+                        *divisor = NonZero::new(d).unwrap_or_else(|| {
+                            unreachable!("first value of d is from a range starting with a nonzero")
+                        });
                         break 'brk (text_w, text_h, scale);
                     }
                 }
