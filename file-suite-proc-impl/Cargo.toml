@@ -11,3 +11,7 @@ rand = "0.9.1"
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "type-sizes"
+path = "src/sizes.rs"

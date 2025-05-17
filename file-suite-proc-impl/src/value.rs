@@ -23,6 +23,12 @@ kw_kind!(
         int,
         /// Output a boolean.
         bool,
+        /// Output an expression.
+        expr,
+        /// Output an item.
+        item,
+        /// Value is a statement.
+        stmt,
     }
 );
 
@@ -135,7 +141,7 @@ impl Value {
     }
 
     /// get value as a string slice.
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         self.value.as_str()
     }
 
@@ -291,6 +297,12 @@ impl TryFrom<&TypedValue> for Value {
             TypedValue::LitStr(lit_str) => Ok(Value::from(lit_str)),
             TypedValue::LitInt(lit_int) => Value::try_from(lit_int),
             TypedValue::LitBool(lit_bool) => Ok(Value::from(lit_bool)),
+            TypedValue::Expr(_, span) | TypedValue::Item(_, span) | TypedValue::Stmt(_, span) => {
+                Err(::syn::Error::new(
+                    *span,
+                    "Value should not be converted to from expr, stmt or item TypedValue",
+                ))
+            }
         }
     }
 }

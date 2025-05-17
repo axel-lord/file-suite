@@ -99,7 +99,7 @@ impl LookaheadParse for Case {
                 let value = Self {
                     kw: input.parse()?,
                     delim: macro_delimited!(content in input),
-                    spec: input.call(Spec::parse)?,
+                    spec: content.call(Spec::parse)?,
                 };
 
                 ensure_empty(&content)?;
