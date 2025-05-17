@@ -74,6 +74,22 @@ pub struct Value {
 }
 
 impl Value {
+    /// Match type from other.
+    pub fn with_ty_of(self, other: &Value) -> Self {
+        Self {
+            ty: other.ty,
+            ..self
+        }
+    }
+
+    /// Match span from other.
+    pub fn with_span_of(self, other: &Value) -> Self {
+        Self {
+            span: other.span,
+            ..self
+        }
+    }
+
     /// Set  the type used for output.
     pub const fn set_ty(&mut self, ty: TyKind) -> &mut Self {
         self.ty = ty;
@@ -114,27 +130,27 @@ impl Value {
     }
 
     /// Create a new ident value.
-    pub fn new_ident(i: &str) -> Self {
+    pub const fn new_ident(i: String) -> Self {
         Self {
-            value: i.into(),
+            value: i,
             span: None,
             ty: TyKind::ident,
         }
     }
 
     /// Create a new string literal value.
-    pub fn new_litstr(i: &str) -> Self {
+    pub const fn new_str(i: String) -> Self {
         Self {
-            value: i.into(),
+            value: i,
             span: None,
             ty: TyKind::str,
         }
     }
 
     /// Create a new integer literal value.
-    pub fn new_litint(i: &str) -> Self {
+    pub fn new_int(i: isize) -> Self {
         Self {
-            value: i.into(),
+            value: i.to_string(),
             span: None,
             ty: TyKind::int,
         }

@@ -29,7 +29,7 @@ impl LookaheadParse for Input {
         input: syn::parse::ParseStream,
         lookahead: &syn::parse::Lookahead1,
     ) -> syn::Result<Option<Self>> {
-        if MacroDelimiter::peek(lookahead) {
+        if MacroDelimiter::lookahead_peek(lookahead) {
             let content;
             let delim = macro_delimited!(content in input);
             let expr = content.parse()?;

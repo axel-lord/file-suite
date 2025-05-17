@@ -70,7 +70,7 @@ impl Parse for KebabOutput {
                     ty,
                     ..Default::default()
                 })
-            } else if MacroDelimiter::peek(&lookahead) {
+            } else if MacroDelimiter::lookahead_peek(&lookahead) {
                 Ok(Self {
                     ty,
                     combine_case_group: Some(input.parse()?),
@@ -78,7 +78,7 @@ impl Parse for KebabOutput {
             } else {
                 Err(lookahead.error())
             }
-        } else if MacroDelimiter::peek(&lookahead) {
+        } else if MacroDelimiter::lookahead_peek(&lookahead) {
             Ok(Self {
                 combine_case_group: Some(input.parse()?),
                 ..Default::default()

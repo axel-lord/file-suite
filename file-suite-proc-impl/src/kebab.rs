@@ -93,16 +93,22 @@ mod tests {
     #[test]
     fn kebab_concat() {
         let val = kebab_inner.parse2(quote! {A B C});
-        assert_eq!(val.unwrap(), vec![Value::new_ident("ABC").ty_eq()]);
+        assert_eq!(
+            val.unwrap(),
+            vec![Value::new_ident("ABC".to_string()).ty_eq()]
+        );
 
         let val = kebab_inner.parse2(quote! {"Hello" There "N" ice});
         assert_eq!(
             val.unwrap(),
-            vec![Value::new_ident("HelloThereNice").ty_eq()]
+            vec![Value::new_ident("HelloThereNice".to_string()).ty_eq()]
         );
 
         let val = kebab_inner.parse2(quote! {"Value" Concat -> str});
-        assert_eq!(val.unwrap(), vec![Value::new_litstr("ValueConcat").ty_eq()]);
+        assert_eq!(
+            val.unwrap(),
+            vec![Value::new_str("ValueConcat".to_string()).ty_eq()]
+        );
     }
 
     #[test]
@@ -110,7 +116,7 @@ mod tests {
         let val = kebab_inner.parse2(quote! {A B --!(Hello There -> str[space]) -> str});
         assert_eq!(
             val.unwrap(),
-            vec![Value::new_litstr("ABHello There").ty_eq()]
+            vec![Value::new_str("ABHello There".to_string()).ty_eq()]
         );
     }
 }

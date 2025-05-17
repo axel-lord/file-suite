@@ -4,7 +4,9 @@ use ::std::fmt::Debug;
 
 use crate::value::Value;
 
-pub use crate::array_expr::function::{case::Case, join::Join, split::Split, ty::Type};
+pub use crate::array_expr::function::{
+    case::Case, enumerate::Enumerate, join::Join, rev::Rev, split::Split, ty::Type,
+};
 
 mod split;
 
@@ -13,6 +15,10 @@ mod join;
 mod case;
 
 mod ty;
+
+mod rev;
+
+mod enumerate;
 
 /// Trait for functions which may transform a vec of values.
 pub trait Call {
@@ -35,6 +41,10 @@ function_enum!(
         Case(Case),
         /// Convert type of array.
         Type(Type),
+        /// Enumerate array.
+        Enumerate(Enumerate),
+        /// Reverse array.
+        Rev(Rev),
     }
 );
 
