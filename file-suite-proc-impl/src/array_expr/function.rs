@@ -2,16 +2,17 @@
 
 use ::std::fmt::Debug;
 
-use crate::{
-    array_expr::function::{case::Case, join::Join, split::Split},
-    value::Value,
-};
+use crate::value::Value;
+
+pub use crate::array_expr::function::{case::Case, join::Join, split::Split, ty::Type};
 
 mod split;
 
 mod join;
 
 mod case;
+
+mod ty;
 
 /// Trait for functions which may transform a vec of values.
 pub trait Call {
@@ -26,12 +27,14 @@ function_enum!(
     /// Enum collecting [Call] implementors.
     #[derive(Debug)]
     Function {
-        /// Split input according to specification
+        /// Split array according to specification
         Split(Split),
-        /// Join input according to specification.
+        /// Join array according to specification.
         Join(Join),
-        /// Case input according to specification.
+        /// Case array according to specification.
         Case(Case),
+        /// Convert type of array.
+        Type(Type),
     }
 );
 

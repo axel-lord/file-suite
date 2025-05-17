@@ -1,11 +1,11 @@
 //! [TypedValue] impl
 
 use ::proc_macro2::{Literal, Span, TokenStream};
-use ::quote::ToTokens;
+use ::quote::{ToTokens, quote_spanned};
 use ::syn::{
-    Ident, LitBool, LitInt, LitStr,
+    Expr, Ident, Item, LitBool, LitInt, LitStr, Stmt,
     ext::IdentExt,
-    parse::{Lookahead1, ParseStream, Parser},
+    parse::{Lookahead1, Parse, ParseStream, Parser},
 };
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// A typed [KebabValue] which may be converted to tokens.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum TypedValue {
     /// Value is an [identifier][Ident].
     Ident(Ident),
@@ -24,6 +24,12 @@ pub enum TypedValue {
     LitInt(LitInt),
     /// Value is a [boolean literal][litBool].
     LitBool(LitBool),
+    /// Value is an expression (cannot be parsed).
+    Expr(Box<Expr>, Span),
+    /// Value is an item (cannot be parsed).
+    Item(Box<Item>, Span),
+    /// Value is a statement (cannot be parsed).
+    Stmt(Box<Stmt>, Span),
 }
 
 impl TypedValue {
@@ -57,6 +63,9 @@ impl ToTokens for TypedValue {
             TypedValue::LitStr(lit_str) => lit_str.to_tokens(tokens),
             TypedValue::LitInt(lit_int) => lit_int.to_tokens(tokens),
             TypedValue::LitBool(lit_bool) => lit_bool.to_tokens(tokens),
+            TypedValue::Expr(expr, span) => tokens.extend(quote_spanned! {*span=> #expr}),
+            TypedValue::Item(item, span) => tokens.extend(quote_spanned! {*span=> #item}),
+            TypedValue::Stmt(stmt, span) => tokens.extend(quote_spanned! {*span=> #stmt}),
         }
     }
 }
@@ -91,6 +100,18 @@ impl TryFrom<&Value> for TypedValue {
                     .map_err(|err| ::syn::Error::new(span, err))?,
                 span,
             )),
+            TyKind::expr => Self::Expr(
+                Box::new(Expr::parse.parse_str(value.as_str())?),
+                value.span().unwrap_or(Span::call_site()),
+            ),
+            TyKind::item => Self::Item(
+                Box::new(Item::parse.parse_str(value.as_str())?),
+                value.span().unwrap_or(Span::call_site()),
+            ),
+            TyKind::stmt => Self::Stmt(
+                Box::new(Stmt::parse.parse_str(value.as_str())?),
+                value.span().unwrap_or(Span::call_site()),
+            ),
         })
     }
 }

@@ -91,7 +91,16 @@ impl Call for Split {
                         .collect()
                 }),
                 SpecKwKind::camel => Value::split(&values, |value| {
-                    value.split(char::is_uppercase).map(String::from).collect()
+                    let mut values = Vec::new();
+                    let mut value = value;
+                    while let Some(idx) = value.rfind(char::is_uppercase) {
+                        let found;
+                        (value, found) = value.split_at(idx);
+                        values.push(String::from(found));
+                    }
+                    values.push(String::from(value));
+                    values.reverse();
+                    values
                 }),
                 SpecKwKind::kebab => split_by_char('-', values),
                 SpecKwKind::snake => split_by_char('_', values),
@@ -115,7 +124,7 @@ impl LookaheadParse for Split {
                 let value = Self {
                     kw: input.parse()?,
                     delim: macro_delimited!(content in input),
-                    spec: input.call(Spec::parse)?,
+                    spec: content.call(Spec::parse)?,
                 };
 
                 ensure_empty(&content)?;
