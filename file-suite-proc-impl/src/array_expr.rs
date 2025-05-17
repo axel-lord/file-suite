@@ -21,6 +21,8 @@ pub(crate) use paste::ArrayExprPaste;
 
 mod paste;
 
+pub mod value_array;
+
 pub mod input;
 
 pub mod function;
