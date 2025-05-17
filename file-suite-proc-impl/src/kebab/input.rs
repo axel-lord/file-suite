@@ -110,7 +110,7 @@ impl Parse for KebabInput {
                 .transpose()?
             {
                 args.push(value);
-            } else if MacroDelimiter::peek(&lookahead) {
+            } else if MacroDelimiter::lookahead_peek(&lookahead) {
                 *split_group = Some(input.parse()?);
             } else {
                 return Err(lookahead.error());

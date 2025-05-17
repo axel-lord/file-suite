@@ -1,7 +1,7 @@
 //! [Join] impl.
 
 use ::quote::ToTokens;
-use ::syn::{LitChar, LitStr, MacroDelimiter, parse::End, token};
+use ::syn::{LitChar, LitStr, MacroDelimiter, parse::End};
 
 use crate::{
     array_expr::function::{Call, spec_impl},
@@ -108,10 +108,7 @@ impl LookaheadParse for Join {
                 let mut delim = None;
                 let mut spec = None;
 
-                if input.peek(token::Brace)
-                    || input.peek(token::Bracket)
-                    || input.peek(token::Paren)
-                {
+                if MacroDelimiter::input_peek(input) {
                     let content;
                     delim = Some(macro_delimited!(content in input));
 

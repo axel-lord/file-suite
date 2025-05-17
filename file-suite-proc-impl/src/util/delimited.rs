@@ -3,7 +3,10 @@
 /// Extension trait for [MacroDelimiter].
 pub trait MacroDelimExt {
     /// Peek lookahead for any macro delimiter, brace, bracket, paren.
-    fn peek(lookahead: &Lookahead1) -> bool;
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool;
+
+    /// Peek parse stream for any macro delimiter, same as [MacroDelimExt::lookahead_peek].
+    fn input_peek(input: ParseStream) -> bool;
 
     /// Use delimiter to surround a value.
     fn surround<F>(&self, tokens: &mut TokenStream, f: F)
@@ -12,8 +15,12 @@ pub trait MacroDelimExt {
 }
 
 impl MacroDelimExt for MacroDelimiter {
-    fn peek(lookahead: &Lookahead1) -> bool {
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
         lookahead.peek(Paren) || lookahead.peek(Bracket) || lookahead.peek(Brace)
+    }
+
+    fn input_peek(input: ParseStream) -> bool {
+        input.peek(Paren) || input.peek(Bracket) || input.peek(Brace)
     }
 
     fn surround<F>(&self, tokens: &mut TokenStream, f: F)
@@ -46,7 +53,7 @@ macro_rules! macro_delimited {
 use ::proc_macro2::TokenStream;
 use ::syn::{
     MacroDelimiter,
-    parse::Lookahead1,
+    parse::{Lookahead1, ParseStream},
     token::{Brace, Bracket, Paren},
 };
 pub(crate) use macro_delimited;
