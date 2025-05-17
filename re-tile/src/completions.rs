@@ -38,6 +38,9 @@ pub struct Completions {
 
 impl Completions {
     /// Generate completions.
+    ///
+    /// # Errors
+    /// If file written to cannot be flushed.
     pub fn generate(self, to: patharg::OutputArg) -> ::color_eyre::Result<()> {
         let mut file = to.create()?.map_right(BufWriter::new);
 

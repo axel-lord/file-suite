@@ -26,6 +26,9 @@ pub struct Log {
 
 impl Log {
     /// Set up log
+    ///
+    /// # Errors
+    /// If log file cannot be opened for writing.
     pub fn setup(self) -> color_eyre::Result<()> {
         let file = match self.log_file {
             ::patharg::OutputArg::Stdout => Target::Stderr,
