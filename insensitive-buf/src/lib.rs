@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!("../README.md")]
 
+use ::core::cmp::Ordering;
+
 pub use self::{insensitive_display::InsensitiveDisplay, insensitive_ref::Insensitive};
 
 mod insensitive_ref;
@@ -51,3 +53,17 @@ mod encode {
 pub use encode::{encode_lower, encode_upper, to_lower, to_upper};
 
 pub mod insensitive;
+
+/// Case insensitive compare two values.
+pub fn insensitive_cmp<S1, S2>(s1: &S1, s2: &S2) -> Ordering
+where
+    S1: AsRef<[u8]> + ?Sized,
+    S2: AsRef<[u8]> + ?Sized,
+{
+    insensitive_cmp_bytes(s1.as_ref(), s2.as_ref())
+}
+
+/// Case insensitive compare two byte slices.
+pub fn insensitive_cmp_bytes(s1: &[u8], s2: &[u8]) -> Ordering {
+    Insensitive::from_bytes(s1).cmp(Insensitive::from_bytes(s2))
+}
