@@ -6,7 +6,7 @@ use ::proc_macro2::Span;
 use ::quote::IdentFragment;
 use ::syn::{Ident, LitBool, LitInt, LitStr};
 
-use crate::{typed_value::TypedValue, util::kw_kind};
+use crate::{array_expr::value_array::ValueArray, typed_value::TypedValue, util::kw_kind};
 
 kw_kind!(
     /// A parsed output type (has span).
@@ -178,9 +178,9 @@ impl Value {
     }
 
     /// Helper to join a set of values, keeping spans.
-    pub fn join<J>(values: Vec<Self>, j: J) -> Self
+    pub fn join<J>(values: ValueArray, j: J) -> Self
     where
-        J: FnOnce(Vec<Self>) -> String,
+        J: FnOnce(ValueArray) -> String,
     {
         let mut value = Self::default();
         for v in &values {
@@ -194,7 +194,7 @@ impl Value {
     }
 
     /// Helper to split a set of values.
-    pub fn split<S>(values: &[Self], mut s: S) -> Vec<Self>
+    pub fn split<S>(values: &[Self], mut s: S) -> ValueArray
     where
         S: for<'a> FnMut(&'a str) -> Vec<String>,
     {
@@ -208,7 +208,7 @@ impl Value {
             out.reserve(values.len());
             out.extend(values.into_iter().map(mapper));
         }
-        out
+        out.into()
     }
 }
 

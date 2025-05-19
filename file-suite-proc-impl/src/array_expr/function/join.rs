@@ -4,7 +4,10 @@ use ::quote::ToTokens;
 use ::syn::{LitChar, LitStr, MacroDelimiter, parse::End};
 
 use crate::{
-    array_expr::function::{Call, spec_impl},
+    array_expr::{
+        function::{Call, spec_impl},
+        value_array::ValueArray,
+    },
     util::{
         MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
     },
@@ -59,12 +62,12 @@ pub struct Join {
 }
 
 /// Join array of values by `sep`.
-fn join_values(values: Vec<Value>, sep: &str) -> Vec<Value> {
-    Vec::from([Value::join(values, |value| value.join(sep))])
+fn join_values(values: ValueArray, sep: &str) -> ValueArray {
+    ValueArray::from_value(Value::join(values, |value| value.join(sep)))
 }
 
 impl Call for SpecKwKind {
-    fn call(&self, values: Vec<crate::value::Value>) -> syn::Result<Vec<crate::value::Value>> {
+    fn call(&self, values: ValueArray) -> syn::Result<ValueArray> {
         Ok(match self {
             SpecKwKind::concat => join_values(values, ""),
             SpecKwKind::kebab => join_values(values, "-"),
@@ -77,7 +80,7 @@ impl Call for SpecKwKind {
 }
 
 impl Call for Join {
-    fn call(&self, input: Vec<crate::value::Value>) -> syn::Result<Vec<crate::value::Value>> {
+    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
         let Some(spec) = self.spec.as_ref() else {
             return SpecKwKind::default().call(input);
         };

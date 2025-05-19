@@ -3,7 +3,10 @@ use ::quote::ToTokens;
 use ::syn::{LitChar, LitStr, MacroDelimiter};
 
 use crate::{
-    array_expr::function::{Call, spec_impl},
+    array_expr::{
+        function::{Call, spec_impl},
+        value_array::ValueArray,
+    },
     util::{
         MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
     },
@@ -59,7 +62,7 @@ pub struct Split {
 
 /// Split values by a [char].
 #[inline]
-fn split_by_char(pat: char, values: Vec<Value>) -> Vec<Value> {
+fn split_by_char(pat: char, values: ValueArray) -> ValueArray {
     Value::split(&values, |value| {
         value.split(pat).map(String::from).collect()
     })
@@ -67,14 +70,14 @@ fn split_by_char(pat: char, values: Vec<Value>) -> Vec<Value> {
 
 /// Split values by a [str].
 #[inline]
-fn split_by_str(pat: &str, values: Vec<Value>) -> Vec<Value> {
+fn split_by_str(pat: &str, values: ValueArray) -> ValueArray {
     Value::split(&values, |value| {
         value.split(pat).map(String::from).collect()
     })
 }
 
 impl Call for Split {
-    fn call(&self, values: Vec<Value>) -> syn::Result<Vec<Value>> {
+    fn call(&self, values: ValueArray) -> syn::Result<ValueArray> {
         Ok(match &self.spec {
             Spec::Str(lit_str) => split_by_str(&lit_str.value(), values),
             Spec::Char(lit_char) => split_by_char(lit_char.value(), values),

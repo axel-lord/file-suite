@@ -81,6 +81,16 @@ impl From<Vec<Value>> for ValueArray {
     }
 }
 
+impl From<ValueArray> for Vec<Value> {
+    fn from(value: ValueArray) -> Self {
+        match value.inner {
+            ValueArrayInner::Empty => Vec::new(),
+            ValueArrayInner::Single(value) => Vec::from([value]),
+            ValueArrayInner::Vec(values) => values,
+        }
+    }
+}
+
 impl AsRef<[Value]> for ValueArray {
     fn as_ref(&self) -> &[Value] {
         match &self.inner {
