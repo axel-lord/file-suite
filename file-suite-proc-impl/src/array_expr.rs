@@ -12,6 +12,7 @@ use crate::{
     array_expr::{
         function::{Call, Function},
         input::Input,
+        value_array::ValueArray,
     },
     util::lookahead_parse::LookaheadParse,
     value::Value,
@@ -56,18 +57,18 @@ impl ArrayExpr {
     ///
     /// # Errors
     /// If the expression cannot be computed.
-    pub fn compute(&self) -> ::syn::Result<Vec<Value>> {
+    pub fn compute(&self) -> ::syn::Result<ValueArray> {
         let (input, chain) = match self {
-            ArrayExpr::Empty => return Ok(Vec::new()),
+            ArrayExpr::Empty => return Ok(ValueArray::new()),
             ArrayExpr::Stringify {
                 not_token: _,
                 remainder,
             } => {
-                return Ok(Vec::from([{
+                return Ok(ValueArray::from_value({
                     let mut value = Value::from(remainder.to_string());
                     value.set_span(remainder.span());
                     value
-                }]));
+                }));
             }
             ArrayExpr::Transform {
                 input,
@@ -76,15 +77,16 @@ impl ArrayExpr {
             } => (input, chain),
         };
 
-        let mut values = Vec::new();
+        let mut values = ValueArray::new();
+        let value_vec = values.make_vec();
         for input in input {
             match input {
                 Input::Nested { delim: _, expr } => {
                     let extend_with = expr.compute()?;
-                    values.reserve(extend_with.len());
-                    values.extend(extend_with);
+                    value_vec.reserve(extend_with.len());
+                    value_vec.extend(extend_with);
                 }
-                Input::Value(typed_value) => values.push(typed_value.try_to_value()?),
+                Input::Value(typed_value) => value_vec.push(typed_value.try_to_value()?),
             }
         }
 

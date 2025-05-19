@@ -7,6 +7,7 @@ use ::syn::{
 };
 
 use crate::{
+    array_expr::value_array::ValueArray,
     util::{kw_kind, lookahead_parse::LookaheadParse},
     value::{TyKind, Value},
 };
@@ -80,24 +81,27 @@ impl CombineKeywordKind {
         if matches!(self, CombineKeywordKind::split) {
             values
         } else {
-            vec![Value::join(values, |values| match self {
-                Self::concat => values.join(""),
-                Self::kebab => values.join("-"),
-                Self::snake => values.join("_"),
-                Self::space => values.join(" "),
-                Self::count => values.len().to_string(),
-                Self::first => values
-                    .into_iter()
-                    .next()
-                    .map(String::from)
-                    .unwrap_or_default(),
-                Self::last => values
-                    .into_iter()
-                    .next_back()
-                    .map(String::from)
-                    .unwrap_or_default(),
-                Self::split => unreachable!(),
-            })]
+            vec![Value::join(
+                ValueArray::from_vec(values),
+                |values| match self {
+                    Self::concat => values.join(""),
+                    Self::kebab => values.join("-"),
+                    Self::snake => values.join("_"),
+                    Self::space => values.join(" "),
+                    Self::count => values.len().to_string(),
+                    Self::first => values
+                        .into_iter()
+                        .next()
+                        .map(String::from)
+                        .unwrap_or_default(),
+                    Self::last => values
+                        .into_iter()
+                        .next_back()
+                        .map(String::from)
+                        .unwrap_or_default(),
+                    Self::split => unreachable!(),
+                },
+            )]
         }
     }
 

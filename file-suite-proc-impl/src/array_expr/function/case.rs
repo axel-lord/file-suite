@@ -4,7 +4,7 @@ use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 
 use crate::{
-    array_expr::function::Call,
+    array_expr::{function::Call, value_array::ValueArray},
     util::{
         MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
     },
@@ -53,7 +53,7 @@ fn capitalize(value: &str) -> String {
 }
 
 impl Call for Case {
-    fn call(&self, input: Vec<crate::value::Value>) -> syn::Result<Vec<crate::value::Value>> {
+    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
         let mut values = input;
         match self.spec.kind {
             SpecKind::pascal => {

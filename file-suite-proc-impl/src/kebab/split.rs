@@ -8,6 +8,7 @@ use ::syn::{
 };
 
 use crate::{
+    array_expr::value_array::ValueArray,
     util::{kw_kind, lookahead_parse::LookaheadParse},
     value::Value,
 };
@@ -44,11 +45,11 @@ impl Split {
         match split {
             Split::StrPattern(lit_str) => {
                 let pat = &lit_str.value();
-                Value::split(args, |s| collect_strings(s.split(pat)))
+                Value::split(args, |s| collect_strings(s.split(pat))).into()
             }
             Split::CharPattern(lit_char) => {
                 let pat = lit_char.value();
-                Value::split(args, |s| collect_strings(s.split(pat)))
+                Value::split(args, |s| collect_strings(s.split(pat))).into()
             }
             Split::AtIndex(idx, _) => {
                 let idx = *idx;
@@ -66,6 +67,7 @@ impl Split {
                             })
                         })
                     })
+                    .into()
                 } else {
                     let idx = idx as usize;
                     Value::split(args, |s| {
@@ -73,6 +75,7 @@ impl Split {
                             s.split_at_checked(idx).unwrap_or((s, "")),
                         ))
                     })
+                    .into()
                 }
             }
             Split::Keyword(split_keyword) => split_keyword.transform_args(args),
@@ -144,7 +147,7 @@ impl SplitKeywordKind {
     /// Transform args given to input into desired form.
     pub fn transform_args(self, args: &[Value]) -> Vec<Value> {
         match self {
-            Self::split => Vec::from(args),
+            Self::split => ValueArray::from_vec(args.to_vec()),
             Self::pascal => Value::split(args, |s| {
                 collect_strings(s.split(char::is_uppercase).skip(
                     if s.starts_with(char::is_uppercase) {
@@ -161,5 +164,6 @@ impl SplitKeywordKind {
             Self::path => Value::split(args, |s| collect_strings(s.split("::"))),
             Self::dot => Value::split(args, |s| collect_strings(s.split('.'))),
         }
+        .into()
     }
 }

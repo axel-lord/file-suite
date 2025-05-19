@@ -4,7 +4,7 @@ use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 
 use crate::{
-    array_expr::function::Call,
+    array_expr::{function::Call, value_array::ValueArray},
     util::{MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse, macro_delimited},
 };
 
@@ -25,7 +25,7 @@ pub struct Rev {
 }
 
 impl Call for Rev {
-    fn call(&self, input: Vec<crate::value::Value>) -> syn::Result<Vec<crate::value::Value>> {
+    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
         let mut values = input;
         values.reverse();
         Ok(values)

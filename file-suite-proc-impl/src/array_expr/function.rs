@@ -2,7 +2,7 @@
 
 use ::std::fmt::Debug;
 
-use crate::value::Value;
+use crate::array_expr::value_array::ValueArray;
 
 pub use crate::array_expr::function::{
     case::Case, enumerate::Enumerate, join::Join, rev::Rev, split::Split, ty::Type,
@@ -26,7 +26,7 @@ pub trait Call {
     ///
     /// # Errors
     /// If input may not be transformed according to specification.
-    fn call(&self, input: Vec<Value>) -> ::syn::Result<Vec<Value>>;
+    fn call(&self, input: ValueArray) -> ::syn::Result<ValueArray>;
 }
 
 function_enum!(
@@ -64,7 +64,10 @@ macro_rules! function_enum {
         )*}
 
         impl Call for $nm {
-            fn call(&self, input: Vec<Value>) -> ::syn::Result<Vec<Value>> {
+            fn call(
+                &self,
+                input: $crate::array_expr::value_array::ValueArray
+            ) -> ::syn::Result<$crate::array_expr::value_array::ValueArray> {
                 match self {$(
                     Self::$vnm(value) => <$vty as Call>::call(value, input),
                 )*}
