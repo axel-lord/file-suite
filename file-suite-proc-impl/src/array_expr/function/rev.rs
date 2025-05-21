@@ -4,7 +4,10 @@ use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 
 use crate::{
-    array_expr::{function::Call, value_array::ValueArray},
+    array_expr::{
+        function::{Call, ToCallable},
+        value_array::ValueArray,
+    },
     util::{MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse, macro_delimited},
 };
 
@@ -24,7 +27,19 @@ pub struct Rev {
     delim: Option<MacroDelimiter>,
 }
 
-impl Call for Rev {
+impl ToCallable for Rev {
+    type Call = RevCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        RevCallable
+    }
+}
+
+/// [Call] implementor for [Rev].
+#[derive(Debug, Clone, Copy)]
+pub struct RevCallable;
+
+impl Call for RevCallable {
     fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
         let mut values = input;
         values.reverse();
