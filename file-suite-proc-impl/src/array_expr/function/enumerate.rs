@@ -1,10 +1,14 @@
 //! [Enumerate] impl.
 
-use ::quote::ToTokens;
+use ::proc_macro2::Span;
+use ::quote::{ToTokens, quote_spanned};
 use ::syn::{LitInt, MacroDelimiter, parse::End};
 
 use crate::{
-    array_expr::{function::Call, value_array::ValueArray},
+    array_expr::{
+        function::{Call, ToCallable},
+        value_array::ValueArray,
+    },
     util::{MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse, macro_delimited},
     value::Value,
 };
@@ -24,27 +28,53 @@ pub struct Enumerate {
     /// Delim for spec,
     delim: Option<MacroDelimiter>,
     /// Offset for enumeration.
-    offset: Option<LitInt>,
+    offset: Option<(isize, Span)>,
 }
 
-impl Call for Enumerate {
+impl ToCallable for Enumerate {
+    type Call = EnumerateCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        EnumerateCallable {
+            offset: self.offset.as_ref().map(|(i, _)| *i).unwrap_or(1),
+        }
+    }
+}
+
+/// [Call] Implementor fo [Enumerate].
+#[derive(Debug, Clone, Copy)]
+pub struct EnumerateCallable {
+    /// Offset of enumeration.
+    offset: isize,
+}
+
+impl Call for EnumerateCallable {
     fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
-        let mut offset = self
-            .offset
-            .as_ref()
-            .map(|off| off.base10_parse::<isize>())
-            .transpose()?
-            .unwrap_or(1);
+        let mut offset = self.offset;
 
-        let mut output = Vec::with_capacity(input.len().checked_mul(2).unwrap());
-
+        let mut output = Vec::with_capacity(input.len().checked_mul(2).ok_or_else(|| {
+            ::syn::Error::new(
+                input.span().unwrap_or_else(Span::call_site),
+                format!(
+                    "value array length should be multipliable by 2, is {}",
+                    input.len()
+                ),
+            )
+        })?);
         for value in input {
+            let next_offset = offset.checked_add(1).ok_or_else(|| {
+                ::syn::Error::new(
+                    value.span().unwrap_or_else(Span::call_site),
+                    format!("offset should not exceed isize::MAX, is {offset}"),
+                )
+            })?;
+
             output.push(Value::new_int(offset).with_span_of(&value));
             output.push(value);
-            offset = offset.checked_add(1).unwrap();
+            offset = next_offset;
         }
 
-        Ok(output.into())
+        Ok(ValueArray::from_vec(output))
     }
 }
 
@@ -67,7 +97,9 @@ impl LookaheadParse for Enumerate {
 
                     let lookahead = content.lookahead1();
                     if !lookahead.peek(End) {
-                        offset = LitInt::lookahead_parse(input, &lookahead)?;
+                        if let Some(lit_int) = LitInt::lookahead_parse(input, &lookahead)? {
+                            offset = Some((lit_int.base10_parse()?, lit_int.span()));
+                        }
 
                         if offset.is_none() {
                             return Err(lookahead.error());
@@ -88,7 +120,11 @@ impl ToTokens for Enumerate {
         let Self { kw, delim, offset } = self;
         kw.to_tokens(tokens);
         if let Some(delim) = delim {
-            delim.surround(tokens, |tokens| offset.to_tokens(tokens));
+            delim.surround(tokens, |tokens| {
+                if let Some((i, span)) = offset {
+                    tokens.extend(quote_spanned! {*span=> #i});
+                }
+            });
         }
     }
 }
