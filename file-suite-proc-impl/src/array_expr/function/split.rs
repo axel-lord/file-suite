@@ -63,17 +63,15 @@ pub struct Split {
 /// Split values by a [char].
 #[inline]
 fn split_by_char(pat: char, values: ValueArray) -> ValueArray {
-    Value::split(&values, |value| {
-        value.split(pat).map(String::from).collect()
-    })
+    let mut buf = [0u8; 4];
+    let pat = pat.encode_utf8(&mut buf);
+    values.split_by_str(pat)
 }
 
 /// Split values by a [str].
 #[inline]
 fn split_by_str(pat: &str, values: ValueArray) -> ValueArray {
-    Value::split(&values, |value| {
-        value.split(pat).map(String::from).collect()
-    })
+    values.split_by_str(pat)
 }
 
 impl Call for Split {
@@ -82,6 +80,7 @@ impl Call for Split {
             Spec::Str(lit_str) => split_by_str(&lit_str.value(), values),
             Spec::Char(lit_char) => split_by_char(lit_char.value(), values),
             Spec::Kw(spec_kw) => match spec_kw.kind {
+                /*
                 SpecKwKind::pascal => Value::split(&values, |value| {
                     value
                         .split(char::is_uppercase)
@@ -105,6 +104,50 @@ impl Call for Split {
                     values.reverse();
                     values
                 }),
+                */
+                SpecKwKind::camel => {
+                    let mut value_vec = Vec::with_capacity(values.len());
+                    for mut value in values {
+                        let mut value_str = value.as_str();
+                        while let Some(idx) = value_str.rfind(char::is_uppercase) {
+                            let found;
+                            (value_str, found) = value_str.split_at(idx);
+                            value_vec.push(
+                                Value::with_content(found.into())
+                                    .with_ty_of(&value)
+                                    .with_span_of(&value),
+                            );
+                        }
+                        value.set_content(value_str.into());
+                        value_vec.push(value);
+                    }
+                    value_vec.reverse();
+                    value_vec.into()
+                }
+                SpecKwKind::pascal => {
+                    let mut value_vec = Vec::with_capacity(values.len());
+                    for mut value in values {
+                        let mut value_str = value.as_str();
+                        while let Some(idx) = value_str.rfind(char::is_uppercase) {
+                            let found;
+                            (value_str, found) = value_str.split_at(idx);
+                            value_vec.push(
+                                Value::with_content(found.into())
+                                    .with_ty_of(&value)
+                                    .with_span_of(&value),
+                            );
+                        }
+                        // pascal expects value_str to be empty but handles it not being so
+                        // anyways, whilst camel always adds the value_str value even if it is
+                        // empty.
+                        if !value_str.is_empty() {
+                            value.set_content(value_str.into());
+                            value_vec.push(value)
+                        };
+                    }
+                    value_vec.reverse();
+                    value_vec.into()
+                }
                 SpecKwKind::kebab => split_by_char('-', values),
                 SpecKwKind::snake => split_by_char('_', values),
                 SpecKwKind::path => split_by_str("::", values),
