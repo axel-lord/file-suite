@@ -6,8 +6,9 @@ use ::syn::MacroDelimiter;
 
 use crate::{
     array_expr::ArrayExpr,
+    macro_delimited,
     typed_value::TypedValue,
-    util::{MacroDelimExt, lookahead_parse::LookaheadParse, macro_delimited},
+    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
 };
 
 /// [ArrayExpr] input values.

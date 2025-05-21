@@ -1,15 +1,15 @@
 //! [Enumerate] impl.
 
-use ::proc_macro2::Span;
-use ::quote::{ToTokens, quote_spanned};
-use ::syn::{LitInt, MacroDelimiter, parse::End};
+use ::proc_macro2::{Literal, Span};
+use ::quote::{ToTokens, TokenStreamExt};
+use ::syn::{LitInt, parse::Parse};
 
 use crate::{
     array_expr::{
         function::{Call, ToCallable},
         value_array::ValueArray,
     },
-    util::{MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse, macro_delimited},
+    util::{group_help::GroupOption, lookahead_parse::LookaheadParse},
     value::Value,
 };
 
@@ -20,15 +20,41 @@ mod kw {
     custom_keyword!(enumerate);
 }
 
+/// Offset value for enumeration.
+#[derive(Debug, Clone, Copy)]
+pub struct Offset {
+    /// Value of offset.
+    pub value: isize,
+    /// Span of offset.
+    pub span: Span,
+}
+
+impl Parse for Offset {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lit_int = input.parse::<LitInt>()?;
+        Ok(Self {
+            value: lit_int.base10_parse()?,
+            span: lit_int.span(),
+        })
+    }
+}
+
+impl ToTokens for Offset {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self { value, span } = *self;
+        let mut val = Literal::isize_unsuffixed(value);
+        val.set_span(span);
+        tokens.append(val);
+    }
+}
+
 /// Enumerate array.
 #[derive(Debug, Clone)]
 pub struct Enumerate {
     /// Enumerate keyword
-    kw: kw::enumerate,
+    pub kw: kw::enumerate,
     /// Delim for spec,
-    delim: Option<MacroDelimiter>,
-    /// Offset for enumeration.
-    offset: Option<(isize, Span)>,
+    pub offset: Option<GroupOption<Offset>>,
 }
 
 impl ToCallable for Enumerate {
@@ -36,7 +62,12 @@ impl ToCallable for Enumerate {
 
     fn to_callable(&self) -> Self::Call {
         EnumerateCallable {
-            offset: self.offset.as_ref().map(|(i, _)| *i).unwrap_or(1),
+            offset: self
+                .offset
+                .as_ref()
+                .and_then(|offset| offset.content.as_ref())
+                .map(|content| content.value)
+                .unwrap_or(1),
         }
     }
 }
@@ -87,29 +118,9 @@ impl LookaheadParse for Enumerate {
             .peek(kw::enumerate)
             .then(|| {
                 let kw = input.parse()?;
+                let offset = input.call(LookaheadParse::optional_parse)?;
 
-                let mut delim = None;
-                let mut offset = None;
-
-                if MacroDelimiter::input_peek(input) {
-                    let content;
-                    delim = Some(macro_delimited!(content in input));
-
-                    let lookahead = content.lookahead1();
-                    if !lookahead.peek(End) {
-                        if let Some(lit_int) = LitInt::lookahead_parse(input, &lookahead)? {
-                            offset = Some((lit_int.base10_parse()?, lit_int.span()));
-                        }
-
-                        if offset.is_none() {
-                            return Err(lookahead.error());
-                        }
-
-                        ensure_empty(&content)?;
-                    }
-                }
-
-                Ok(Self { kw, delim, offset })
+                Ok(Self { kw, offset })
             })
             .transpose()
     }
@@ -117,14 +128,8 @@ impl LookaheadParse for Enumerate {
 
 impl ToTokens for Enumerate {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { kw, delim, offset } = self;
+        let Self { kw, offset } = self;
         kw.to_tokens(tokens);
-        if let Some(delim) = delim {
-            delim.surround(tokens, |tokens| {
-                if let Some((i, span)) = offset {
-                    tokens.extend(quote_spanned! {*span=> #i});
-                }
-            });
-        }
+        offset.to_tokens(tokens);
     }
 }

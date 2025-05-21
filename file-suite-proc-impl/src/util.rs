@@ -2,10 +2,7 @@
 
 use ::syn::parse::{End, ParseStream};
 
-pub(crate) use self::{
-    delimited::{MacroDelimExt, macro_delimited},
-    kw_kind::kw_kind,
-};
+pub(crate) use self::kw_kind::kw_kind;
 
 pub use self::lookahead::TokenLookahead;
 
@@ -13,9 +10,11 @@ mod lookahead;
 
 mod kw_kind;
 
-mod delimited;
-
 mod to_tokens_enum;
+
+pub mod delimited;
+
+pub mod group_help;
 
 pub mod lookahead_parse;
 

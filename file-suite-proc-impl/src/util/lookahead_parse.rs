@@ -1,6 +1,32 @@
 //! Utilities for parsing using a [Lookahead1].
 
-use ::syn::parse::{Lookahead1, ParseStream};
+use ::quote::ToTokens;
+use ::syn::parse::{Lookahead1, Parse, ParseStream};
+
+/// Wrap a [LookaheadParse] implementor to [Parse].
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct ParseWrap<T>(pub T)
+where
+    T: LookaheadParse;
+
+impl<T> ToTokens for ParseWrap<T>
+where
+    T: LookaheadParse + ToTokens,
+{
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self(inner) = self;
+        inner.to_tokens(tokens);
+    }
+}
+
+impl<T> Parse for ParseWrap<T>
+where
+    T: LookaheadParse,
+{
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        input.call(T::parse).map(Self)
+    }
+}
 
 /// Trait for conditional parsing useing a [Lookahead1].
 pub trait LookaheadParse
@@ -13,11 +39,12 @@ where
     /// If a valid value peeked by lookahead cannot be parsed.
     fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> ::syn::Result<Option<Self>>;
 
-    /// Parse an instance if using [LookaheadParse::lookahead_parse] implementation.
+    /// Parse an instance using [LookaheadParse::lookahead_parse] implementation.
     ///
     /// # Errors
     /// If an expected value cannot be parsed.
     /// Or if no expected value was encountered.
+    #[inline]
     fn parse(input: ParseStream) -> ::syn::Result<Self> {
         let lookahead = input.lookahead1();
         if let Some(value) = Self::lookahead_parse(input, &lookahead)? {
@@ -25,6 +52,15 @@ where
         } else {
             Err(lookahead.error())
         }
+    }
+
+    /// Parse an instance if lookahead peek matches, else parse nothing.
+    ///
+    /// # Errors
+    /// If a valid value peeked by lookahead cannot be parsed.
+    #[inline]
+    fn optional_parse(input: ParseStream) -> ::syn::Result<Option<Self>> {
+        Self::lookahead_parse(input, &input.lookahead1())
     }
 }
 

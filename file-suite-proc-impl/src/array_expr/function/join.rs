@@ -1,7 +1,7 @@
 //! [Join] impl.
 
 use ::quote::ToTokens;
-use ::syn::{LitChar, LitStr, MacroDelimiter, parse::End};
+use ::syn::{LitChar, LitStr};
 
 use crate::{
     array_expr::{
@@ -9,7 +9,9 @@ use crate::{
         value_array::ValueArray,
     },
     util::{
-        MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
+        group_help::GroupOption,
+        kw_kind,
+        lookahead_parse::{LookaheadParse, ParseWrap},
     },
 };
 
@@ -54,10 +56,8 @@ spec_impl!(
 pub struct Join {
     /// Join keyword.
     kw: kw::join,
-    /// Delim for spec.
-    delim: Option<MacroDelimiter>,
     /// Specification for how to join values.
-    spec: Option<Spec>,
+    spec: Option<GroupOption<ParseWrap<Spec>>>,
 }
 
 /// [Call] implementor for [Join].
@@ -96,11 +96,11 @@ impl ToCallable for Join {
     type Call = JoinCallable;
 
     fn to_callable(&self) -> Self::Call {
-        let Some(spec) = &self.spec else {
+        let Some(spec) = self.spec.as_ref().and_then(|spec| spec.content.as_ref()) else {
             return JoinCallable::Kw(SpecKwKind::concat);
         };
 
-        match spec {
+        match &spec.0 {
             Spec::Str(lit_str) => JoinCallable::Str(lit_str.value()),
             Spec::Char(lit_char) => JoinCallable::Char(lit_char.value()),
             Spec::Kw(spec_kw) => JoinCallable::Kw(spec_kw.kind),
@@ -116,28 +116,10 @@ impl LookaheadParse for Join {
         lookahead
             .peek(kw::join)
             .then(|| {
-                let kw = input.parse()?;
-                let mut delim = None;
-                let mut spec = None;
-
-                if MacroDelimiter::input_peek(input) {
-                    let content;
-                    delim = Some(macro_delimited!(content in input));
-
-                    let lookahead = content.lookahead1();
-
-                    if !lookahead.peek(End) {
-                        spec = Spec::lookahead_parse(&content, &lookahead)?;
-
-                        if spec.is_none() {
-                            return Err(lookahead.error());
-                        }
-
-                        ensure_empty(&content)?;
-                    }
-                }
-
-                Ok(Self { kw, delim, spec })
+                Ok(Self {
+                    kw: input.parse()?,
+                    spec: input.call(LookaheadParse::optional_parse)?,
+                })
             })
             .transpose()
     }
@@ -145,10 +127,8 @@ impl LookaheadParse for Join {
 
 impl ToTokens for Join {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { kw, delim, spec } = self;
+        let Self { kw, spec } = self;
         kw.to_tokens(tokens);
-        if let Some(delim) = delim {
-            delim.surround(tokens, |tokens| spec.to_tokens(tokens));
-        }
+        spec.to_tokens(tokens);
     }
 }
