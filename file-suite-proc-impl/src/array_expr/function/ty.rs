@@ -4,9 +4,12 @@ use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 
 use crate::{
-    array_expr::{function::Call, value_array::ValueArray},
+    array_expr::{
+        function::{Call, ToCallable},
+        value_array::ValueArray,
+    },
     util::{MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse, macro_delimited},
-    value::Ty,
+    value::{Ty, TyKind},
 };
 
 #[doc(hidden)]
@@ -27,13 +30,20 @@ pub struct Type {
     ty: Ty,
 }
 
-impl Call for Type {
-    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
-        let mut values = input;
-        for value in &mut values {
-            value.set_ty(self.ty.kind);
+impl ToCallable for Type {
+    type Call = TyKind;
+
+    fn to_callable(&self) -> Self::Call {
+        self.ty.kind
+    }
+}
+
+impl Call for TyKind {
+    fn call(&self, mut input: ValueArray) -> syn::Result<ValueArray> {
+        for value in &mut input {
+            value.set_ty(*self);
         }
-        Ok(values)
+        Ok(input)
     }
 }
 
