@@ -10,7 +10,7 @@ use ::syn::{
 
 use crate::{
     array_expr::{
-        function::{Call, Function},
+        function::{Call, Function, ToCallable},
         input::Input,
         value_array::ValueArray,
     },
@@ -91,7 +91,7 @@ impl ArrayExpr {
         }
 
         for (_, f) in chain {
-            values = f.call(values)?;
+            values = f.to_callable().call(values)?;
         }
 
         Ok(values)
