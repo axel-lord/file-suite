@@ -105,10 +105,16 @@ impl Value {
         self
     }
 
-    /// Set the string content of Value.
+    /// Set the string content of value.
     pub fn set_content(&mut self, content: String) -> &mut Self {
         self.content = content;
         self
+    }
+
+    /// Replace content of value, returning old content.
+    #[inline]
+    pub const fn replace_content(&mut self, content: String) -> String {
+        ::std::mem::replace(&mut self.content, content)
     }
 
     /// Get the type used for output.
