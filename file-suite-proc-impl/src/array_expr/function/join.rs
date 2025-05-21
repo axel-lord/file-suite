@@ -11,7 +11,6 @@ use crate::{
     util::{
         MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
     },
-    value::Value,
 };
 
 #[doc(hidden)]

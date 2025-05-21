@@ -72,12 +72,12 @@ where
 #[macro_export]
 macro_rules! any_of {
     ($nm:ident: $($ty:ident)+) => {
-        $crate::kebab_paste! {
+        $crate::array_expr_paste! {
 
-        #[doc = --!( "Value that may be one of " --!( $($ty)* -> str[count]) " types." -> str)]
+        #[doc = ++!( "Value that may be one of " ( $($ty)* -> .count.ty(str)) " types." -> .join.ty(str))]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum $nm<$($ty),*> {$(
-            #[doc = --!( "Value has type " $ty "." -> str)]
+            #[doc = ++!( "Value has type " $ty "." -> .join.ty(str))]
             $ty($ty),
         )*}
 

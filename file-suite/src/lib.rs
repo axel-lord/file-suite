@@ -6,7 +6,7 @@ use ::clap::{Args, Parser, Subcommand, ValueEnum};
 use ::color_eyre::Report;
 use ::completions_cli::CompletionConfig;
 use ::file_suite_common::{Run, Start, startable};
-use ::file_suite_proc::kebab_paste;
+use ::file_suite_proc::array_expr_paste;
 
 subcmd!(generate_keyfile, compile_nested, path_is_utf8, pipe_size);
 
@@ -50,7 +50,7 @@ macro_rules! subcmd {
         #[doc = "Modules to allow logging for."]
         pub const MODULES: &[&str] = &["file_suite" $(, stringify!($mod))*];
 
-        kebab_paste! {
+        array_expr_paste! {
 
         #[doc = "Get cli and used modules from tool name."]
         pub fn get_cli(name: &str) -> (fn() -> &'static dyn Start, &'static [&'static str]) {
@@ -60,7 +60,7 @@ macro_rules! subcmd {
             }
             match name {
                 $(
-                --!($mod[snake] -> str[kebab]) => (|| startable::<::$mod::Cli>(), &[--!($mod -> str)]),
+                ++!($mod -> .split(snake).join(kebab).ty(str)) => (|| startable::<::$mod::Cli>(), &[++!($mod -> .ty(str))]),
                 )*
                 _ => (|| startable::<$crate::Cli>(), MODULES),
             }
@@ -73,7 +73,7 @@ macro_rules! subcmd {
             #[doc = "generate completions for a tool."]
             Completions(CmpSubcmd),
             $(
-            --!($mod[snake] -> [pascal])(::$mod::Cli),
+            ++!($mod -> .split(snake).case(pascal).join.ty(ident))(::$mod::Cli),
             )*
         }
 
@@ -83,7 +83,7 @@ macro_rules! subcmd {
             #[default]
             FileSuite,
             $(
-            --!($mod [snake] -> [pascal]),
+            ++!($mod -> .split(snake).case(pascal).join.ty(ident)),
             )*
         }
 
@@ -93,7 +93,7 @@ macro_rules! subcmd {
                 match self {
                     Self::FileSuite => startable::<Cli>(),
                     $(
-                    Self::  --!($mod [snake] -> [pascal]) => startable::<::$mod::Cli>(),
+                    Self::  ++!($mod -> .split(snake).case(pascal).join.ty(ident)) => startable::<::$mod::Cli>(),
                     )*
                 }
             }
@@ -103,7 +103,7 @@ macro_rules! subcmd {
                 match self {
                     Self::FileSuite => "file_suite",
                     $(
-                    Self:: --!($mod [snake] -> [pascal]) => --!($mod -> str),
+                    Self:: ++!($mod -> .split(snake).case(pascal).join.ty(ident)) => ++!($mod -> .ty(str)),
                     )*
                 }
             }
