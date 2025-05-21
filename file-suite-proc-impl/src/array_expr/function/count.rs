@@ -4,7 +4,10 @@ use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 
 use crate::{
-    array_expr::{function::Call, value_array::ValueArray},
+    array_expr::{
+        function::{Call, ToCallable},
+        value_array::ValueArray,
+    },
     util::{MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse, macro_delimited},
     value::{TyKind, Value},
 };
@@ -25,7 +28,19 @@ pub struct Count {
     delim: Option<MacroDelimiter>,
 }
 
-impl Call for Count {
+impl ToCallable for Count {
+    type Call = CountCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        CountCallable
+    }
+}
+
+/// [Call] implementor for [Count].
+#[derive(Debug, Clone, Copy)]
+pub struct CountCallable;
+
+impl Call for CountCallable {
     fn call(
         &self,
         input: crate::array_expr::value_array::ValueArray,
