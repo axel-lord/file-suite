@@ -5,7 +5,7 @@ use ::syn::{LitChar, LitStr, MacroDelimiter, parse::End};
 
 use crate::{
     array_expr::{
-        function::{Call, spec_impl},
+        function::{Call, ToCallable, spec_impl},
         value_array::ValueArray,
     },
     util::{
@@ -60,41 +60,51 @@ pub struct Join {
     spec: Option<Spec>,
 }
 
-/// Join array of values by `sep`.
-fn join_values(values: ValueArray, sep: &str) -> ValueArray {
-    values.join_by_str(sep)
+/// [Call] implementor for [Join].
+#[derive(Debug, Clone)]
+pub enum JoinCallable {
+    /// Join by a string.
+    Str(String),
+    /// Join by a char.
+    Char(char),
+    /// Join according to keyword.
+    Kw(SpecKwKind),
 }
 
-impl Call for SpecKwKind {
-    fn call(&self, values: ValueArray) -> syn::Result<ValueArray> {
+impl Call for JoinCallable {
+    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
         Ok(match self {
-            SpecKwKind::concat => join_values(values, ""),
-            SpecKwKind::kebab => join_values(values, "-"),
-            SpecKwKind::snake => join_values(values, "_"),
-            SpecKwKind::path => join_values(values, "::"),
-            SpecKwKind::space => join_values(values, " "),
-            SpecKwKind::dot => join_values(values, "."),
+            JoinCallable::Str(sep) => input.join_by_str(sep),
+            JoinCallable::Char(sep) => {
+                let mut buf = [0u8; 4];
+                let sep = sep.encode_utf8(&mut buf) as &str;
+                input.join_by_str(sep)
+            }
+            JoinCallable::Kw(kind) => match kind {
+                SpecKwKind::concat => input.join_by_str(""),
+                SpecKwKind::kebab => input.join_by_str("-"),
+                SpecKwKind::snake => input.join_by_str("_"),
+                SpecKwKind::path => input.join_by_str("::"),
+                SpecKwKind::space => input.join_by_str(" "),
+                SpecKwKind::dot => input.join_by_str("."),
+            },
         })
     }
 }
 
-impl Call for Join {
-    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
-        let Some(spec) = self.spec.as_ref() else {
-            return SpecKwKind::default().call(input);
+impl ToCallable for Join {
+    type Call = JoinCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        let Some(spec) = &self.spec else {
+            return JoinCallable::Kw(SpecKwKind::concat);
         };
 
-        Ok(match spec {
-            Spec::Str(lit_str) => join_values(input, &lit_str.value()),
-            Spec::Char(lit_char) => {
-                let sep = lit_char.value();
-                let mut buf = [0u8; 4];
-                let sep = sep.encode_utf8(&mut buf) as &str;
-
-                join_values(input, sep)
-            }
-            Spec::Kw(spec_kw) => return spec_kw.kind.call(input),
-        })
+        match spec {
+            Spec::Str(lit_str) => JoinCallable::Str(lit_str.value()),
+            Spec::Char(lit_char) => JoinCallable::Char(lit_char.value()),
+            Spec::Kw(spec_kw) => JoinCallable::Kw(spec_kw.kind),
+        }
     }
 }
 
