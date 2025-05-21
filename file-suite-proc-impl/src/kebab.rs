@@ -73,12 +73,12 @@ fn kebab_inner(input: ParseStream) -> ::syn::Result<Vec<Value>> {
         .or_else(|| kebab_input.default_ty())
         .unwrap_or_default();
 
-    let mut joined = combine.join(case.apply(kebab_input.split_args()));
+    let mut joined = combine.join(case.apply(kebab_input.split_args()).into());
     for value in &mut joined {
         value.set_ty(ty);
     }
 
-    Ok(joined)
+    Ok(joined.into())
 }
 
 #[cfg(test)]

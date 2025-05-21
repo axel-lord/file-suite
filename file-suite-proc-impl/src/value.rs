@@ -40,7 +40,7 @@ pub struct ValueTyEq<'a>(&'a Value);
 impl PartialEq<ValueTyEq<'_>> for ValueTyEq<'_> {
     #[inline]
     fn eq(&self, other: &ValueTyEq) -> bool {
-        self.0.value == other.0.value && self.0.ty == other.0.ty
+        self.0.content == other.0.content && self.0.ty == other.0.ty
     }
 }
 
@@ -66,7 +66,7 @@ impl PartialEq<Value> for ValueTyEq<'_> {
 #[derive(Debug, Clone, Default)]
 pub struct Value {
     /// String representation of value.
-    value: String,
+    content: String,
     /// Any spans of value.
     span: Option<Span>,
     /// Requested type of value.
@@ -74,6 +74,15 @@ pub struct Value {
 }
 
 impl Value {
+    /// Construct a new value with given content, and a type of [TyKind::str].
+    pub const fn with_content(content: String) -> Self {
+        Self {
+            content,
+            ty: TyKind::str,
+            span: None,
+        }
+    }
+
     /// Match type from other.
     pub fn with_ty_of(self, other: &Value) -> Self {
         Self {
@@ -93,6 +102,12 @@ impl Value {
     /// Set  the type used for output.
     pub const fn set_ty(&mut self, ty: TyKind) -> &mut Self {
         self.ty = ty;
+        self
+    }
+
+    /// Set the string content of Value.
+    pub fn set_content(&mut self, content: String) -> &mut Self {
+        self.content = content;
         self
     }
 
@@ -132,7 +147,7 @@ impl Value {
     /// Create a new ident value.
     pub const fn new_ident(i: String) -> Self {
         Self {
-            value: i,
+            content: i,
             span: None,
             ty: TyKind::ident,
         }
@@ -141,7 +156,7 @@ impl Value {
     /// Create a new string literal value.
     pub const fn new_str(i: String) -> Self {
         Self {
-            value: i,
+            content: i,
             span: None,
             ty: TyKind::str,
         }
@@ -150,7 +165,7 @@ impl Value {
     /// Create a new integer literal value.
     pub fn new_int(i: isize) -> Self {
         Self {
-            value: i.to_string(),
+            content: i.to_string(),
             span: None,
             ty: TyKind::int,
         }
@@ -158,15 +173,15 @@ impl Value {
 
     /// get value as a string slice.
     pub const fn as_str(&self) -> &str {
-        self.value.as_str()
+        self.content.as_str()
     }
 
     /// Run a remapping function on value, keeping any spans and type.
-    pub fn remap_value<M>(&mut self, mut m: M)
+    pub fn remap_value<M>(&mut self, m: M)
     where
-        M: FnMut(String) -> String,
+        M: FnOnce(String) -> String,
     {
-        self.value = m(::std::mem::take(&mut self.value));
+        self.content = m(::std::mem::take(&mut self.content));
     }
 
     /// Convert into a [TypedValue].
@@ -175,40 +190,6 @@ impl Value {
     /// If the value and type are not compatible.
     pub fn try_to_typed(&self) -> ::syn::Result<TypedValue> {
         self.try_into()
-    }
-
-    /// Helper to join a set of values, keeping spans.
-    pub fn join<J>(values: ValueArray, j: J) -> Self
-    where
-        J: FnOnce(ValueArray) -> String,
-    {
-        let mut value = Self::default();
-        for v in &values {
-            if let Some(span) = v.span() {
-                value.push_span(span);
-            }
-        }
-        value.value = j(values);
-
-        value
-    }
-
-    /// Helper to split a set of values.
-    pub fn split<S>(values: &[Self], mut s: S) -> ValueArray
-    where
-        S: for<'a> FnMut(&'a str) -> Vec<String>,
-    {
-        let mut out = Vec::new();
-        for value in values {
-            let ty = value.ty;
-            let span = value.span;
-            let values = s(value);
-            let mapper = |value| Self { ty, span, value };
-
-            out.reserve(values.len());
-            out.extend(values.into_iter().map(mapper));
-        }
-        out.into()
     }
 }
 
@@ -234,14 +215,14 @@ impl Borrow<str> for Value {
 
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.value, f)
+        Display::fmt(&self.content, f)
     }
 }
 
 impl From<String> for Value {
     fn from(value: String) -> Self {
         Self {
-            value,
+            content: value,
             span: None,
             ty: TyKind::str,
         }
@@ -250,7 +231,7 @@ impl From<String> for Value {
 
 impl From<Value> for String {
     fn from(value: Value) -> Self {
-        value.value
+        value.content
     }
 }
 
@@ -259,7 +240,7 @@ impl TryFrom<&LitInt> for Value {
 
     fn try_from(value: &LitInt) -> Result<Self, Self::Error> {
         Ok(Self {
-            value: value.base10_parse::<isize>()?.to_string(),
+            content: value.base10_parse::<isize>()?.to_string(),
             span: Some(value.span()),
             ty: TyKind::int,
         })
@@ -275,7 +256,7 @@ impl From<&Ident> for Value {
             }
         }
         Self {
-            value: Wrap(value).to_string(),
+            content: Wrap(value).to_string(),
             span: Some(value.span()),
             ty: TyKind::ident,
         }
@@ -285,7 +266,7 @@ impl From<&Ident> for Value {
 impl From<&LitStr> for Value {
     fn from(value: &LitStr) -> Self {
         Self {
-            value: value.value(),
+            content: value.value(),
             span: Some(value.span()),
             ty: TyKind::str,
         }
@@ -297,7 +278,7 @@ impl From<&LitBool> for Value {
         let LitBool { value, span } = value;
 
         Self {
-            value: value.to_string(),
+            content: value.to_string(),
             span: Some(*span),
             ty: TyKind::bool,
         }

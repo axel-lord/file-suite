@@ -6,6 +6,8 @@ use ::std::{
     option, slice, vec,
 };
 
+use ::proc_macro2::Span;
+
 use crate::value::Value;
 
 /// An array of values.
@@ -50,6 +52,68 @@ impl ValueArray {
     /// Creat a new instance from a vec of values.
     pub const fn from_vec(value: Vec<Value>) -> Self {
         Self::new_inner(ValueArrayInner::Vec(value))
+    }
+
+    /// Join a ValueArray by a string slice.
+    pub fn join_by_str(self, sep: &str) -> Self {
+        if self.len() <= 1 {
+            return self;
+        }
+
+        let mut value = Value::default();
+        if let Some(last) = self.last() {
+            value.set_ty(last.ty());
+        }
+
+        for span in self.iter().filter_map(Value::span) {
+            value.push_span(span);
+        }
+
+        value.set_content(self.join(sep));
+
+        Self::from_value(value)
+    }
+
+    /// Split a ValueArray by a string slice.
+    pub fn split_by_str(&self, pat: &str) -> Self {
+        if self.is_empty() {
+            return ValueArray::new();
+        }
+
+        let mut vec = Vec::with_capacity(self.len());
+
+        for value in self {
+            for content in value.split(pat) {
+                vec.push(
+                    Value::with_content(content.into())
+                        .with_span_of(value)
+                        .with_ty_of(value),
+                );
+            }
+        }
+
+        Self::from_vec(vec)
+    }
+
+    /// Get combined (if any, or possible) span of values.
+    pub fn span(&self) -> Option<Span> {
+        let mut span = None;
+
+        for value in self {
+            let Some(new_span) = value.span() else {
+                continue;
+            };
+            let Some(current_span) = span else {
+                span = Some(new_span);
+                continue;
+            };
+            let Some(joined) = current_span.join(new_span) else {
+                continue;
+            };
+            span = Some(joined);
+        }
+
+        span
     }
 
     /// Converts internals to a [Vec] and returns a mutable

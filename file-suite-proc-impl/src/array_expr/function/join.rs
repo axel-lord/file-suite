@@ -63,7 +63,7 @@ pub struct Join {
 
 /// Join array of values by `sep`.
 fn join_values(values: ValueArray, sep: &str) -> ValueArray {
-    ValueArray::from_value(Value::join(values, |value| value.join(sep)))
+    values.join_by_str(sep)
 }
 
 impl Call for SpecKwKind {

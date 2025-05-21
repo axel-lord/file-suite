@@ -77,31 +77,27 @@ kw_kind!(
 
 impl CombineKeywordKind {
     /// Join input arguments.
-    pub fn join(self, values: Vec<Value>) -> Vec<Value> {
-        if matches!(self, CombineKeywordKind::split) {
-            values
-        } else {
-            vec![Value::join(
-                ValueArray::from_vec(values),
-                |values| match self {
-                    Self::concat => values.join(""),
-                    Self::kebab => values.join("-"),
-                    Self::snake => values.join("_"),
-                    Self::space => values.join(" "),
-                    Self::count => values.len().to_string(),
-                    Self::first => values
-                        .into_iter()
-                        .next()
-                        .map(String::from)
-                        .unwrap_or_default(),
-                    Self::last => values
-                        .into_iter()
-                        .next_back()
-                        .map(String::from)
-                        .unwrap_or_default(),
-                    Self::split => unreachable!(),
-                },
-            )]
+    pub fn join(self, values: ValueArray) -> ValueArray {
+        match self {
+            CombineKeywordKind::concat => values.join_by_str(""),
+            CombineKeywordKind::kebab => values.join_by_str("-"),
+            CombineKeywordKind::snake => values.join_by_str("_"),
+            CombineKeywordKind::space => values.join_by_str(" "),
+            CombineKeywordKind::count => {
+                let mut value = Value::new_int(
+                    values
+                        .len()
+                        .try_into()
+                        .expect("any array length should fit in an isize"),
+                );
+                if let Some(span) = values.span() {
+                    value.set_span(span);
+                }
+                ValueArray::from_value(value)
+            }
+            CombineKeywordKind::first => values.first().cloned().unwrap_or_default().into(),
+            CombineKeywordKind::last => values.last().cloned().unwrap_or_default().into(),
+            CombineKeywordKind::split => values,
         }
     }
 
