@@ -1,6 +1,6 @@
 //! [Split] impl.
 use ::quote::ToTokens;
-use ::syn::{LitChar, LitStr, MacroDelimiter};
+use ::syn::{LitChar, LitStr};
 
 use crate::{
     array_expr::{
@@ -8,7 +8,9 @@ use crate::{
         value_array::ValueArray,
     },
     util::{
-        MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
+        group_help::GroupSingle,
+        kw_kind,
+        lookahead_parse::{LookaheadParse, ParseWrap},
     },
     value::Value,
 };
@@ -54,10 +56,8 @@ spec_impl!(
 pub struct Split {
     /// Split keyword
     kw: kw::split,
-    /// Delim for spec.
-    delim: MacroDelimiter,
     /// Specification for to split value
-    spec: Spec,
+    spec: GroupSingle<ParseWrap<Spec>>,
 }
 
 /// [Call] implementor for split.
@@ -75,7 +75,7 @@ impl ToCallable for Split {
     type Call = SplitCallable;
 
     fn to_callable(&self) -> Self::Call {
-        match &self.spec {
+        match &self.spec.content.0 {
             Spec::Str(lit_str) => SplitCallable::Str(lit_str.value()),
             Spec::Char(lit_char) => SplitCallable::Char(lit_char.value()),
             Spec::Kw(spec_kw) => SplitCallable::Kw(spec_kw.kind),
@@ -154,16 +154,10 @@ impl LookaheadParse for Split {
         lookahead
             .peek(kw::split)
             .then(|| {
-                let content;
-                let value = Self {
+                Ok(Self {
                     kw: input.parse()?,
-                    delim: macro_delimited!(content in input),
-                    spec: content.call(Spec::parse)?,
-                };
-
-                ensure_empty(&content)?;
-
-                Ok(value)
+                    spec: input.call(LookaheadParse::parse)?,
+                })
             })
             .transpose()
     }
@@ -171,8 +165,8 @@ impl LookaheadParse for Split {
 
 impl ToTokens for Split {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { kw, delim, spec } = self;
+        let Self { kw, spec } = self;
         kw.to_tokens(tokens);
-        delim.surround(tokens, |tokens| spec.to_tokens(tokens));
+        spec.to_tokens(tokens);
     }
 }

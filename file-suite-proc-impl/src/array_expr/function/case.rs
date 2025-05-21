@@ -1,7 +1,6 @@
 //! [Case] impl.
 
 use ::quote::ToTokens;
-use ::syn::MacroDelimiter;
 
 use crate::{
     array_expr::{
@@ -9,7 +8,9 @@ use crate::{
         value_array::ValueArray,
     },
     util::{
-        MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
+        group_help::GroupSingle,
+        kw_kind,
+        lookahead_parse::{LookaheadParse, ParseWrap},
     },
 };
 #[doc(hidden)]
@@ -37,17 +38,15 @@ kw_kind!(
 pub struct Case {
     /// Case keyword.
     kw: kw::case,
-    /// Delim for spec.
-    delim: MacroDelimiter,
     /// Specification for which case to apply.
-    spec: Spec,
+    spec: GroupSingle<ParseWrap<Spec>>,
 }
 
 impl ToCallable for Case {
     type Call = SpecKind;
 
     fn to_callable(&self) -> Self::Call {
-        self.spec.kind
+        self.spec.content.0.kind
     }
 }
 
@@ -118,16 +117,10 @@ impl LookaheadParse for Case {
         lookahead
             .peek(kw::case)
             .then(|| {
-                let content;
-                let value = Self {
+                Ok(Self {
                     kw: input.parse()?,
-                    delim: macro_delimited!(content in input),
-                    spec: content.call(Spec::parse)?,
-                };
-
-                ensure_empty(&content)?;
-
-                Ok(value)
+                    spec: input.call(LookaheadParse::parse)?,
+                })
             })
             .transpose()
     }
@@ -135,8 +128,8 @@ impl LookaheadParse for Case {
 
 impl ToTokens for Case {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { kw, delim, spec } = self;
+        let Self { kw, spec } = self;
         kw.to_tokens(tokens);
-        delim.surround(tokens, |tokens| spec.to_tokens(tokens));
+        spec.to_tokens(tokens);
     }
 }

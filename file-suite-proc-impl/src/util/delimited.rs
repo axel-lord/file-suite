@@ -36,9 +36,10 @@ impl MacroDelimExt for MacroDelimiter {
 }
 
 /// Parse a set of delimiters, brackets, braces or paren and expose their content.
+#[macro_export]
 macro_rules! macro_delimited {
     ($content:ident in $cursor:expr) => {{
-        let lookahead = $cursor.lookahead1();
+        let lookahead = ::syn::parse::ParseBuffer::lookahead1($cursor);
         if lookahead.peek(::syn::token::Bracket) {
             ::syn::MacroDelimiter::Bracket(::syn::bracketed! ( $content in $cursor ))
         } else if lookahead.peek(::syn::token::Brace) {
@@ -46,7 +47,7 @@ macro_rules! macro_delimited {
         } else if lookahead.peek(::syn::token::Paren) {
             ::syn::MacroDelimiter::Paren(::syn::parenthesized! ( $content in $cursor ))
         } else {
-            return ::core::result::Result::Err(lookahead.error());
+            return ::core::result::Result::Err(::syn::parse::Lookahead1::error(lookahead));
         }
     }};
 }
@@ -56,4 +57,3 @@ use ::syn::{
     parse::{Lookahead1, ParseStream},
     token::{Brace, Bracket, Paren},
 };
-pub(crate) use macro_delimited;
