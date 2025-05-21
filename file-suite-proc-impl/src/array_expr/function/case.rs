@@ -4,7 +4,10 @@ use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 
 use crate::{
-    array_expr::{function::Call, value_array::ValueArray},
+    array_expr::{
+        function::{Call, ToCallable},
+        value_array::ValueArray,
+    },
     util::{
         MacroDelimExt, ensure_empty, kw_kind, lookahead_parse::LookaheadParse, macro_delimited,
     },
@@ -40,51 +43,71 @@ pub struct Case {
     spec: Spec,
 }
 
+impl ToCallable for Case {
+    type Call = SpecKind;
+
+    fn to_callable(&self) -> Self::Call {
+        self.spec.kind
+    }
+}
+
+impl Call for SpecKind {
+    fn call(&self, mut input: ValueArray) -> syn::Result<ValueArray> {
+        match self {
+            SpecKind::pascal => {
+                for value in &mut input {
+                    let mut capitalized = capitalize(value);
+                    capitalized.shrink_to_fit();
+                    value.set_content(capitalized);
+                }
+
+                Ok(input)
+            }
+            SpecKind::camel => {
+                let mut values = input.iter_mut();
+
+                if let Some(first) = values.next() {
+                    first.set_content(first.to_lowercase());
+                }
+
+                for value in values {
+                    value.set_content(capitalize(value));
+                }
+
+                Ok(input)
+            }
+            SpecKind::upper => {
+                for value in &mut input {
+                    value.set_content(value.to_uppercase());
+                }
+
+                Ok(input)
+            }
+            SpecKind::lower => {
+                for value in &mut input {
+                    value.set_content(value.to_lowercase());
+                }
+
+                Ok(input)
+            }
+        }
+    }
+}
+
 /// Get capitalized version of a string slice.
 fn capitalize(value: &str) -> String {
     let mut chars = value.chars();
-    chars
-        .next()
-        .map(|first| first.to_uppercase())
-        .into_iter()
-        .flatten()
-        .chain(chars.flat_map(char::to_lowercase))
-        .collect()
-}
+    let mut capitalized = String::with_capacity(value.len());
 
-impl Call for Case {
-    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
-        let mut values = input;
-        match self.spec.kind {
-            SpecKind::pascal => {
-                for value in &mut values {
-                    value.remap_value(|v| capitalize(&v));
-                }
-            }
-
-            SpecKind::camel => {
-                let mut values = values.iter_mut();
-                if let Some(first) = values.next() {
-                    first.remap_value(|value| value.to_lowercase());
-                }
-                for value in values {
-                    value.remap_value(|value| capitalize(&value));
-                }
-            }
-            SpecKind::upper => {
-                for value in &mut values {
-                    value.remap_value(|value| value.to_uppercase());
-                }
-            }
-            SpecKind::lower => {
-                for value in &mut values {
-                    value.remap_value(|value| value.to_lowercase());
-                }
-            }
-        }
-
-        Ok(values)
+    if let Some(first) = chars.next() {
+        capitalized.extend(first.to_uppercase());
     }
+
+    for chr in chars {
+        capitalized.extend(chr.to_lowercase());
+    }
+
+    capitalized
 }
 
 impl LookaheadParse for Case {
