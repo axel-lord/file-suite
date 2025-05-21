@@ -9,8 +9,6 @@ use crate::{
     util::fold_tokens::fold_token_stream,
 };
 
-mod kebab;
-
 mod run;
 
 pub mod array_expr;
@@ -20,22 +18,6 @@ pub mod util;
 pub mod value;
 
 pub mod typed_value;
-
-/// Convert between cases, for strings and identifiers.
-///
-/// # Errors
-/// If given invalid input, be it illegal literals or the wrong pattern.
-pub fn kebab(input: TokenStream) -> ::syn::Result<TokenStream> {
-    kebab::parse_kebab.parse2(input)
-}
-
-/// Find kebab expressions in input tokens and replace them with kebabed result.
-///
-/// # Errors
-/// If the kebab expressions are malformed.
-pub fn kebab_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
-    kebab::kebab_paste(input)
-}
 
 /// Find array expression in input tokens and compute them, replacing them with their result.
 ///

@@ -3,7 +3,7 @@
 use ::std::{fmt::Display, fs::File, io::BufWriter};
 
 use ::clap::{Args, ValueEnum, builder::PossibleValue};
-use ::file_suite_proc::kebab_paste;
+use ::file_suite_proc::array_expr_paste;
 use ::patharg::OutputArg;
 
 /// Cli options to configure logging.
@@ -96,10 +96,10 @@ impl_value_enum!(
 /// Implement Display and ValueEnum for LogLevel.
 macro_rules! impl_value_enum {
     ($nm:ident($ty:ty), $($var:ident),*) => {
-        kebab_paste! {
+        array_expr_paste! {
 
         impl $nm {
-            #[doc = --!("Convert to internal [" --!(! $ty) "]" -> str)]
+            #[doc = ++!("Convert to internal [" (! $ty) "]" -> .join.ty(str))]
             pub const fn into_inner(self) -> $ty {
                 self.0
             }
@@ -115,7 +115,7 @@ macro_rules! impl_value_enum {
             fn to_possible_value(&self) -> Option<PossibleValue> {
                 Some(match self.0 {$(
                     $ty::$var => PossibleValue::new(stringify!($var)).aliases([
-                        --!($var -> str[lower]), --!($var -> str[upper])
+                        ++!($var -> .case(lower).ty(str)), ++!($var -> .case(upper).ty(str))
                     ]),
                 )*})
             }

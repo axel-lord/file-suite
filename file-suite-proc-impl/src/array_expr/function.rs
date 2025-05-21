@@ -2,7 +2,7 @@
 
 use ::std::fmt::Debug;
 
-use crate::array_expr::value_array::ValueArray;
+use crate::array_expr::{function::count::Count, value_array::ValueArray};
 
 pub use crate::array_expr::function::{
     case::Case, enumerate::Enumerate, join::Join, rev::Rev, split::Split, ty::Type,
@@ -19,6 +19,8 @@ mod ty;
 mod rev;
 
 mod enumerate;
+
+mod count;
 
 /// Trait for functions which may transform a vec of values.
 pub trait Call {
@@ -45,6 +47,8 @@ function_enum!(
         Enumerate(Enumerate),
         /// Reverse array.
         Rev(Rev),
+        /// Count array elements.
+        Count(Count),
     }
 );
 

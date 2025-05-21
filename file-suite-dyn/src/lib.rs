@@ -7,7 +7,7 @@ pub mod any_of;
 extern crate alloc;
 
 #[doc(hidden)]
-pub use ::file_suite_proc::kebab_paste;
+pub use ::file_suite_proc::array_expr_paste;
 
 #[doc(hidden)]
 pub use alloc::boxed::Box;
