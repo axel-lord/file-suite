@@ -22,6 +22,27 @@ mod enumerate;
 
 mod count;
 
+/// Trait for items which may be converted to a [Call] implementor.
+pub trait ToCallable {
+    /// Callable to convert into.
+    type Call: Call;
+
+    /// Convert to a callable.
+    fn to_callable(&self) -> Self::Call;
+}
+
+impl<C> ToCallable for C
+where
+    C: Call + Clone,
+{
+    type Call = Self;
+
+    #[inline]
+    fn to_callable(&self) -> Self::Call {
+        self.clone()
+    }
+}
+
 /// Trait for functions which may transform a vec of values.
 pub trait Call {
     /// Transform the passed input.
@@ -67,16 +88,33 @@ macro_rules! function_enum {
             $vnm($( #[$($vtyattr)*] )*$vty),
         )*}
 
-        impl Call for $nm {
-            fn call(
-                &self,
-                input: $crate::array_expr::value_array::ValueArray
-            ) -> ::syn::Result<$crate::array_expr::value_array::ValueArray> {
-                match self {$(
-                    Self::$vnm(value) => <$vty as Call>::call(value, input),
-                )*}
+        const _: () = {
+            #[derive(Debug, Clone)]
+            pub enum Callable {$(
+                $vnm(<$vty as ToCallable>::Call),
+            )*}
+
+            impl ToCallable for $nm {
+                type Call = Callable;
+
+                fn to_callable(&self) -> Self::Call {
+                    match self {$(
+                        Self::$vnm(value) => Callable::$vnm(<$vty as ToCallable>::to_callable(value)),
+                    )*}
+                }
             }
-        }
+
+            impl Call for Callable {
+                fn call(
+                    &self,
+                    input: $crate::array_expr::value_array::ValueArray
+                ) -> ::syn::Result<$crate::array_expr::value_array::ValueArray> {
+                    match self {$(
+                        Self::$vnm(value) => <$vty as ToCallable>::Call::call(value, input),
+                    )*}
+                }
+            }
+        };
 
         $crate::to_tokens_enum!($nm { $( $vnm($vty) ),* });
         $crate::lookahead_parse_enum!($nm { $( $vnm($vty) ),* });
