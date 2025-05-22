@@ -1,4 +1,6 @@
 //! [split] impl.
+use std::borrow::Cow;
+
 use ::syn::{LitChar, LitStr};
 
 use crate::{
@@ -73,7 +75,7 @@ impl ToCallable for split {
 }
 
 impl Call for SplitCallable {
-    fn call(&self, values: ValueArray) -> syn::Result<ValueArray> {
+    fn call(&self, values: ValueArray) -> Result<ValueArray, Cow<'static, str>> {
         Ok(match self {
             Self::Str(pat) => values.split_by_str(pat),
             Self::Char(pat) => {

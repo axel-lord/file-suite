@@ -1,5 +1,7 @@
 //! [enumerate] impl.
 
+use std::borrow::Cow;
+
 use ::proc_macro2::{Literal, Span};
 use ::quote::{ToTokens, TokenStreamExt};
 use ::syn::{LitInt, parse::Parse};
@@ -46,24 +48,18 @@ pub struct EnumerateCallable {
 }
 
 impl Call for EnumerateCallable {
-    fn call(&self, input: ValueArray) -> syn::Result<ValueArray> {
+    fn call(&self, input: ValueArray) -> Result<ValueArray, Cow<'static, str>> {
         let mut offset = self.offset;
 
         let mut output = Vec::with_capacity(input.len().checked_mul(2).ok_or_else(|| {
-            ::syn::Error::new(
-                input.span().unwrap_or_else(Span::call_site),
-                format!(
-                    "value array length should be multipliable by 2, is {}",
-                    input.len()
-                ),
-            )
+            Cow::Owned(format!(
+                "value array length should be multipliable by 2, is {}",
+                input.len()
+            ))
         })?);
         for value in input {
             let next_offset = offset.checked_add(1).ok_or_else(|| {
-                ::syn::Error::new(
-                    value.span().unwrap_or_else(Span::call_site),
-                    format!("offset should not exceed isize::MAX, is {offset}"),
-                )
+                Cow::Owned(format!("offset should not exceed isize::MAX, is {offset}"))
             })?;
 
             output.push(Value::new_int(offset).with_span_of(&value));
