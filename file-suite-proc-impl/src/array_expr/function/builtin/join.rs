@@ -1,33 +1,21 @@
-//! [Join] impl.
+//! [join] impl.
 
-use ::quote::ToTokens;
 use ::syn::{LitChar, LitStr};
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, spec_impl},
+        function::{Call, ToCallable, function_struct, spec_impl},
         value_array::ValueArray,
     },
-    util::{
-        group_help::GroupOption,
-        kw_kind,
-        lookahead_parse::{LookaheadParse, ParseWrap},
-    },
+    util::{group_help::GroupOption, kw_kind, lookahead_parse::ParseWrap},
 };
-
-#[doc(hidden)]
-mod kw {
-    use ::syn::custom_keyword;
-
-    custom_keyword!(join);
-}
 
 kw_kind!(
     /// Keyword specified join.
     SpecKw;
     /// Enum of possible values for [SpecKw].
     #[expect(non_camel_case_types)]
-    SpecKwKind: Default {
+    JoinKind: Default {
         #[default]
         concat,
         kebab,
@@ -51,14 +39,17 @@ spec_impl!(
     }
 );
 
-/// Join input.
-#[derive(Debug, Clone)]
-pub struct Join {
-    /// Join keyword.
-    kw: kw::join,
-    /// Specification for how to join values.
-    spec: Option<GroupOption<ParseWrap<Spec>>>,
-}
+function_struct!(
+    /// Join input.
+    #[derive(Debug, Clone)]
+    #[expect(non_camel_case_types)]
+    join {
+        /// Specification for how to join values.
+        [optional] spec: Option<GroupOption<ParseWrap<Spec>>>,
+    }
+);
+
+// lookahead_parse_struct!(Join { kw: kw::join, [optional] spec: Option<GroupOption<ParseWrap<Spec>>> });
 
 /// [Call] implementor for [Join].
 #[derive(Debug, Clone)]
@@ -68,7 +59,7 @@ pub enum JoinCallable {
     /// Join by a char.
     Char(char),
     /// Join according to keyword.
-    Kw(SpecKwKind),
+    Kw(JoinKind),
 }
 
 impl Call for JoinCallable {
@@ -81,23 +72,23 @@ impl Call for JoinCallable {
                 input.join_by_str(sep)
             }
             JoinCallable::Kw(kind) => match kind {
-                SpecKwKind::concat => input.join_by_str(""),
-                SpecKwKind::kebab => input.join_by_str("-"),
-                SpecKwKind::snake => input.join_by_str("_"),
-                SpecKwKind::path => input.join_by_str("::"),
-                SpecKwKind::space => input.join_by_str(" "),
-                SpecKwKind::dot => input.join_by_str("."),
+                JoinKind::concat => input.join_by_str(""),
+                JoinKind::kebab => input.join_by_str("-"),
+                JoinKind::snake => input.join_by_str("_"),
+                JoinKind::path => input.join_by_str("::"),
+                JoinKind::space => input.join_by_str(" "),
+                JoinKind::dot => input.join_by_str("."),
             },
         })
     }
 }
 
-impl ToCallable for Join {
+impl ToCallable for join {
     type Call = JoinCallable;
 
     fn to_callable(&self) -> Self::Call {
         let Some(spec) = self.spec.as_ref().and_then(|spec| spec.content.as_ref()) else {
-            return JoinCallable::Kw(SpecKwKind::concat);
+            return JoinCallable::Kw(JoinKind::concat);
         };
 
         match &spec.0 {
@@ -105,30 +96,5 @@ impl ToCallable for Join {
             Spec::Char(lit_char) => JoinCallable::Char(lit_char.value()),
             Spec::Kw(spec_kw) => JoinCallable::Kw(spec_kw.kind),
         }
-    }
-}
-
-impl LookaheadParse for Join {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        lookahead
-            .peek(kw::join)
-            .then(|| {
-                Ok(Self {
-                    kw: input.parse()?,
-                    spec: input.call(LookaheadParse::optional_parse)?,
-                })
-            })
-            .transpose()
-    }
-}
-
-impl ToTokens for Join {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { kw, spec } = self;
-        kw.to_tokens(tokens);
-        spec.to_tokens(tokens);
     }
 }

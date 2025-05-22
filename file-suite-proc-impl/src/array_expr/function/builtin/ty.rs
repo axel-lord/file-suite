@@ -1,0 +1,37 @@
+//! [Ty] impl.
+
+use crate::{
+    array_expr::{
+        function::{Call, ToCallable, function_struct},
+        value_array::ValueArray,
+    },
+    util::{group_help::GroupSingle, lookahead_parse::ParseWrap},
+    value::{Ty, TyKind},
+};
+
+function_struct!(
+    /// Convert type of array.
+    #[derive(Debug, Clone)]
+    #[expect(non_camel_case_types)]
+    ty {
+        /// Specification for which type to apply.
+        ty: GroupSingle<ParseWrap<Ty>>,
+    }
+);
+
+impl ToCallable for ty {
+    type Call = TyKind;
+
+    fn to_callable(&self) -> Self::Call {
+        self.ty.content.0.kind
+    }
+}
+
+impl Call for TyKind {
+    fn call(&self, mut input: ValueArray) -> syn::Result<ValueArray> {
+        for value in &mut input {
+            value.set_ty(*self);
+        }
+        Ok(input)
+    }
+}

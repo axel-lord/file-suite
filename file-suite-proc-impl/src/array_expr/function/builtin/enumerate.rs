@@ -1,4 +1,4 @@
-//! [Enumerate] impl.
+//! [enumerate] impl.
 
 use ::proc_macro2::{Literal, Span};
 use ::quote::{ToTokens, TokenStreamExt};
@@ -6,58 +6,24 @@ use ::syn::{LitInt, parse::Parse};
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable},
+        function::{Call, ToCallable, function_struct},
         value_array::ValueArray,
     },
-    util::{group_help::GroupOption, lookahead_parse::LookaheadParse},
+    util::group_help::GroupOption,
     value::Value,
 };
 
-#[doc(hidden)]
-mod kw {
-    use ::syn::custom_keyword;
-
-    custom_keyword!(enumerate);
-}
-
-/// Offset value for enumeration.
-#[derive(Debug, Clone, Copy)]
-pub struct Offset {
-    /// Value of offset.
-    pub value: isize,
-    /// Span of offset.
-    pub span: Span,
-}
-
-impl Parse for Offset {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let lit_int = input.parse::<LitInt>()?;
-        Ok(Self {
-            value: lit_int.base10_parse()?,
-            span: lit_int.span(),
-        })
+function_struct!(
+    /// Enumerate array.
+    #[derive(Debug, Clone)]
+    #[expect(non_camel_case_types)]
+    enumerate {
+        /// Delim for spec,
+        [optional] offset: Option<GroupOption<Offset>>,
     }
-}
+);
 
-impl ToTokens for Offset {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { value, span } = *self;
-        let mut val = Literal::isize_unsuffixed(value);
-        val.set_span(span);
-        tokens.append(val);
-    }
-}
-
-/// Enumerate array.
-#[derive(Debug, Clone)]
-pub struct Enumerate {
-    /// Enumerate keyword
-    pub kw: kw::enumerate,
-    /// Delim for spec,
-    pub offset: Option<GroupOption<Offset>>,
-}
-
-impl ToCallable for Enumerate {
+impl ToCallable for enumerate {
     type Call = EnumerateCallable;
 
     fn to_callable(&self) -> Self::Call {
@@ -109,27 +75,30 @@ impl Call for EnumerateCallable {
     }
 }
 
-impl LookaheadParse for Enumerate {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        lookahead
-            .peek(kw::enumerate)
-            .then(|| {
-                let kw = input.parse()?;
-                let offset = input.call(LookaheadParse::optional_parse)?;
+/// Offset value for enumeration.
+#[derive(Debug, Clone, Copy)]
+pub struct Offset {
+    /// Value of offset.
+    pub value: isize,
+    /// Span of offset.
+    pub span: Span,
+}
 
-                Ok(Self { kw, offset })
-            })
-            .transpose()
+impl Parse for Offset {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lit_int = input.parse::<LitInt>()?;
+        Ok(Self {
+            value: lit_int.base10_parse()?,
+            span: lit_int.span(),
+        })
     }
 }
 
-impl ToTokens for Enumerate {
+impl ToTokens for Offset {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { kw, offset } = self;
-        kw.to_tokens(tokens);
-        offset.to_tokens(tokens);
+        let Self { value, span } = *self;
+        let mut val = Literal::isize_unsuffixed(value);
+        val.set_span(span);
+        tokens.append(val);
     }
 }

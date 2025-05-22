@@ -64,7 +64,60 @@ where
     }
 }
 
-/// Create an enum of [LookaheadParse] types, that itsels implements [LookaheadParse].
+/// Create keywords implementing [LookaheadParse].
+#[macro_export]
+macro_rules! lookahead_parse_keywords {
+    ($($kw:ident),* $(,)?) => {
+        #[doc(hidden)]
+        mod kw {$(
+            ::syn::custom_keyword!($kw);
+
+            impl $crate::util::lookahead_parse::LookaheadParse for $kw {
+                fn lookahead_parse(
+                    input: ::syn::parse::ParseStream,
+                    lookahead: &::syn::parse::Lookahead1
+                ) -> ::syn::Result<Option<Self>> {
+                    if lookahead.peek($kw) {
+                        Ok(Some(::syn::parse::ParseBuffer::parse::<$kw>(input)?))
+                    } else {
+                        Ok(None)
+                    }
+                }
+            }
+        )*}
+    };
+}
+
+/// Implement [LookaheadParse] for a struct with a leading value implementing [LookaheadParse].
+#[macro_export]
+macro_rules! lookahead_parse_struct {
+    ($name:ident {
+        $lnm:ident: $lty:ty
+    $(
+        , $([$attr:ident])? $fnm:ident: $fty:ty
+    )* $(,)?
+    }) => {
+        impl $crate::util::lookahead_parse::LookaheadParse for $name {
+            fn lookahead_parse(
+                input: ::syn::parse::ParseStream,
+                lookahead: &::syn::parse::Lookahead1,
+            ) -> ::syn::Result<Option<Self>> {
+                if let Some($lnm) = <$lty>::lookahead_parse(input, lookahead)? {
+                    $(
+                    let $fnm = $crate::lookahead_parse_struct!(@arm input, $fty $(, $attr)*);
+                    )*
+                    Ok(Some(Self { $lnm $(, $fnm)* }))
+                } else {
+                    Ok(None)
+                }
+            }
+        }
+    };
+    (@arm $input:expr, $ty:ty) => {{ <$ty>::parse($input)? }};
+    (@arm $input:expr, $ty:ty, optional) => {{ $crate::util::lookahead_parse::LookaheadParse::optional_parse($input)? }};
+}
+
+/// Create an enum of [LookaheadParse] types, that itself implements [LookaheadParse].
 #[macro_export]
 macro_rules! lookahead_parse_enum {
     (

@@ -1,26 +1,14 @@
-//! [Split] impl.
-use ::quote::ToTokens;
+//! [split] impl.
 use ::syn::{LitChar, LitStr};
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, spec_impl},
+        function::{Call, ToCallable, function_struct, spec_impl},
         value_array::ValueArray,
     },
-    util::{
-        group_help::GroupSingle,
-        kw_kind,
-        lookahead_parse::{LookaheadParse, ParseWrap},
-    },
+    util::{group_help::GroupSingle, kw_kind, lookahead_parse::ParseWrap},
     value::Value,
 };
-
-#[doc(hidden)]
-mod kw {
-    use ::syn::custom_keyword;
-
-    custom_keyword!(split);
-}
 
 kw_kind!(
     /// Keyword specified split
@@ -51,14 +39,15 @@ spec_impl!(
     }
 );
 
-/// Split input further.
-#[derive(Debug, Clone)]
-pub struct Split {
-    /// Split keyword
-    kw: kw::split,
-    /// Specification for to split value
-    spec: GroupSingle<ParseWrap<Spec>>,
-}
+function_struct!(
+    /// Split input further.
+    #[derive(Debug, Clone)]
+    #[expect(non_camel_case_types)]
+    split {
+        /// Specification for to split value
+        spec: GroupSingle<ParseWrap<Spec>>,
+    }
+);
 
 /// [Call] implementor for split.
 #[derive(Debug, Clone)]
@@ -71,7 +60,7 @@ pub enum SplitCallable {
     Kw(SpecKwKind),
 }
 
-impl ToCallable for Split {
+impl ToCallable for split {
     type Call = SplitCallable;
 
     fn to_callable(&self) -> Self::Call {
@@ -143,30 +132,5 @@ impl Call for SplitCallable {
                 SpecKwKind::dot => values.split_by_str("."),
             },
         })
-    }
-}
-
-impl LookaheadParse for Split {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        lookahead
-            .peek(kw::split)
-            .then(|| {
-                Ok(Self {
-                    kw: input.parse()?,
-                    spec: input.call(LookaheadParse::parse)?,
-                })
-            })
-            .transpose()
-    }
-}
-
-impl ToTokens for Split {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { kw, spec } = self;
-        kw.to_tokens(tokens);
-        spec.to_tokens(tokens);
     }
 }

@@ -35,10 +35,7 @@ macro_rules! kw_kind {
 
         const _: () = {
 
-        #[doc = "Implementation keywords"]
-        mod kw {$(
-            ::syn::custom_keyword!($kw_nm);
-        )*}
+        $crate::lookahead_parse_keywords!($($kw_nm),*);
 
         impl $crate::util::lookahead_parse::LookaheadParse for $wr_nm {
             fn lookahead_parse(
