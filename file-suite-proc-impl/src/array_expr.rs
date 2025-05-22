@@ -23,7 +23,7 @@ pub(crate) use paste::ArrayExprPaste;
 
 mod paste;
 
-mod storage;
+pub mod storage;
 
 pub mod value_array;
 
@@ -46,10 +46,11 @@ pub struct ArrayExpr {
 
 impl ArrayExpr {
     /// Compute array expression.
+    /// Passed storage is used as furthest backing storage.
     ///
     /// # Errors
     /// If any function errors.
-    fn compute_inner(&self, storage: &mut Storage) -> ::syn::Result<ValueArray> {
+    pub fn compute_with_storage(&self, storage: &mut Storage) -> ::syn::Result<ValueArray> {
         let Self { input, chain } = self;
         let mut value_array = ValueArray::new();
         let value_vec = value_array.make_vec();
@@ -57,7 +58,9 @@ impl ArrayExpr {
         for input in input {
             match input {
                 Input::Value(value) => value_vec.push(value.clone()),
-                Input::Expr(array_expr) => value_vec.extend(array_expr.compute_inner(storage)?),
+                Input::Expr(array_expr) => {
+                    value_vec.extend(array_expr.compute_with_storage(storage)?)
+                }
             }
         }
 
@@ -79,7 +82,7 @@ impl ArrayExpr {
     /// # Errors
     /// If any function errors.
     pub fn compute(&self) -> ::syn::Result<ValueArray> {
-        self.compute_inner(&mut Storage::default())
+        self.compute_with_storage(&mut Storage::default())
     }
 }
 
