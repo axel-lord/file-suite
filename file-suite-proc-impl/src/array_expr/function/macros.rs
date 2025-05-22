@@ -34,10 +34,11 @@ macro_rules! function_enum {
         impl Call for Callable {
             fn call(
                 &self,
-                input: $crate::array_expr::value_array::ValueArray
+                input: $crate::array_expr::value_array::ValueArray,
+                storage: &mut $crate::array_expr::storage::Storage,
             ) -> ::std::result::Result<$crate::array_expr::value_array::ValueArray, ::std::borrow::Cow<'static, str>> {
                 match self {$(
-                    Self::$vnm(value) => <$vty as ToCallable>::Call::call(value, input),
+                    Self::$vnm(value) => <$vty as ToCallable>::Call::call(value, input, storage),
                 )*}
             }
         }

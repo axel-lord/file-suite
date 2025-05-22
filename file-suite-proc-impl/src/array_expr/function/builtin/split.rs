@@ -6,6 +6,7 @@ use ::syn::{LitChar, LitStr};
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct, spec_impl},
+        storage::Storage,
         value::Value,
         value_array::ValueArray,
     },
@@ -75,7 +76,7 @@ impl ToCallable for split {
 }
 
 impl Call for SplitCallable {
-    fn call(&self, values: ValueArray) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, values: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
         Ok(match self {
             Self::Str(pat) => values.split_by_str(pat),
             Self::Char(pat) => {

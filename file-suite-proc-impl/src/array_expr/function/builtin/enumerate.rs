@@ -9,6 +9,7 @@ use ::syn::{LitInt, parse::Parse};
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
+        storage::Storage,
         value::Value,
         value_array::ValueArray,
     },
@@ -48,7 +49,7 @@ pub struct EnumerateCallable {
 }
 
 impl Call for EnumerateCallable {
-    fn call(&self, input: ValueArray) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, input: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
         let mut offset = self.offset;
 
         let mut output = Vec::with_capacity(input.len().checked_mul(2).ok_or_else(|| {

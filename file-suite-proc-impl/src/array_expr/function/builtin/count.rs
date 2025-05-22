@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
+        storage::Storage,
         value::{TyKind, Value},
         value_array::ValueArray,
     },
@@ -37,6 +38,7 @@ impl Call for CountCallable {
     fn call(
         &self,
         input: crate::array_expr::value_array::ValueArray,
+        _: &mut Storage,
     ) -> Result<ValueArray, Cow<'static, str>> {
         let mut value = Value::new_int(
             input

@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
+        storage::Storage,
         value::{Ty, TyKind},
         value_array::ValueArray,
     },
@@ -30,7 +31,11 @@ impl ToCallable for ty {
 }
 
 impl Call for TyKind {
-    fn call(&self, mut input: ValueArray) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(
+        &self,
+        mut input: ValueArray,
+        _: &mut Storage,
+    ) -> Result<ValueArray, Cow<'static, str>> {
         for value in &mut input {
             value.set_ty(*self);
         }
