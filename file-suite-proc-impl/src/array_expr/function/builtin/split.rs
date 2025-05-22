@@ -4,10 +4,10 @@ use ::syn::{LitChar, LitStr};
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct, spec_impl},
+        value::Value,
         value_array::ValueArray,
     },
     util::{group_help::GroupSingle, kw_kind, lookahead_parse::ParseWrap},
-    value::Value,
 };
 
 kw_kind!(

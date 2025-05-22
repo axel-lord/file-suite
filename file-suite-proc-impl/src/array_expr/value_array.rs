@@ -8,7 +8,7 @@ use ::std::{
 
 use ::proc_macro2::Span;
 
-use crate::value::Value;
+use crate::array_expr::value::Value;
 
 /// An array of values.
 #[derive(Debug, Clone, Default)]
