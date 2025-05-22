@@ -1,7 +1,7 @@
 //! Print sizes of some types in use by proc-macros.
 
 use ::file_suite_proc_impl::array_expr::{
-    ArrayExpr,
+    Node,
     function::{Function, ToCallable},
     typed_value::TypedValue,
     value::Value,
@@ -19,5 +19,5 @@ type FunctionCallable = <Function as ToCallable>::Call;
 
 /// Entrypoint
 fn main() {
-    print_size!(Value, TypedValue, ArrayExpr, Function, FunctionCallable);
+    print_size!(Value, TypedValue, Node, Function, FunctionCallable);
 }

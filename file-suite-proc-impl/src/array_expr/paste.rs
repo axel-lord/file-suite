@@ -7,7 +7,7 @@ use ::quote::ToTokens;
 use ::syn::parse::{Parse, Parser};
 
 use crate::{
-    array_expr::ArrayExpr,
+    array_expr::Node,
     util::{
         fold_tokens::{FoldTokens, fold_punct},
         tcmp::pseq,
@@ -51,7 +51,11 @@ impl FoldTokens<2> for ArrayExprPaste {
                 ::syn::Error::new(span.get(), "expected delimited group following '++!'")
             })?;
 
-        for value in ArrayExpr::parse.parse2(group.stream())?.compute()? {
+        for value in Node::parse
+            .parse2(group.stream())?
+            .to_array_expr()
+            .compute()?
+        {
             value.try_to_typed()?.to_tokens(tokens);
         }
 

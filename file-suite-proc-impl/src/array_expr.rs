@@ -1,6 +1,6 @@
 //! Expressions working with arrays of strings at compile-time.
 
-use ::proc_macro2::TokenStream;
+use ::proc_macro2::{Span, TokenStream};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -11,7 +11,7 @@ use ::syn::{
 use crate::{
     array_expr::{
         function::{Call, Function, ToCallable},
-        input::Input,
+        input::{Input, NodeInput},
         value::Value,
         value_array::ValueArray,
     },
@@ -32,9 +32,49 @@ pub mod value;
 
 pub mod typed_value;
 
+/// Array expression. Without parsing details.
+#[derive(Debug, Clone, Default)]
+pub struct ArrayExpr {
+    /// Input values of expression.
+    input: Vec<Input>,
+    /// Function chain transforming input.
+    chain: Vec<<Function as ToCallable>::Call>,
+}
+
+impl ArrayExpr {
+    /// Compute array expression.
+    ///
+    /// # Errors
+    /// If any function errors.
+    pub fn compute(&self) -> ::syn::Result<ValueArray> {
+        let Self { input, chain } = self;
+        let mut value_array = ValueArray::new();
+        let value_vec = value_array.make_vec();
+
+        for input in input {
+            match input {
+                Input::Value(value) => value_vec.push(value.clone()),
+                Input::Expr(array_expr) => value_vec.extend(array_expr.compute()?),
+            }
+        }
+
+        let span = value_array.span();
+        for func in chain {
+            value_array = match func.call(value_array) {
+                Ok(value_array) => value_array,
+                Err(msg) => {
+                    return Err(::syn::Error::new(span.unwrap_or_else(Span::call_site), msg));
+                }
+            }
+        }
+
+        Ok(value_array)
+    }
+}
+
 /// Parsed array expression.
-#[derive(Debug, Default)]
-pub enum ArrayExpr {
+#[derive(Debug, Default, Clone)]
+pub enum Node {
     /// Empty Expression.
     #[default]
     Empty,
@@ -48,7 +88,7 @@ pub enum ArrayExpr {
     /// Take and transform input.
     Transform {
         /// Input values.
-        input: Vec<Input>,
+        input: Vec<NodeInput>,
         /// '->' token.
         arrow_token: Option<Token![->]>,
         /// Transform chain.
@@ -56,62 +96,37 @@ pub enum ArrayExpr {
     },
 }
 
-impl ArrayExpr {
-    /// Compute parsed expression.
-    ///
-    /// # Errors
-    /// If the expression cannot be computed.
-    pub fn compute(&self) -> ::syn::Result<ValueArray> {
-        let (input, chain) = match self {
-            ArrayExpr::Empty => return Ok(ValueArray::new()),
-            ArrayExpr::Stringify {
+impl Node {
+    /// Get [ArrayExpr] from this node.
+    pub fn to_array_expr(&self) -> ArrayExpr {
+        match self {
+            Node::Empty => ArrayExpr::default(),
+            Node::Stringify {
                 not_token: _,
                 remainder,
             } => {
-                return Ok(ValueArray::from_value({
-                    let mut value = Value::from(remainder.to_string());
-                    value.set_span(remainder.span());
-                    value
-                }));
+                let mut value = Value::new_str(remainder.to_string());
+                value.set_span(remainder.span());
+                ArrayExpr {
+                    input: vec![Input::Value(value)],
+                    ..Default::default()
+                }
             }
-            ArrayExpr::Transform {
+            Node::Transform {
                 input,
                 arrow_token: _,
                 chain,
-            } => (input, chain),
-        };
+            } => {
+                let input = input.iter().map(NodeInput::to_input).collect();
+                let chain = chain.iter().map(|(_, f)| f.to_callable()).collect();
 
-        let mut values = ValueArray::new();
-        let value_vec = values.make_vec();
-        for input in input {
-            match input {
-                Input::Nested { delim: _, expr } => {
-                    let extend_with = expr.compute()?;
-                    value_vec.reserve(extend_with.len());
-                    value_vec.extend(extend_with);
-                }
-                Input::Value(typed_value) => value_vec.push(typed_value.try_to_value()?),
+                ArrayExpr { input, chain }
             }
         }
-
-        for (_, f) in chain {
-            let values_span = values.span();
-            values = match f.to_callable().call(values) {
-                Ok(values) => values,
-                Err(err) => {
-                    return Err(::syn::Error::new(
-                        values_span.unwrap_or_else(|| f.span()),
-                        err,
-                    ));
-                }
-            };
-        }
-
-        Ok(values)
     }
 }
 
-impl Parse for ArrayExpr {
+impl Parse for Node {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let lookahead = input.lookahead1();
 
@@ -128,7 +143,7 @@ impl Parse for ArrayExpr {
 
         let (input_vec, arrow_token) = if lookahead.peek(Token![->]) {
             (Vec::new(), Some(input.parse()?))
-        } else if let Some(first) = Input::lookahead_parse(input, &lookahead)? {
+        } else if let Some(first) = NodeInput::lookahead_parse(input, &lookahead)? {
             let mut input_vec = Vec::from([first]);
             loop {
                 let lookahead = input.lookahead1();
@@ -145,7 +160,7 @@ impl Parse for ArrayExpr {
                     break (input_vec, Some(input.parse()?));
                 }
 
-                if let Some(value) = Input::lookahead_parse(input, &lookahead)? {
+                if let Some(value) = NodeInput::lookahead_parse(input, &lookahead)? {
                     input_vec.push(value);
                     continue;
                 }
@@ -195,18 +210,18 @@ impl Parse for ArrayExpr {
     }
 }
 
-impl ToTokens for ArrayExpr {
+impl ToTokens for Node {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ArrayExpr::Empty => {}
-            ArrayExpr::Stringify {
+            Node::Empty => {}
+            Node::Stringify {
                 not_token,
                 remainder,
             } => {
                 not_token.to_tokens(tokens);
                 remainder.to_tokens(tokens);
             }
-            ArrayExpr::Transform {
+            Node::Transform {
                 input,
                 arrow_token,
                 chain,

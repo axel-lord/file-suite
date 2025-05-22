@@ -5,7 +5,7 @@ use ::quote::ToTokens;
 use ::syn::parse::{Parse, Parser};
 
 use crate::{
-    array_expr::{ArrayExpr, ArrayExprPaste},
+    array_expr::{ArrayExprPaste, Node},
     util::fold_tokens::fold_token_stream,
 };
 
@@ -31,7 +31,7 @@ pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
 /// Or if it cannot be computed.
 pub fn array_expr(input: TokenStream) -> ::syn::Result<TokenStream> {
     let mut tokens = TokenStream::default();
-    for value in ArrayExpr::parse.parse2(input)?.compute()? {
+    for value in Node::parse.parse2(input)?.to_array_expr().compute()? {
         value.try_to_typed()?.to_tokens(&mut tokens);
     }
     Ok(tokens)
