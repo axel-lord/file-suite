@@ -6,7 +6,10 @@ use ::proc_macro2::Span;
 use ::quote::IdentFragment;
 use ::syn::{Ident, LitBool, LitInt, LitStr};
 
-use crate::{array_expr::typed_value::TypedValue, util::kw_kind};
+use crate::{
+    array_expr::typed_value::TypedValue,
+    util::{kw_kind, spanned_parse_str},
+};
 
 kw_kind!(
     /// A parsed output type (has span).
@@ -195,7 +198,19 @@ impl Value {
     /// # Errors
     /// If the value and type are not compatible.
     pub fn try_to_typed(&self) -> ::syn::Result<TypedValue> {
-        self.try_into()
+        let span = self.span.unwrap_or_else(Span::call_site);
+        Ok(match self.ty {
+            TyKind::ident => TypedValue::Ident(Ident::new(&self.content, span)),
+            TyKind::str => TypedValue::LitStr(LitStr::new(&self.content, span)),
+            TyKind::int => todo!(),
+            TyKind::bool => TypedValue::LitBool(LitBool {
+                value: self.parse().map_err(|err| ::syn::Error::new(span, err))?,
+                span,
+            }),
+            TyKind::expr => TypedValue::Expr(Box::new(spanned_parse_str(span, self)?), span),
+            TyKind::item => TypedValue::Item(Box::new(spanned_parse_str(span, self)?), span),
+            TyKind::stmt => TypedValue::Stmt(Box::new(spanned_parse_str(span, self)?), span),
+        })
     }
 }
 
@@ -288,32 +303,5 @@ impl From<&LitBool> for Value {
             span: Some(*span),
             ty: TyKind::bool,
         }
-    }
-}
-
-impl TryFrom<&TypedValue> for Value {
-    type Error = ::syn::Error;
-
-    fn try_from(value: &TypedValue) -> Result<Self, Self::Error> {
-        match value {
-            TypedValue::Ident(ident) => Ok(Value::from(ident)),
-            TypedValue::LitStr(lit_str) => Ok(Value::from(lit_str)),
-            TypedValue::LitInt(lit_int) => Value::try_from(lit_int),
-            TypedValue::LitBool(lit_bool) => Ok(Value::from(lit_bool)),
-            TypedValue::Expr(_, span) | TypedValue::Item(_, span) | TypedValue::Stmt(_, span) => {
-                Err(::syn::Error::new(
-                    *span,
-                    "Value should not be converted to from expr, stmt or item TypedValue",
-                ))
-            }
-        }
-    }
-}
-
-impl TryFrom<TypedValue> for Value {
-    type Error = ::syn::Error;
-
-    fn try_from(value: TypedValue) -> Result<Self, Self::Error> {
-        value.try_to_value()
     }
 }

@@ -7,6 +7,7 @@ use ::syn::{LitChar, LitStr};
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct, spec_impl},
+        storage::Storage,
         value_array::ValueArray,
     },
     util::{group_help::GroupOption, kw_kind, lookahead_parse::ParseWrap},
@@ -65,7 +66,7 @@ pub enum JoinCallable {
 }
 
 impl Call for JoinCallable {
-    fn call(&self, input: ValueArray) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, input: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
         Ok(match self {
             JoinCallable::Str(sep) => input.join_by_str(sep),
             JoinCallable::Char(sep) => {

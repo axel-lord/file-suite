@@ -12,6 +12,7 @@ use crate::{
     array_expr::{
         function::{Call, Function, ToCallable},
         input::{Input, NodeInput},
+        storage::Storage,
         value::Value,
         value_array::ValueArray,
     },
@@ -21,6 +22,8 @@ use crate::{
 pub(crate) use paste::ArrayExprPaste;
 
 mod paste;
+
+mod storage;
 
 pub mod value_array;
 
@@ -46,7 +49,7 @@ impl ArrayExpr {
     ///
     /// # Errors
     /// If any function errors.
-    pub fn compute(&self) -> ::syn::Result<ValueArray> {
+    fn compute_inner(&self, storage: &mut Storage) -> ::syn::Result<ValueArray> {
         let Self { input, chain } = self;
         let mut value_array = ValueArray::new();
         let value_vec = value_array.make_vec();
@@ -54,13 +57,13 @@ impl ArrayExpr {
         for input in input {
             match input {
                 Input::Value(value) => value_vec.push(value.clone()),
-                Input::Expr(array_expr) => value_vec.extend(array_expr.compute()?),
+                Input::Expr(array_expr) => value_vec.extend(array_expr.compute_inner(storage)?),
             }
         }
 
         let span = value_array.span();
         for func in chain {
-            value_array = match func.call(value_array) {
+            value_array = match func.call(value_array, storage) {
                 Ok(value_array) => value_array,
                 Err(msg) => {
                     return Err(::syn::Error::new(span.unwrap_or_else(Span::call_site), msg));
@@ -69,6 +72,14 @@ impl ArrayExpr {
         }
 
         Ok(value_array)
+    }
+
+    /// Compute array expression.
+    ///
+    /// # Errors
+    /// If any function errors.
+    pub fn compute(&self) -> ::syn::Result<ValueArray> {
+        self.compute_inner(&mut Storage::default())
     }
 }
 

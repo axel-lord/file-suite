@@ -38,11 +38,7 @@ impl NodeInput {
     pub fn to_input(&self) -> Input {
         match self {
             NodeInput::Nested { delim: _, expr } => Input::Expr(expr.to_array_expr()),
-            NodeInput::Value(typed_value) => Input::Value(
-                typed_value
-                    .try_to_value()
-                    .unwrap_or_else(|_| todo!("change TypedValue")),
-            ),
+            NodeInput::Value(typed_value) => Input::Value(typed_value.to_value()),
         }
     }
 }

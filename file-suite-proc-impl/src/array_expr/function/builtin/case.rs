@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
+        storage::Storage,
         value_array::ValueArray,
     },
     util::{group_help::GroupSingle, kw_kind, lookahead_parse::ParseWrap},
@@ -42,7 +43,11 @@ impl ToCallable for case {
 }
 
 impl Call for CaseKind {
-    fn call(&self, mut input: ValueArray) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(
+        &self,
+        mut input: ValueArray,
+        _: &mut Storage,
+    ) -> Result<ValueArray, Cow<'static, str>> {
         /// Get capitalized version of a string slice.
         fn capitalize(value: &str) -> String {
             let mut chars = value.chars();

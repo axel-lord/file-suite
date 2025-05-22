@@ -2,7 +2,7 @@
 
 use ::std::borrow::Cow;
 
-use crate::array_expr::value_array::ValueArray;
+use crate::array_expr::{storage::Storage, value_array::ValueArray};
 
 /// Trait for items which may be converted to a [Call] implementor.
 pub trait ToCallable {
@@ -19,5 +19,9 @@ pub trait Call {
     ///
     /// # Errors
     /// If input may not be transformed according to specification.
-    fn call(&self, input: ValueArray) -> Result<ValueArray, Cow<'static, str>>;
+    fn call(
+        &self,
+        input: ValueArray,
+        storage: &mut Storage,
+    ) -> Result<ValueArray, Cow<'static, str>>;
 }
