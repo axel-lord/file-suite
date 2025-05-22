@@ -1,5 +1,7 @@
 //! Traits for functions.
 
+use ::std::borrow::Cow;
+
 use crate::array_expr::value_array::ValueArray;
 
 /// Trait for items which may be converted to a [Call] implementor.
@@ -17,5 +19,5 @@ pub trait Call {
     ///
     /// # Errors
     /// If input may not be transformed according to specification.
-    fn call(&self, input: ValueArray) -> ::syn::Result<ValueArray>;
+    fn call(&self, input: ValueArray) -> Result<ValueArray, Cow<'static, str>>;
 }

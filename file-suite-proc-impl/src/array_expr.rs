@@ -95,7 +95,16 @@ impl ArrayExpr {
         }
 
         for (_, f) in chain {
-            values = f.to_callable().call(values)?;
+            let values_span = values.span();
+            values = match f.to_callable().call(values) {
+                Ok(values) => values,
+                Err(err) => {
+                    return Err(::syn::Error::new(
+                        values_span.unwrap_or_else(|| f.span()),
+                        err,
+                    ));
+                }
+            };
         }
 
         Ok(values)
