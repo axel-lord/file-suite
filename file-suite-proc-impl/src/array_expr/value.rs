@@ -6,7 +6,7 @@ use ::proc_macro2::Span;
 use ::quote::IdentFragment;
 use ::syn::{Ident, LitBool, LitInt, LitStr};
 
-use crate::{typed_value::TypedValue, util::kw_kind};
+use crate::{array_expr::typed_value::TypedValue, util::kw_kind};
 
 kw_kind!(
     /// A parsed output type (has span).

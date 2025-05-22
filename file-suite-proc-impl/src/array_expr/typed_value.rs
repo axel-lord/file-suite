@@ -9,8 +9,8 @@ use ::syn::{
 };
 
 use crate::{
+    array_expr::value::{TyKind, Value},
     util::lookahead_parse::LookaheadParse,
-    value::{TyKind, Value},
 };
 
 /// A typed [KebabValue] which may be converted to tokens.

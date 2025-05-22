@@ -15,10 +15,6 @@ pub mod array_expr;
 
 pub mod util;
 
-pub mod value;
-
-pub mod typed_value;
-
 /// Find array expression in input tokens and compute them, replacing them with their result.
 ///
 /// # Errors

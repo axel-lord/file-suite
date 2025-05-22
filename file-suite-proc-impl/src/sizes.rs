@@ -1,10 +1,8 @@
 //! Print sizes of some types in use by proc-macros.
 
-use ::file_suite_proc_impl::{
-    array_expr::{
-        ArrayExpr,
-        function::{Function, ToCallable},
-    },
+use ::file_suite_proc_impl::array_expr::{
+    ArrayExpr,
+    function::{Function, ToCallable},
     typed_value::TypedValue,
     value::Value,
 };

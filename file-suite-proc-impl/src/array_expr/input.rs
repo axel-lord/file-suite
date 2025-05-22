@@ -5,9 +5,8 @@ use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 
 use crate::{
-    array_expr::ArrayExpr,
+    array_expr::{ArrayExpr, typed_value::TypedValue},
     macro_delimited,
-    typed_value::TypedValue,
     util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
 };
 

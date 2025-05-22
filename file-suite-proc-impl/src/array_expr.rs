@@ -12,10 +12,10 @@ use crate::{
     array_expr::{
         function::{Call, Function, ToCallable},
         input::Input,
+        value::Value,
         value_array::ValueArray,
     },
     util::lookahead_parse::LookaheadParse,
-    value::Value,
 };
 
 pub(crate) use paste::ArrayExprPaste;
@@ -27,6 +27,10 @@ pub mod value_array;
 pub mod input;
 
 pub mod function;
+
+pub mod value;
+
+pub mod typed_value;
 
 /// Parsed array expression.
 #[derive(Debug, Default)]

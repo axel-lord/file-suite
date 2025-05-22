@@ -3,10 +3,10 @@
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
+        value::{TyKind, Value},
         value_array::ValueArray,
     },
     util::group_help::EmptyGroup,
-    value::{TyKind, Value},
 };
 
 function_struct!(

@@ -7,10 +7,10 @@ use ::syn::{LitInt, parse::Parse};
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
+        value::Value,
         value_array::ValueArray,
     },
     util::group_help::GroupOption,
-    value::Value,
 };
 
 function_struct!(
