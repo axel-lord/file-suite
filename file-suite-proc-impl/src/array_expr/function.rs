@@ -29,7 +29,7 @@ mod call;
 
 function_enum!(
     /// Enum collecting [Call] implementors.
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     Function {
         /// Split array according to specification
         Split(split),
