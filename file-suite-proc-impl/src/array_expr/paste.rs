@@ -7,7 +7,7 @@ use ::quote::ToTokens;
 use ::syn::parse::{Parse, Parser};
 
 use crate::{
-    array_expr::Node,
+    array_expr::{Node, storage::Storage},
     util::{
         fold_tokens::{FoldTokens, fold_punct},
         tcmp::pseq,
@@ -15,8 +15,11 @@ use crate::{
 };
 
 /// [FoldTokens] for finding array expressions.
-#[derive(Debug)]
-pub(crate) struct ArrayExprPaste;
+#[derive(Debug, Default)]
+pub(crate) struct ArrayExprPaste {
+    /// Variable storage for paste expression.
+    storage: Storage,
+}
 
 impl FoldTokens<2> for ArrayExprPaste {
     fn fold_punct(
@@ -51,14 +54,16 @@ impl FoldTokens<2> for ArrayExprPaste {
                 ::syn::Error::new(span.get(), "expected delimited group following '++!'")
             })?;
 
-        for value in Node::parse
-            .parse2(group.stream())?
-            .to_array_expr()
-            .compute()?
-        {
-            value.try_to_typed()?.to_tokens(tokens);
-        }
+        self.storage.with_local_layer(|storage| {
+            for value in Node::parse
+                .parse2(group.stream())?
+                .to_array_expr()
+                .compute_with_storage(storage)?
+            {
+                value.try_to_typed()?.to_tokens(tokens);
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 }
