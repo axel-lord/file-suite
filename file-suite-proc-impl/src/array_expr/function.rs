@@ -4,7 +4,7 @@ use ::std::fmt::Debug;
 
 use ::syn::{
     Token,
-    parse::{End, ParseStream},
+    parse::{End, Lookahead1, ParseStream},
 };
 pub(crate) use macros::{function_enum, function_struct, spec_impl};
 
@@ -75,15 +75,22 @@ function_enum!(
 );
 
 impl Function {
-    /// Parse a function chain.
+    /// Parse a function chain with a custom termination condition.
+    ///
+    /// # Note
+    /// If termination condition never returns true
+    /// this funtion may loop forever.
     ///
     /// # Errors
     /// On incorrect syntax.
-    pub fn parse_chain(input: ParseStream) -> ::syn::Result<Vec<(Option<Token![.]>, Self)>> {
+    pub fn parse_chain_terminated(
+        input: ParseStream,
+        should_terminate: fn(&Lookahead1) -> bool,
+    ) -> ::syn::Result<Vec<(Option<Token![.]>, Self)>> {
         let lookahead = input.lookahead1();
         let mut chain = Vec::new();
 
-        if lookahead.peek(End) {
+        if should_terminate(&lookahead) {
             return Ok(chain);
         } else if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
             chain.push((dot, input.call(Function::parse)?));
@@ -96,7 +103,7 @@ impl Function {
         loop {
             let lookahead = input.lookahead1();
 
-            if lookahead.peek(End) {
+            if should_terminate(&lookahead) {
                 break;
             } else if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
                 chain.push((dot, input.call(Function::parse)?));
@@ -106,5 +113,14 @@ impl Function {
         }
 
         Ok(chain)
+    }
+
+    /// Parse a function chain.
+    ///
+    /// # Errors
+    /// On incorrect syntax.
+    #[inline]
+    pub fn parse_chain(input: ParseStream) -> ::syn::Result<Vec<(Option<Token![.]>, Self)>> {
+        Self::parse_chain_terminated(input, |lookahead| lookahead.peek(End))
     }
 }
