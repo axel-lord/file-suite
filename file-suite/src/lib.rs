@@ -53,8 +53,8 @@ macro_rules! subcmd {
         array_expr_paste! {
 
         ++!{
-            [ snake_to_pascal -> alias { split(snake).case(pascal).join.ty(ident) } ]
-            [ snake_to_kebab -> alias { split(snake).case(lower).join(kebab).ty(str) } ]
+            snake_to_pascal -> alias { split(snake).case(pascal).join.ty(ident) },
+            snake_to_kebab -> alias { split(snake).case(lower).join(kebab).ty(str) },
         }
 
         #[doc = "Get cli and used modules from tool name."]
