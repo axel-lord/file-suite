@@ -52,6 +52,11 @@ macro_rules! subcmd {
 
         array_expr_paste! {
 
+        ++!{
+            [ snake_to_pascal -> alias { split(snake).case(pascal).join.ty(ident) } ]
+            [ snake_to_kebab -> alias { split(snake).case(lower).join(kebab).ty(str) } ]
+        }
+
         #[doc = "Get cli and used modules from tool name."]
         pub fn get_cli(name: &str) -> (fn() -> &'static dyn Start, &'static [&'static str]) {
             // Quick path for compilation tool.
@@ -60,7 +65,7 @@ macro_rules! subcmd {
             }
             match name {
                 $(
-                ++!($mod -> .split(snake).join(kebab).ty(str)) => (|| startable::<::$mod::Cli>(), &[++!($mod -> .ty(str))]),
+                ++!($mod -> =snake_to_kebab) => (|| startable::<::$mod::Cli>(), &[++!($mod -> .ty(str))]),
                 )*
                 _ => (|| startable::<$crate::Cli>(), MODULES),
             }
@@ -73,7 +78,7 @@ macro_rules! subcmd {
             #[doc = "generate completions for a tool."]
             Completions(CmpSubcmd),
             $(
-            ++!($mod -> .split(snake).case(pascal).join.ty(ident))(::$mod::Cli),
+            ++!($mod -> =snake_to_pascal)(::$mod::Cli),
             )*
         }
 
@@ -83,7 +88,7 @@ macro_rules! subcmd {
             #[default]
             FileSuite,
             $(
-            ++!($mod -> .split(snake).case(pascal).join.ty(ident)),
+            ++!($mod -> =snake_to_pascal),
             )*
         }
 
@@ -93,7 +98,7 @@ macro_rules! subcmd {
                 match self {
                     Self::FileSuite => startable::<Cli>(),
                     $(
-                    Self::  ++!($mod -> .split(snake).case(pascal).join.ty(ident)) => startable::<::$mod::Cli>(),
+                    Self::  ++!($mod -> =snake_to_pascal) => startable::<::$mod::Cli>(),
                     )*
                 }
             }
@@ -103,7 +108,7 @@ macro_rules! subcmd {
                 match self {
                     Self::FileSuite => "file_suite",
                     $(
-                    Self:: ++!($mod -> .split(snake).case(pascal).join.ty(ident)) => ++!($mod -> .ty(str)),
+                    Self:: ++!($mod -> =snake_to_pascal) => ++!($mod -> .ty(str)),
                     )*
                 }
             }
