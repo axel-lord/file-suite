@@ -25,14 +25,23 @@ pub struct Storage {
 }
 
 /// Insert a value into a vec.
-fn insert<'a>(
+///
+/// # Errors
+/// If the variable is read-only the key is returned.
+fn insert<'a, 'k>(
     values: &'a mut Vec<StoredValue>,
-    key: Cow<'_, str>,
+    key: Cow<'k, str>,
     read_only: bool,
-) -> Option<&'a mut ValueArray> {
+) -> Result<&'a mut ValueArray, Cow<'k, str>> {
     let index = values.iter().position(|value| value.key == key.as_ref());
-    let index = match index {
-        Some(index) => index,
+    match index {
+        Some(index) => {
+            let Some(value) = values.get_mut(index).filter(|value| !value.read_only) else {
+                return Err(key);
+            };
+            value.read_only = read_only;
+            Ok(&mut value.values)
+        }
         None => {
             let index = values.len();
             let value = StoredValue {
@@ -41,14 +50,11 @@ fn insert<'a>(
                 ..Default::default()
             };
             values.push(value);
-            index
+            let value = &mut values[index];
+            value.read_only = read_only;
+            Ok(&mut value.values)
         }
-    };
-
-    let value = values.get_mut(index).filter(|value| !value.read_only)?;
-    value.read_only = read_only;
-
-    Some(&mut value.values)
+    }
 }
 
 impl Storage {
@@ -65,20 +71,26 @@ impl Storage {
     }
 
     /// Insert into the furthest backing storage.
-    pub fn insert_global<'this>(
+    ///
+    /// # Errors
+    /// If the variable is read-only the key is returned.
+    pub fn insert_global<'this, 'key>(
         &'this mut self,
-        key: Cow<'_, str>,
+        key: Cow<'key, str>,
         read_only: bool,
-    ) -> Option<&'this mut ValueArray> {
+    ) -> Result<&'this mut ValueArray, Cow<'key, str>> {
         insert(&mut self.globals, key, read_only)
     }
 
     /// Insert a value into the storage if possible.
-    pub fn insert<'this>(
+    ///
+    /// # Errors
+    /// If the variable is read-only the key is returned.
+    pub fn insert<'this, 'key>(
         &'this mut self,
-        key: Cow<'_, str>,
+        key: Cow<'key, str>,
         read_only: bool,
-    ) -> Option<&'this mut ValueArray> {
+    ) -> Result<&'this mut ValueArray, Cow<'key, str>> {
         let Self { globals, locals } = self;
         let vars = locals.last_mut().unwrap_or(globals);
 

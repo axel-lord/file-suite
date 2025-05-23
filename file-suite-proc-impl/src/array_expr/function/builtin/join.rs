@@ -15,16 +15,22 @@ use crate::{
 
 kw_kind!(
     /// Keyword specified join.
-    SpecKw;
+    SpecKeyword;
     /// Enum of possible values for [SpecKw].
     #[expect(non_camel_case_types)]
     JoinKind: Default {
         #[default]
+        /// Concat values.
         concat,
+        /// Join by dashes '-'.
         kebab,
+        /// Join by underscores '_'.
         snake,
+        /// Join by double colons '::'.
         path,
+        /// Join by spaces ' '.
         space,
+        /// Join by dots '.'.
         dot,
     }
 );
@@ -38,7 +44,7 @@ spec_impl!(
         /// Join by char.
         Char(LitChar),
         /// Join according to keyword.
-        Kw(SpecKw),
+        Kw(SpecKeyword),
     }
 );
 
@@ -52,9 +58,7 @@ function_struct!(
     }
 );
 
-// lookahead_parse_struct!(Join { kw: kw::join, [optional] spec: Option<GroupOption<ParseWrap<Spec>>> });
-
-/// [Call] implementor for [Join].
+/// [Call] implementor for [join].
 #[derive(Debug, Clone)]
 pub enum JoinCallable {
     /// Join by a string.

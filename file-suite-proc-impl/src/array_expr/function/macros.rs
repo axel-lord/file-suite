@@ -73,13 +73,17 @@ pub(crate) use spec_impl;
 
 /// Define syntax of a function.
 macro_rules! function_struct {
-(
+($(
     $(#[$($eattr:tt)*])*
     $nm:ident {$(
         $(#[$($fattr:tt)*])*
         $([$pattr:ident])? $fnm:ident: $fty:ty
     ),+ $(,)?}
-) => {
+)*) => {
+    $crate::lookahead_parse_keywords!($($nm),*);
+
+    $(
+
     $( #[$($eattr)*] )*
     pub struct $nm {
         #[doc = "Function keyword"]
@@ -89,9 +93,10 @@ macro_rules! function_struct {
         pub $fnm: $fty,
     )*}
 
-    $crate::lookahead_parse_keywords!($nm);
     $crate::to_tokens_struct!($nm {kw $(, $fnm)*});
     $crate::lookahead_parse_struct!($nm { kw: kw::$nm $(, $([$pattr])* $fnm: $fty )* });
+
+    )*
 };
 }
 pub(crate) use function_struct;

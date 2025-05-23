@@ -4,7 +4,7 @@ use ::std::fmt::Debug;
 
 pub(crate) use macros::{function_enum, function_struct, spec_impl};
 
-mod builtin {
+pub mod builtin {
     //! Builtin funtions.
 
     pub mod case;
@@ -12,15 +12,17 @@ mod builtin {
     pub mod enumerate;
     pub mod join;
     pub mod rev;
+    pub mod set;
     pub mod split;
     pub mod ty;
 }
 
-pub use self::{
-    builtin::{
-        case::case, count::count, enumerate::enumerate, join::join, rev::rev, split::split, ty::ty,
-    },
-    call::{Call, ToCallable},
+use crate::array_expr::function::builtin::set::{global, local};
+
+pub use self::call::{Call, ToCallable};
+
+use self::builtin::{
+    case::case, count::count, enumerate::enumerate, join::join, rev::rev, split::split, ty::ty,
 };
 
 mod macros;
@@ -45,5 +47,9 @@ function_enum!(
         Rev(rev),
         /// Count array elements.
         Count(count),
+        /// Set a global variable.
+        Global(global),
+        /// Set a local variable.
+        Local(local),
     }
 );
