@@ -15,16 +15,23 @@ use crate::{
 
 kw_kind!(
     /// Keyword specified split
-    SpecKw;
+    SpecKeyword;
     /// Enum containing possible values for [SpecKw].
     #[expect(non_camel_case_types)]
-    SpecKwKind {
+    SplitKind {
+        /// Split by PascalCase.
         pascal,
+        /// Split by camelCase.
         camel,
+        /// Split by dashes '-'.
         kebab,
+        /// Split by underscores '_'.
         snake,
+        /// Split by double colons '::'.
         path,
+        /// Split by spaces ' '.
         space,
+        /// Split by dots '.'.
         dot,
     }
 );
@@ -38,7 +45,7 @@ spec_impl!(
         /// Split is specified by a char literal.
         Char(LitChar),
         /// Split is specified by a keyword.
-        Kw(SpecKw),
+        Kw(SpecKeyword),
     }
 );
 
@@ -60,7 +67,7 @@ pub enum SplitCallable {
     /// Split by a char.
     Char(char),
     /// Split according to a keyword.
-    Kw(SpecKwKind),
+    Kw(SplitKind),
 }
 
 impl ToCallable for split {
@@ -85,7 +92,7 @@ impl Call for SplitCallable {
                 values.split_by_str(pat)
             }
             Self::Kw(kw_kind) => match kw_kind {
-                SpecKwKind::camel => {
+                SplitKind::camel => {
                     let mut value_vec = Vec::with_capacity(values.len());
                     for mut value in values {
                         let mut value_str = value.as_str();
@@ -104,7 +111,7 @@ impl Call for SplitCallable {
                     value_vec.reverse();
                     value_vec.into()
                 }
-                SpecKwKind::pascal => {
+                SplitKind::pascal => {
                     let mut value_vec = Vec::with_capacity(values.len());
                     for mut value in values {
                         let mut value_str = value.as_str();
@@ -128,11 +135,11 @@ impl Call for SplitCallable {
                     value_vec.reverse();
                     value_vec.into()
                 }
-                SpecKwKind::kebab => values.split_by_str("-"),
-                SpecKwKind::snake => values.split_by_str("_"),
-                SpecKwKind::path => values.split_by_str("::"),
-                SpecKwKind::space => values.split_by_str(" "),
-                SpecKwKind::dot => values.split_by_str("."),
+                SplitKind::kebab => values.split_by_str("-"),
+                SplitKind::snake => values.split_by_str("_"),
+                SplitKind::path => values.split_by_str("::"),
+                SplitKind::space => values.split_by_str(" "),
+                SplitKind::dot => values.split_by_str("."),
             },
         })
     }

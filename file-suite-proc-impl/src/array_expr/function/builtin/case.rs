@@ -17,9 +17,13 @@ kw_kind!(
     /// Enum containing possible values for [Spec]
     #[expect(non_camel_case_types)]
     CaseKind {
+        /// Convert to PascalCase.
         pascal,
+        /// Convert to camelCase.
         camel,
+        /// Convert to UPPERCASE.
         upper,
+        /// Convert to LOWERCASE.
         lower,
     }
 );

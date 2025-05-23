@@ -1,7 +1,79 @@
 //! Utilities for parsing using a [Lookahead1].
 
 use ::quote::ToTokens;
-use ::syn::parse::{Lookahead1, Parse, ParseStream};
+use ::syn::{
+    parse::{End, Lookahead1, Parse, ParseStream},
+    punctuated::Punctuated,
+};
+
+/// Use a [LookaheadParse] impl to parse T if possible.
+///
+/// # Errors
+/// If a valid value peeked by lookahead cannot be parsed.
+#[inline]
+pub fn lookahead_parse<T>(input: ParseStream, lookahead: &Lookahead1) -> ::syn::Result<Option<T>>
+where
+    T: LookaheadParse,
+{
+    T::lookahead_parse(input, lookahead)
+}
+
+/// Use a [LookaheadParse] impl to parse an optional T if match, else parse nothing.
+///
+/// # Errors
+/// If a valid value peeked by lookahead cannot be parsed.
+#[inline]
+pub fn optional_parse<T>(input: ParseStream) -> ::syn::Result<Option<T>>
+where
+    T: LookaheadParse,
+{
+    T::optional_parse(input)
+}
+
+/// Use a [LookaheadParse] impl to parse a list of T punctuated by P if possible.
+/// With optional trailing punctuation.
+///
+/// # Errors
+/// If a valid value peeked by lookahead cannot be parsed.
+pub fn lookahead_parse_terminated<T: LookaheadParse, P: LookaheadParse>(
+    input: ParseStream,
+    lookahead: &Lookahead1,
+) -> ::syn::Result<Option<Punctuated<T, P>>> {
+    let Some(first) = lookahead_parse(input, lookahead)? else {
+        return Ok(None);
+    };
+
+    let mut punctuated = Punctuated::new();
+    punctuated.push_value(first);
+
+    let lookahead = input.lookahead1();
+    if lookahead.peek(End) {
+        return Ok(Some(punctuated));
+    }
+
+    let punct = lookahead_parse(input, &lookahead)?.ok_or_else(|| lookahead.error())?;
+    punctuated.push_punct(punct);
+
+    loop {
+        let lookahead = input.lookahead1();
+        if lookahead.peek(End) {
+            break;
+        }
+
+        let value = lookahead_parse(input, &lookahead)?.ok_or_else(|| lookahead.error())?;
+        punctuated.push_value(value);
+
+        let lookahead = input.lookahead1();
+        if lookahead.peek(End) {
+            break;
+        }
+
+        let punct = lookahead_parse(input, &lookahead)?.ok_or_else(|| lookahead.error())?;
+        punctuated.push_punct(punct);
+    }
+
+    Ok(Some(punctuated))
+}
 
 /// Wrap a [LookaheadParse] implementor to [Parse].
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -141,9 +213,9 @@ macro_rules! lookahead_parse_enum {
 }
 mod peek_impl {
     //! Implementation for types implementing peek.
-    use ::syn::{Ident, LitBool, LitChar, LitInt, LitStr, ext::IdentExt};
+    use ::syn::{Ident, LitBool, LitChar, LitInt, LitStr, ext::IdentExt, token::Comma};
 
-    peek_impl!(LitStr LitInt LitBool LitChar);
+    peek_impl!(LitStr LitInt LitBool LitChar Comma);
 
     impl LookaheadParse for Ident {
         fn lookahead_parse(
