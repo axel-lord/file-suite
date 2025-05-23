@@ -4,7 +4,7 @@ use ::std::cell::Cell;
 
 use ::proc_macro2::TokenTree;
 use ::quote::ToTokens;
-use ::syn::parse::{Parse, Parser};
+use ::syn::parse::Parser;
 
 use crate::{
     array_expr::{Node, storage::Storage},
@@ -55,12 +55,10 @@ impl FoldTokens<2> for ArrayExprPaste {
             })?;
 
         self.storage.with_local_layer(|storage| {
-            for value in Node::parse
-                .parse2(group.stream())?
-                .to_array_expr()
-                .compute_with_storage(storage)?
-            {
-                value.try_to_typed()?.to_tokens(tokens);
+            for node in Node::parse_multiple.parse2(group.stream())? {
+                for value in node.to_array_expr().compute_with_storage(storage)? {
+                    value.try_to_typed()?.to_tokens(tokens);
+                }
             }
 
             Ok(())

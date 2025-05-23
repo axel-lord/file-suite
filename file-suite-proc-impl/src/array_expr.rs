@@ -4,7 +4,8 @@ use ::proc_macro2::{Span, TokenStream};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
-    parse::{End, Parse, ParseStream},
+    parse::{End, Lookahead1, Parse, ParseStream},
+    punctuated::Punctuated,
     spanned::Spanned,
 };
 
@@ -153,13 +154,30 @@ impl Node {
             }
         }
     }
-}
 
-impl Parse for Node {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    /// Parse multiple array expressions, terminated by commas ','.
+    ///
+    /// # Errors
+    /// If input cannot be parsed.
+    pub fn parse_multiple(input: ParseStream) -> ::syn::Result<Punctuated<Self, Token![,]>> {
+        Punctuated::parse_terminated_with(input, |input| {
+            Self::parse_terminated(input, |lookahead| {
+                lookahead.peek(End) || lookahead.peek(Token![,])
+            })
+        })
+    }
+
+    /// Parse with a custom termination condition.
+    ///
+    /// # Errors
+    /// If input cannot be parsed to Self.
+    pub fn parse_terminated(
+        input: ParseStream,
+        should_terminate: fn(&Lookahead1) -> bool,
+    ) -> ::syn::Result<Self> {
         let lookahead = input.lookahead1();
 
-        if lookahead.peek(End) {
+        if should_terminate(&lookahead) {
             return Ok(Self::default());
         }
 
@@ -177,7 +195,7 @@ impl Parse for Node {
             loop {
                 let lookahead = input.lookahead1();
 
-                if lookahead.peek(End) {
+                if should_terminate(&lookahead) {
                     return Ok(Self::Transform {
                         input: input_vec,
                         arrow_token: None,
@@ -203,8 +221,14 @@ impl Parse for Node {
         Ok(Self::Transform {
             input: input_vec,
             arrow_token,
-            chain: Function::parse_chain(input)?,
+            chain: Function::parse_chain_terminated(input, should_terminate)?,
         })
+    }
+}
+
+impl Parse for Node {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Self::parse_terminated(input, |lookahead| lookahead.peek(End))
     }
 }
 
