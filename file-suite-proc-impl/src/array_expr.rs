@@ -200,42 +200,11 @@ impl Parse for Node {
             return Err(lookahead.error());
         };
 
-        let lookahead = input.lookahead1();
-
-        // Parse first element with optional leading dot.
-        let first = if lookahead.peek(End) {
-            return Ok(Self::Transform {
-                input: input_vec,
-                arrow_token,
-                chain: Vec::new(),
-            });
-        } else if lookahead.peek(Token![.]) {
-            (Some(input.parse()?), input.call(Function::parse)?)
-        } else if let Some(f) = Function::lookahead_parse(input, &lookahead)? {
-            (None, f)
-        } else {
-            return Err(lookahead.error());
-        };
-
-        let mut chain = Vec::from([first]);
-        loop {
-            let lookahead = input.lookahead1();
-
-            if lookahead.peek(End) {
-                return Ok(Self::Transform {
-                    input: input_vec,
-                    arrow_token,
-                    chain,
-                });
-            }
-
-            if lookahead.peek(Token![.]) {
-                chain.push((Some(input.parse()?), input.call(Function::parse)?));
-                continue;
-            }
-
-            return Err(lookahead.error());
-        }
+        Ok(Self::Transform {
+            input: input_vec,
+            arrow_token,
+            chain: Function::parse_chain(input)?,
+        })
     }
 }
 

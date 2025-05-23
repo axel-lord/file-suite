@@ -213,9 +213,13 @@ macro_rules! lookahead_parse_enum {
 }
 mod peek_impl {
     //! Implementation for types implementing peek.
-    use ::syn::{Ident, LitBool, LitChar, LitInt, LitStr, ext::IdentExt, token::Comma};
+    use ::syn::{
+        Ident, LitBool, LitChar, LitInt, LitStr,
+        ext::IdentExt,
+        token::{Comma, Dot, Eq},
+    };
 
-    peek_impl!(LitStr LitInt LitBool LitChar Comma);
+    peek_impl!(LitStr LitInt LitBool LitChar Comma Dot Eq);
 
     impl LookaheadParse for Ident {
         fn lookahead_parse(
