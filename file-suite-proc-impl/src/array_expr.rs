@@ -61,6 +61,21 @@ impl ArrayExpr {
                 Input::Expr(array_expr) => {
                     value_vec.extend(array_expr.compute_with_storage(storage)?)
                 }
+                Input::Var(key) => value_vec.extend(
+                    storage
+                        .get(key)
+                        .ok_or_else(|| {
+                            ::syn::Error::new(
+                                Span::call_site(),
+                                format!("could not find variable '{key}'"),
+                            )
+                        })?
+                        .iter()
+                        .cloned(),
+                ),
+                Input::WeakVar(key) => {
+                    value_vec.extend(storage.get(key).into_iter().flatten().cloned())
+                }
             }
         }
 
