@@ -21,7 +21,7 @@ pub trait Call {
     /// If input may not be transformed according to specification.
     fn call(
         &self,
-        input: ValueArray,
+        array: ValueArray,
         storage: &mut Storage,
     ) -> Result<ValueArray, Cow<'static, str>>;
 }

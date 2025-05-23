@@ -1,8 +1,11 @@
 //! Variable storage.
 
-use ::std::borrow::Cow;
+use ::std::{borrow::Cow, rc::Rc};
 
-use crate::array_expr::value_array::ValueArray;
+use crate::array_expr::{
+    function::{Function, ToCallable},
+    value_array::ValueArray,
+};
 
 /// Stored value.
 #[derive(Debug, Clone, Default)]
@@ -15,6 +18,15 @@ struct StoredValue {
     values: ValueArray,
 }
 
+/// Stored alias.
+#[derive(Debug, Clone)]
+struct StoredAlias {
+    /// Alias key.
+    key: String,
+    /// Alias chain.
+    chain: Rc<[<Function as ToCallable>::Call]>,
+}
+
 /// Storage for variables.
 #[derive(Debug, Default)]
 pub struct Storage {
@@ -22,6 +34,8 @@ pub struct Storage {
     globals: Vec<StoredValue>,
     /// Local values.
     locals: Vec<Vec<StoredValue>>,
+    /// Chain aliases.
+    aliases: Vec<StoredAlias>,
 }
 
 /// Insert a value into a vec.
@@ -91,7 +105,11 @@ impl Storage {
         key: Cow<'key, str>,
         read_only: bool,
     ) -> Result<&'this mut ValueArray, Cow<'key, str>> {
-        let Self { globals, locals } = self;
+        let Self {
+            globals,
+            locals,
+            aliases: _,
+        } = self;
         let vars = locals.last_mut().unwrap_or(globals);
 
         insert(vars, key, read_only)
@@ -106,5 +124,30 @@ impl Storage {
             .chain(&self.globals)
             .find(|value| value.key == key)
             .map(|value| &value.values)
+    }
+
+    /// Set an alias.
+    pub fn set_alias(&mut self, key: String, chain: Vec<<Function as ToCallable>::Call>) {
+        for alias in &mut self.aliases {
+            if alias.key == key {
+                alias.chain = chain.into();
+                return;
+            }
+        }
+        self.aliases.push(StoredAlias {
+            key,
+            chain: chain.into(),
+        });
+    }
+
+    /// Get an alias.
+    pub fn get_alias(&self, key: &str) -> Option<Rc<[<Function as ToCallable>::Call]>> {
+        self.aliases.iter().find_map(|alias| {
+            if alias.key == key {
+                Some(alias.chain.clone())
+            } else {
+                None
+            }
+        })
     }
 }
