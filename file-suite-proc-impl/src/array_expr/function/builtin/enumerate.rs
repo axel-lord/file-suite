@@ -38,14 +38,27 @@ impl ToCallable for enumerate {
     type Call = EnumerateCallable;
 
     fn to_callable(&self) -> Self::Call {
-        EnumerateCallable {
-            offset: self
-                .spec
+        let mut callable = EnumerateCallable::default();
+
+        if let Some(spec) = self.spec.as_ref().map(|spec| &spec.content) {
+            if let Some(offset) = &spec.offset {
+                callable.offset = offset.value;
+            }
+
+            if let Some(step) = spec.step.as_ref().and_then(|step| step.step.as_ref()) {
+                callable.step = step.value;
+            }
+
+            if let Some(array_span) = spec
+                .array_span
                 .as_ref()
-                .and_then(|spec| spec.content.offset.as_ref())
-                .map(|i| i.value)
-                .unwrap_or(1),
+                .and_then(|array_span| array_span.array_span.as_ref())
+            {
+                callable.array_span = array_span.value;
+            }
         }
+
+        callable
     }
 }
 
@@ -54,26 +67,40 @@ impl ToCallable for enumerate {
 pub struct EnumerateCallable {
     /// Offset of enumeration.
     offset: isize,
+    /// Step of enumeration.
+    step: isize,
+    /// Span of enumeration.
+    array_span: NonZero<usize>,
+}
+
+impl Default for EnumerateCallable {
+    fn default() -> Self {
+        Self {
+            offset: 1,
+            step: 1,
+            array_span: const { NonZero::new(1).unwrap() },
+        }
+    }
 }
 
 impl Call for EnumerateCallable {
     fn call(&self, input: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
         let mut offset = self.offset;
+        let step = self.step;
+        let span = self.array_span.get();
 
-        let mut output = Vec::with_capacity(input.len().checked_mul(2).ok_or_else(|| {
-            Cow::Owned(format!(
-                "value array length should be multipliable by 2, is {}",
-                input.len()
-            ))
-        })?);
-        for value in input {
-            let next_offset = offset.checked_add(1).ok_or_else(|| {
-                Cow::Owned(format!("offset should not exceed isize::MAX, is {offset}"))
+        let mut output = Vec::with_capacity(input.len());
+        let mut input = input.into_iter();
+
+        while let Some(first) = input.next() {
+            output.push(Value::new_int(offset).with_span_of(&first));
+            output.push(first);
+            for _ in 1..span {
+                output.extend(input.next());
+            }
+            offset = offset.checked_add(step).ok_or_else(|| {
+                Cow::Owned(format!("integer over/underflow adding {step} to {offset}"))
             })?;
-
-            output.push(Value::new_int(offset).with_span_of(&value));
-            output.push(value);
-            offset = next_offset;
         }
 
         Ok(ValueArray::from_vec(output))
