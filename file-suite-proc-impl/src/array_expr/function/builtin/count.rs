@@ -30,7 +30,7 @@ impl ToCallable for count {
     }
 }
 
-/// [Call] implementor for [Count].
+/// [Call] implementor for [count].
 #[derive(Debug, Clone, Copy)]
 pub struct CountCallable;
 

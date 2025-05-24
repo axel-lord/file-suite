@@ -10,20 +10,15 @@ pub(crate) use self::kw_kind::kw_kind;
 
 pub use self::lookahead::TokenLookahead;
 
-mod lookahead;
-
 mod kw_kind;
-
+mod lookahead;
 mod to_tokens_macros;
 
 pub mod delimited;
-
-pub mod group_help;
-
-pub mod lookahead_parse;
-
 pub mod fold_tokens;
-
+pub mod group_help;
+pub mod lookahead_parse;
+pub mod spanned_int;
 pub mod tcmp;
 
 /// Ensure a [ParseStream] has reached it's end.
