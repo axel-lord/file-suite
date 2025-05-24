@@ -304,8 +304,8 @@ mod test {
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
 
-        let expr = quote! { 1 1 1 -> enumerate(2:2:1).join.ty(int)};
-        let expected = quote! { 213141 };
+        let expr = quote! { 1 1 1 -> enumerate(4:-1:1).join.ty(int)};
+        let expected = quote! { 413121 };
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
     }
