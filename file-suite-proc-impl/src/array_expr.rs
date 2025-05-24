@@ -6,7 +6,6 @@ use ::syn::{
     Token,
     parse::{End, Lookahead1, Parse, ParseStream},
     punctuated::Punctuated,
-    spanned::Spanned,
 };
 
 use crate::{
@@ -14,7 +13,7 @@ use crate::{
         function::{Call, Function, ToCallable},
         input::{Input, NodeInput},
         storage::Storage,
-        value::{TyKind, Value},
+        value::Value,
         value_array::ValueArray,
     },
     util::lookahead_parse::LookaheadParse,
@@ -135,8 +134,7 @@ impl Node {
                 not_token: _,
                 remainder,
             } => {
-                let mut value = Value::new(remainder.to_string()).with_ty(TyKind::str);
-                value.set_span(remainder.span());
+                let value = Value::new_tokens(remainder.clone());
                 ArrayExpr {
                     input: vec![Input::Value(value)],
                     ..Default::default()
