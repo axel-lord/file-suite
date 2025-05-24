@@ -1,15 +1,12 @@
 //! [Value] impl.
 
-use ::std::{borrow::Borrow, cell::OnceCell, fmt::Display, ops::Deref};
+use ::std::{borrow::Borrow, cell::OnceCell, fmt::Display, ops::Deref, str::FromStr};
 
 use ::proc_macro2::{Span, TokenStream};
-use ::quote::IdentFragment;
+use ::quote::{IdentFragment, quote_spanned};
 use ::syn::{Ident, LitBool, LitInt, LitStr, spanned::Spanned};
 
-use crate::{
-    array_expr::typed_value::TypedValue,
-    util::{kw_kind, spanned_parse_str},
-};
+use crate::{array_expr::typed_value::TypedValue, util::kw_kind};
 
 kw_kind!(
     /// A parsed output type (has span).
@@ -26,12 +23,6 @@ kw_kind!(
         int,
         /// Output a boolean.
         bool,
-        /// Output an expression.
-        expr,
-        /// Output an item.
-        item,
-        /// Value is a statement.
-        stmt,
         /// Value is tokens.
         tokens,
         /// No type, cannot be converted to tokens.
@@ -292,16 +283,16 @@ impl Value {
                 value: self.parse().map_err(|err| ::syn::Error::new(span, err))?,
                 span,
             }),
-            TyKind::expr => TypedValue::Expr(Box::new(spanned_parse_str(span, self)?), span),
-            TyKind::item => TypedValue::Item(Box::new(spanned_parse_str(span, self)?), span),
-            TyKind::stmt => TypedValue::Stmt(Box::new(spanned_parse_str(span, self)?), span),
             TyKind::none => {
                 return Err(::syn::Error::new(
                     span,
                     "values of type none cannot be output",
                 ));
             }
-            TyKind::tokens => TypedValue::Tokens(self.parse()?),
+            TyKind::tokens => {
+                let tokens = TokenStream::from_str(self)?;
+                TypedValue::Tokens(quote_spanned! {span=> #tokens})
+            }
         })
     }
 }

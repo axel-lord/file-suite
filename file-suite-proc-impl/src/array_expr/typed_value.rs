@@ -1,9 +1,9 @@
 //! [TypedValue] impl
 
 use ::proc_macro2::{Literal, Span, TokenStream};
-use ::quote::{ToTokens, TokenStreamExt, quote_spanned};
+use ::quote::{ToTokens, TokenStreamExt};
 use ::syn::{
-    Expr, Ident, Item, LitBool, LitInt, LitStr, Stmt,
+    Ident, LitBool, LitInt, LitStr,
     ext::IdentExt,
     parse::{Lookahead1, ParseStream},
 };
@@ -21,12 +21,6 @@ pub enum TypedValue {
     LitInt(isize, Span),
     /// Value is a [boolean literal][LitBool].
     LitBool(LitBool),
-    /// Value is an expression (cannot be parsed).
-    Expr(Box<Expr>, Span),
-    /// Value is an item (cannot be parsed).
-    Item(Box<Item>, Span),
-    /// Value is a statement (cannot be parsed).
-    Stmt(Box<Stmt>, Span),
     /// Value is a token stream (cannot be parsed, but is created in some contexts).
     Tokens(TokenStream),
 }
@@ -45,9 +39,6 @@ impl TypedValue {
                 let mut value = Value::new_int(*value);
                 value.set_span(*span);
                 value
-            }
-            TypedValue::Expr(..) | TypedValue::Item(..) | TypedValue::Stmt(..) => {
-                panic!("Value should not be converted to from expr, stmt or item TypedValue")
             }
             TypedValue::Tokens(token_stream) => Value::new_tokens(token_stream.clone()),
         }
@@ -80,9 +71,6 @@ impl ToTokens for TypedValue {
                 tokens.append(literal);
             }
             TypedValue::LitBool(lit_bool) => lit_bool.to_tokens(tokens),
-            TypedValue::Expr(expr, span) => tokens.extend(quote_spanned! {*span=> #expr}),
-            TypedValue::Item(item, span) => tokens.extend(quote_spanned! {*span=> #item}),
-            TypedValue::Stmt(stmt, span) => tokens.extend(quote_spanned! {*span=> #stmt}),
             TypedValue::Tokens(token_stream) => token_stream.to_tokens(tokens),
         }
     }
