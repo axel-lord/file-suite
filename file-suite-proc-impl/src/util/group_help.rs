@@ -5,7 +5,11 @@ use ::syn::{MacroDelimiter, parse::Parse};
 
 use crate::{
     macro_delimited,
-    util::{delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse},
+    util::{
+        delimited::MacroDelimExt,
+        ensure_empty,
+        lookahead_parse::{LookaheadParse, ParseWrap},
+    },
 };
 
 /// A delimited empty group, {}, [], ().
@@ -44,6 +48,16 @@ pub struct GroupOption<T> {
     pub delim: MacroDelimiter,
     /// Content of group, may be empty.
     pub content: Option<T>,
+}
+
+impl<T> GroupOption<ParseWrap<T>>
+where
+    T: LookaheadParse,
+{
+    /// Get a reference to the value wrapped by ParseWrap, if any.
+    pub fn unwrap_parsed(&self) -> Option<&T> {
+        self.content.as_ref().map(|content| &content.0)
+    }
 }
 
 impl<T> ToTokens for GroupOption<T>

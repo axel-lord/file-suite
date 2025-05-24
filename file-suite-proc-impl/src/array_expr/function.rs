@@ -19,6 +19,7 @@ pub mod builtin {
     pub mod join;
     pub mod rev;
     pub mod set;
+    pub mod shift;
     pub mod split;
     pub mod trim;
     pub mod ty;
@@ -35,6 +36,7 @@ use crate::{
         join::join,
         rev::rev,
         set::{global, local},
+        shift::shift,
         split::split,
         trim::trim,
         ty::ty,
@@ -67,6 +69,8 @@ function_enum!(
         Rev(rev),
         /// Trim array elements.
         Trim(trim),
+        /// Shift/Rotate elements.
+        Shift(shift),
         /// Count array elements.
         Count(count),
         /// Clear array.
