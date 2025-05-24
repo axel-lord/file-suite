@@ -62,14 +62,14 @@ impl ValueArray {
 
         let mut value = Value::default();
         if let Some(last) = self.last() {
-            value.set_ty(last.ty());
+            value.ty = last.ty;
         }
 
         for span in self.iter().filter_map(Value::span) {
             value.push_span(span);
         }
 
-        value.set_content(self.join(sep));
+        *value.make_string() = self.join(sep);
 
         Self::from_value(value)
     }
@@ -85,7 +85,7 @@ impl ValueArray {
         for value in self {
             for content in value.split(pat) {
                 vec.push(
-                    Value::with_content(content.into())
+                    Value::new(content.into())
                         .with_span_of(value)
                         .with_ty_of(value),
                 );

@@ -6,7 +6,7 @@ use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
         storage::Storage,
-        value::{TyKind, Value},
+        value::Value,
         value_array::ValueArray,
     },
     util::group_help::EmptyGroup,
@@ -40,16 +40,10 @@ impl Call for CountCallable {
         input: crate::array_expr::value_array::ValueArray,
         _: &mut Storage,
     ) -> Result<ValueArray, Cow<'static, str>> {
-        let mut value = Value::new_int(
-            input
-                .len()
-                .try_into()
-                .unwrap_or_else(|_| unreachable!("all lengths should fit in an isize")),
-        );
+        let mut value = Value::new_int(input.len().try_into().unwrap_or_else(|_| unreachable!()));
         if let Some(span) = input.span() {
             value.set_span(span);
         }
-        value.set_ty(TyKind::int);
         Ok(ValueArray::from_value(value))
     }
 }

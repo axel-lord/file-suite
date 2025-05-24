@@ -37,7 +37,7 @@ impl Call for TyKind {
         _: &mut Storage,
     ) -> Result<ValueArray, Cow<'static, str>> {
         for value in &mut input {
-            value.set_ty(*self);
+            value.ty = *self;
         }
         Ok(input)
     }

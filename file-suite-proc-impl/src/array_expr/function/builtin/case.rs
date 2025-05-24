@@ -73,7 +73,7 @@ impl Call for CaseKind {
                 for value in &mut input {
                     let mut capitalized = capitalize(value);
                     capitalized.shrink_to_fit();
-                    value.set_content(capitalized);
+                    *value.make_string() = capitalized;
                 }
 
                 Ok(input)
@@ -82,25 +82,25 @@ impl Call for CaseKind {
                 let mut values = input.iter_mut();
 
                 if let Some(first) = values.next() {
-                    first.set_content(first.to_lowercase());
+                    *first.make_string() = first.to_lowercase();
                 }
 
                 for value in values {
-                    value.set_content(capitalize(value));
+                    *value.make_string() = capitalize(value);
                 }
 
                 Ok(input)
             }
             CaseKind::upper => {
                 for value in &mut input {
-                    value.set_content(value.to_uppercase());
+                    *value.make_string() = value.to_uppercase();
                 }
 
                 Ok(input)
             }
             CaseKind::lower => {
                 for value in &mut input {
-                    value.set_content(value.to_lowercase());
+                    *value.make_string() = value.to_lowercase();
                 }
 
                 Ok(input)

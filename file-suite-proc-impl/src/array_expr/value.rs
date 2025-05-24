@@ -1,6 +1,6 @@
 //! [Value] impl.
 
-use ::std::{borrow::Borrow, fmt::Display, ops::Deref};
+use ::std::{borrow::Borrow, cell::OnceCell, fmt::Display, ops::Deref};
 
 use ::proc_macro2::Span;
 use ::quote::IdentFragment;
@@ -32,6 +32,8 @@ kw_kind!(
         item,
         /// Value is a statement.
         stmt,
+        /// No type, cannot be converted to tokens.
+        none,
     }
 );
 
@@ -43,7 +45,7 @@ pub struct ValueTyEq<'a>(&'a Value);
 impl PartialEq<ValueTyEq<'_>> for ValueTyEq<'_> {
     #[inline]
     fn eq(&self, other: &ValueTyEq) -> bool {
-        self.0.content == other.0.content && self.0.ty == other.0.ty
+        self.0.as_str() == other.0.as_str() && self.0.ty == other.0.ty
     }
 }
 
@@ -61,6 +63,84 @@ impl PartialEq<Value> for ValueTyEq<'_> {
     }
 }
 
+/// Content with cached string content.
+#[derive(Debug, Clone)]
+struct WithCache<T>(T, OnceCell<String>)
+where
+    T: ToString;
+
+impl<T> WithCache<T>
+where
+    T: ToString,
+{
+    /// Create a new value with cache.
+    const fn new(value: T) -> Self {
+        Self(value, OnceCell::new())
+    }
+
+    /// Get value as a string slice.
+    fn as_str(&self) -> &str {
+        self.1.get_or_init(|| self.0.to_string())
+    }
+}
+
+impl<T> From<WithCache<T>> for String
+where
+    T: ToString,
+{
+    fn from(value: WithCache<T>) -> Self {
+        let WithCache(value, cache) = value;
+
+        if let Some(value) = cache.into_inner() {
+            return value;
+        }
+
+        value.to_string()
+    }
+}
+
+/// Content of value.
+#[derive(Debug, Clone)]
+enum Content {
+    /// Content is a string.
+    String(String),
+    /// Content is an integer.
+    Int(WithCache<isize>),
+    /// Content is a boolean.
+    Bool(WithCache<bool>),
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Self::String(String::new())
+    }
+}
+
+impl Content {
+    /// Turn content into a string.
+    fn make_string(&mut self) -> &mut String {
+        *self = Self::String(match ::std::mem::take(self) {
+            Content::String(value) => value,
+            Content::Int(value) => String::from(value),
+            Content::Bool(value) => String::from(value),
+        });
+
+        match self {
+            Self::String(string) => string,
+            _ => unreachable!(),
+        }
+    }
+
+    /// Get content as a string slice.
+    fn as_str(&self) -> &str {
+        match self {
+            Content::String(string) => string,
+            Content::Int(value) => value.as_str(),
+            Content::Bool(value) => value.as_str(),
+        }
+    }
+}
+
 /// Value passed internally.
 ///
 /// It implements [Borrow], [AsRef] and [Deref] to [str] but neither [PartialEq], [Eq] nor [Hash], as there
@@ -69,20 +149,50 @@ impl PartialEq<Value> for ValueTyEq<'_> {
 #[derive(Debug, Clone, Default)]
 pub struct Value {
     /// String representation of value.
-    content: String,
+    content: Content,
     /// Any spans of value.
     span: Option<Span>,
     /// Requested type of value.
-    ty: TyKind,
+    pub ty: TyKind,
 }
 
 impl Value {
-    /// Construct a new value with given content, and a type of [TyKind::str].
-    pub const fn with_content(content: String) -> Self {
+    /// Construct a new value with given content.
+    pub const fn new(content: String) -> Self {
         Self {
-            content,
+            content: Content::String(content),
             ty: TyKind::str,
             span: None,
+        }
+    }
+
+    /// Construct a new value from an integer.
+    pub const fn new_int(value: isize) -> Self {
+        Self {
+            content: Content::Int(WithCache::new(value)),
+            span: None,
+            ty: TyKind::int,
+        }
+    }
+
+    /// Get self with specified type.
+    pub fn with_ty(self, ty: TyKind) -> Self {
+        Self { ty, ..self }
+    }
+
+    /// Get self with specified content.
+    pub fn with_content(self, content: String) -> Self {
+        Self {
+            content: Content::String(content),
+            ..self
+        }
+    }
+
+    /// Get self with specified span.
+    pub fn with_span(self, span: Span) -> Self {
+        Self {
+            span: Some(span),
+            ..self
         }
     }
 
@@ -100,29 +210,6 @@ impl Value {
             span: other.span,
             ..self
         }
-    }
-
-    /// Set  the type used for output.
-    pub const fn set_ty(&mut self, ty: TyKind) -> &mut Self {
-        self.ty = ty;
-        self
-    }
-
-    /// Set the string content of value.
-    pub fn set_content(&mut self, content: String) -> &mut Self {
-        self.content = content;
-        self
-    }
-
-    /// Replace content of value, returning old content.
-    #[inline]
-    pub const fn replace_content(&mut self, content: String) -> String {
-        ::std::mem::replace(&mut self.content, content)
-    }
-
-    /// Get the type used for output.
-    pub const fn ty(&self) -> TyKind {
-        self.ty
     }
 
     /// Push a span to be used.
@@ -148,58 +235,19 @@ impl Value {
         self.span
     }
 
-    /// Get an implementor of [PartialEq] that respects type.
-    pub const fn ty_eq(&self) -> ValueTyEq {
-        ValueTyEq(self)
-    }
-
-    /// Create a new ident value.
-    pub const fn new_ident(i: String) -> Self {
-        Self {
-            content: i,
-            span: None,
-            ty: TyKind::ident,
-        }
-    }
-
-    /// Create a new string literal value.
-    pub const fn new_str(i: String) -> Self {
-        Self {
-            content: i,
-            span: None,
-            ty: TyKind::str,
-        }
-    }
-
-    /// Create a new integer literal value.
-    pub fn new_int(i: isize) -> Self {
-        Self {
-            content: i.to_string(),
-            span: None,
-            ty: TyKind::int,
-        }
+    /// Get value as a mutable string reference.
+    pub fn make_string(&mut self) -> &mut String {
+        self.content.make_string()
     }
 
     /// get value as a string slice.
-    pub const fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         self.content.as_str()
     }
 
-    /// Get value as a mutable string reference.
-    #[expect(
-        clippy::missing_const_for_fn,
-        reason = "promise would be broken eventually"
-    )]
-    pub fn make_string(&mut self) -> &mut String {
-        &mut self.content
-    }
-
-    /// Run a remapping function on value, keeping any spans and type.
-    pub fn remap_value<M>(&mut self, m: M)
-    where
-        M: FnOnce(String) -> String,
-    {
-        self.content = m(::std::mem::take(&mut self.content));
+    /// Get an implementor of [PartialEq] that respects type.
+    pub const fn ty_eq(&self) -> ValueTyEq {
+        ValueTyEq(self)
     }
 
     /// Convert into a [TypedValue].
@@ -209,8 +257,8 @@ impl Value {
     pub fn try_to_typed(&self) -> ::syn::Result<TypedValue> {
         let span = self.span.unwrap_or_else(Span::call_site);
         Ok(match self.ty {
-            TyKind::ident => TypedValue::Ident(Ident::new(&self.content, span)),
-            TyKind::str => TypedValue::LitStr(LitStr::new(&self.content, span)),
+            TyKind::ident => TypedValue::Ident(Ident::new(self.as_str(), span)),
+            TyKind::str => TypedValue::LitStr(LitStr::new(self.as_str(), span)),
             TyKind::int => TypedValue::LitInt(
                 self.parse().map_err(|err| ::syn::Error::new(span, err))?,
                 span,
@@ -222,6 +270,12 @@ impl Value {
             TyKind::expr => TypedValue::Expr(Box::new(spanned_parse_str(span, self)?), span),
             TyKind::item => TypedValue::Item(Box::new(spanned_parse_str(span, self)?), span),
             TyKind::stmt => TypedValue::Stmt(Box::new(spanned_parse_str(span, self)?), span),
+            TyKind::none => {
+                return Err(::syn::Error::new(
+                    span,
+                    "values of type none cannot be output",
+                ));
+            }
         })
     }
 }
@@ -248,14 +302,14 @@ impl Borrow<str> for Value {
 
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.content, f)
+        Display::fmt(self.as_str(), f)
     }
 }
 
 impl From<String> for Value {
     fn from(value: String) -> Self {
         Self {
-            content: value,
+            content: Content::String(value),
             span: None,
             ty: TyKind::str,
         }
@@ -263,8 +317,8 @@ impl From<String> for Value {
 }
 
 impl From<Value> for String {
-    fn from(value: Value) -> Self {
-        value.content
+    fn from(mut value: Value) -> Self {
+        ::std::mem::take(value.make_string())
     }
 }
 
@@ -272,11 +326,7 @@ impl TryFrom<&LitInt> for Value {
     type Error = ::syn::Error;
 
     fn try_from(value: &LitInt) -> Result<Self, Self::Error> {
-        Ok(Self {
-            content: value.base10_parse::<isize>()?.to_string(),
-            span: Some(value.span()),
-            ty: TyKind::int,
-        })
+        Ok(Self::new_int(value.base10_parse()?).with_span(value.span()))
     }
 }
 
@@ -288,21 +338,17 @@ impl From<&Ident> for Value {
                 IdentFragment::fmt(self.0, f)
             }
         }
-        Self {
-            content: Wrap(value).to_string(),
-            span: Some(value.span()),
-            ty: TyKind::ident,
-        }
+        Self::new(Wrap(value).to_string())
+            .with_span(value.span())
+            .with_ty(TyKind::ident)
     }
 }
 
 impl From<&LitStr> for Value {
     fn from(value: &LitStr) -> Self {
-        Self {
-            content: value.value(),
-            span: Some(value.span()),
-            ty: TyKind::str,
-        }
+        Self::new(value.value())
+            .with_span(value.span())
+            .with_ty(TyKind::str)
     }
 }
 
@@ -311,7 +357,7 @@ impl From<&LitBool> for Value {
         let LitBool { value, span } = value;
 
         Self {
-            content: value.to_string(),
+            content: Content::Bool(WithCache::new(*value)),
             span: Some(*span),
             ty: TyKind::bool,
         }

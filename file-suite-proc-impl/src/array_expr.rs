@@ -14,7 +14,7 @@ use crate::{
         function::{Call, Function, ToCallable},
         input::{Input, NodeInput},
         storage::Storage,
-        value::Value,
+        value::{TyKind, Value},
         value_array::ValueArray,
     },
     util::lookahead_parse::LookaheadParse,
@@ -135,7 +135,7 @@ impl Node {
                 not_token: _,
                 remainder,
             } => {
-                let mut value = Value::new_str(remainder.to_string());
+                let mut value = Value::new(remainder.to_string()).with_ty(TyKind::str);
                 value.set_span(remainder.span());
                 ArrayExpr {
                     input: vec![Input::Value(value)],

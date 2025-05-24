@@ -94,32 +94,32 @@ impl Call for SplitCallable {
             Self::Kw(kw_kind) => match kw_kind {
                 SplitKind::camel => {
                     let mut value_vec = Vec::with_capacity(values.len());
-                    for mut value in values {
+                    for value in values {
                         let mut value_str = value.as_str();
                         while let Some(idx) = value_str.rfind(char::is_uppercase) {
                             let found;
                             (value_str, found) = value_str.split_at(idx);
                             value_vec.push(
-                                Value::with_content(found.into())
+                                Value::new(found.into())
                                     .with_ty_of(&value)
                                     .with_span_of(&value),
                             );
                         }
-                        value.set_content(value_str.into());
-                        value_vec.push(value);
+                        let content = String::from(value_str);
+                        value_vec.push(value.with_content(content));
                     }
                     value_vec.reverse();
                     value_vec.into()
                 }
                 SplitKind::pascal => {
                     let mut value_vec = Vec::with_capacity(values.len());
-                    for mut value in values {
+                    for value in values {
                         let mut value_str = value.as_str();
                         while let Some(idx) = value_str.rfind(char::is_uppercase) {
                             let found;
                             (value_str, found) = value_str.split_at(idx);
                             value_vec.push(
-                                Value::with_content(found.into())
+                                Value::new(found.into())
                                     .with_ty_of(&value)
                                     .with_span_of(&value),
                             );
@@ -128,8 +128,9 @@ impl Call for SplitCallable {
                         // anyways, whilst camel always adds the value_str value even if it is
                         // empty.
                         if !value_str.is_empty() {
-                            value.set_content(value_str.into());
-                            value_vec.push(value)
+                            // value.set_content(value_str.into());
+                            let content = String::from(value_str);
+                            value_vec.push(value.with_content(content))
                         };
                     }
                     value_vec.reverse();
