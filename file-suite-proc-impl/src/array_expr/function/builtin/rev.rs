@@ -29,7 +29,7 @@ impl ToCallable for rev {
     }
 }
 
-/// [Call] implementor for [Rev].
+/// [Call] implementor for [rev].
 #[derive(Debug, Clone, Copy)]
 pub struct RevCallable;
 
