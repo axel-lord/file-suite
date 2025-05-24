@@ -185,6 +185,15 @@ impl Value {
         self.content.as_str()
     }
 
+    /// Get value as a mutable string reference.
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "promise would be broken eventually"
+    )]
+    pub fn make_string(&mut self) -> &mut String {
+        &mut self.content
+    }
+
     /// Run a remapping function on value, keeping any spans and type.
     pub fn remap_value<M>(&mut self, m: M)
     where
