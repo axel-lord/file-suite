@@ -300,7 +300,7 @@ mod test {
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
 
-        let expr = quote! {(! enum Item { Roundtrip }) -> ty(item)};
+        let expr = quote! {(! enum Item { Roundtrip }) -> ty(tokens)};
         let expected = quote! {enum Item { Roundtrip }};
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());

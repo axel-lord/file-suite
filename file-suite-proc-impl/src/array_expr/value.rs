@@ -1,9 +1,12 @@
 //! [Value] impl.
 
-use ::std::{borrow::Borrow, cell::OnceCell, fmt::Display, ops::Deref, str::FromStr};
+use ::std::{
+    borrow::Borrow, cell::OnceCell, fmt::Display, num::ParseIntError, ops::Deref,
+    str::ParseBoolError,
+};
 
-use ::proc_macro2::{Span, TokenStream};
-use ::quote::{IdentFragment, quote_spanned};
+use ::proc_macro2::{LexError, Span, TokenStream};
+use ::quote::{IdentFragment, ToTokens, quote_spanned};
 use ::syn::{Ident, LitBool, LitInt, LitStr, spanned::Spanned};
 
 use crate::{array_expr::typed_value::TypedValue, util::kw_kind};
@@ -58,22 +61,50 @@ impl PartialEq<Value> for ValueTyEq<'_> {
 
 /// Content with cached string content.
 #[derive(Debug, Clone)]
-struct WithCache<T>(T, OnceCell<String>)
-where
-    T: ToString;
+struct WithCache<T>(T, OnceCell<String>);
 
-impl<T> WithCache<T>
+impl<T> ToTokens for WithCache<T>
 where
-    T: ToString,
+    T: ToTokens,
 {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens);
+    }
+}
+
+impl<T> WithCache<T> {
     /// Create a new value with cache.
     const fn new(value: T) -> Self {
         Self(value, OnceCell::new())
     }
 
+    /// Get value.
+    const fn get(&self) -> &T {
+        &self.0
+    }
+
+    /// Get value as a string slice, using the passed
+    /// function pointer to create the string if it
+    /// is not chached.
+    fn as_str_or_else(&self, to_string: fn(&T) -> String) -> &str {
+        self.1.get_or_init(|| to_string(&self.0))
+    }
+
+    /// Convert the into a string, using the passed
+    /// function pointer to create the string if it
+    /// is not chached.
+    fn into_string_or_else(self, into_string: fn(T) -> String) -> String {
+        self.1.into_inner().unwrap_or_else(|| into_string(self.0))
+    }
+}
+
+impl<T> WithCache<T>
+where
+    T: ToString,
+{
     /// Get value as a string slice.
     fn as_str(&self) -> &str {
-        self.1.get_or_init(|| self.0.to_string())
+        self.as_str_or_else(T::to_string)
     }
 }
 
@@ -82,13 +113,7 @@ where
     T: ToString,
 {
     fn from(value: WithCache<T>) -> Self {
-        let WithCache(value, cache) = value;
-
-        if let Some(value) = cache.into_inner() {
-            return value;
-        }
-
-        value.to_string()
+        value.into_string_or_else(|value| value.to_string())
     }
 }
 
@@ -256,9 +281,50 @@ impl Value {
         self.content.make_string()
     }
 
-    /// get value as a string slice.
+    /// Get value as a string slice.
     pub fn as_str(&self) -> &str {
         self.content.as_str()
+    }
+
+    /// Get value as a boolean.
+    ///
+    /// # Errors
+    /// Anything other than true or false results in a ParseBoolError being returned.
+    pub fn get_bool(&self) -> Result<bool, ParseBoolError> {
+        if let Content::Bool(value) = &self.content {
+            return Ok(*value.get());
+        }
+
+        self.parse()
+    }
+
+    /// Get value as an integer.
+    ///
+    /// # Errors
+    /// Anything that is not an integer results in a ParseIntError being returned.
+    pub fn get_int(&self) -> Result<isize, ParseIntError> {
+        if let Content::Int(value) = &self.content {
+            return Ok(*value.get());
+        }
+
+        self.parse()
+    }
+
+    /// Get value as a token stream.
+    ///
+    /// # Errors
+    /// Anything that is not a valid token stream results in a LexError being returned.
+    pub fn get_tokens(&self) -> Result<TokenStream, LexError> {
+        let span = self.span.unwrap_or_else(Span::call_site);
+        match &self.content {
+            Content::String(value) => {
+                let tokens = value.parse::<TokenStream>()?;
+                Ok(quote_spanned! {span=> #tokens})
+            }
+            Content::Int(value) => Ok(quote_spanned! {span=> #value}),
+            Content::Bool(value) => Ok(quote_spanned! {span=> #value}),
+            Content::Tokens(tokens) => Ok(quote_spanned! {span=> #tokens}),
+        }
     }
 
     /// Get an implementor of [PartialEq] that respects type.
@@ -276,11 +342,13 @@ impl Value {
             TyKind::ident => TypedValue::Ident(Ident::new(self.as_str(), span)),
             TyKind::str => TypedValue::LitStr(LitStr::new(self.as_str(), span)),
             TyKind::int => TypedValue::LitInt(
-                self.parse().map_err(|err| ::syn::Error::new(span, err))?,
+                self.get_int().map_err(|err| ::syn::Error::new(span, err))?,
                 span,
             ),
             TyKind::bool => TypedValue::LitBool(LitBool {
-                value: self.parse().map_err(|err| ::syn::Error::new(span, err))?,
+                value: self
+                    .get_bool()
+                    .map_err(|err| ::syn::Error::new(span, err))?,
                 span,
             }),
             TyKind::none => {
@@ -289,10 +357,7 @@ impl Value {
                     "values of type none cannot be output",
                 ));
             }
-            TyKind::tokens => {
-                let tokens = TokenStream::from_str(self)?;
-                TypedValue::Tokens(quote_spanned! {span=> #tokens})
-            }
+            TyKind::tokens => TypedValue::Tokens(self.get_tokens()?),
         })
     }
 }
