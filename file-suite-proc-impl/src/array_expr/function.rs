@@ -13,6 +13,7 @@ pub mod builtin {
 
     pub mod alias;
     pub mod case;
+    pub mod clear;
     pub mod count;
     pub mod enumerate;
     pub mod join;
@@ -27,6 +28,7 @@ use crate::{
     array_expr::function::builtin::{
         alias::alias,
         case::case,
+        clear::clear,
         count::count,
         enumerate::enumerate,
         join::join,
@@ -63,6 +65,8 @@ function_enum!(
         Rev(rev),
         /// Count array elements.
         Count(count),
+        /// Clear array.
+        Clear(clear),
         /// Set a global variable.
         Global(global),
         /// Set a local variable.

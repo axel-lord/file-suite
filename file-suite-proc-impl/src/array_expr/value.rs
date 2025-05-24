@@ -202,7 +202,10 @@ impl Value {
         Ok(match self.ty {
             TyKind::ident => TypedValue::Ident(Ident::new(&self.content, span)),
             TyKind::str => TypedValue::LitStr(LitStr::new(&self.content, span)),
-            TyKind::int => todo!(),
+            TyKind::int => TypedValue::LitInt(
+                self.parse().map_err(|err| ::syn::Error::new(span, err))?,
+                span,
+            ),
             TyKind::bool => TypedValue::LitBool(LitBool {
                 value: self.parse().map_err(|err| ::syn::Error::new(span, err))?,
                 span,

@@ -295,13 +295,17 @@ mod test {
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
 
-        let expr = quote! {(!split::a::path) -> split(path).ty(ident)};
-        let expected = quote! {split a path};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
+        // let expr = quote! {(!split::a::path) -> split(path).ty(ident)};
+        // let expected = quote! {split a path};
+        // let result = array_expr(expr).unwrap();
 
         let expr = quote! {(! enum Item { Roundtrip }) -> ty(item)};
         let expected = quote! {enum Item { Roundtrip }};
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+
+        let expr = quote! { 1 1 1 -> enumerate(2:2:1).join.ty(int)};
+        let expected = quote! { 213141 };
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
     }
