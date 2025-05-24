@@ -27,6 +27,8 @@ pub enum TypedValue {
     Item(Box<Item>, Span),
     /// Value is a statement (cannot be parsed).
     Stmt(Box<Stmt>, Span),
+    /// Value is a token stream (cannot be parsed, but is created in some contexts).
+    Tokens(TokenStream),
 }
 
 impl TypedValue {
@@ -47,6 +49,7 @@ impl TypedValue {
             TypedValue::Expr(..) | TypedValue::Item(..) | TypedValue::Stmt(..) => {
                 panic!("Value should not be converted to from expr, stmt or item TypedValue")
             }
+            TypedValue::Tokens(token_stream) => Value::new_tokens(token_stream.clone()),
         }
     }
 }
@@ -80,6 +83,7 @@ impl ToTokens for TypedValue {
             TypedValue::Expr(expr, span) => tokens.extend(quote_spanned! {*span=> #expr}),
             TypedValue::Item(item, span) => tokens.extend(quote_spanned! {*span=> #item}),
             TypedValue::Stmt(stmt, span) => tokens.extend(quote_spanned! {*span=> #stmt}),
+            TypedValue::Tokens(token_stream) => token_stream.to_tokens(tokens),
         }
     }
 }

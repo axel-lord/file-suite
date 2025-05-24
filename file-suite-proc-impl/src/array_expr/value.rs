@@ -2,9 +2,9 @@
 
 use ::std::{borrow::Borrow, cell::OnceCell, fmt::Display, ops::Deref};
 
-use ::proc_macro2::Span;
+use ::proc_macro2::{Span, TokenStream};
 use ::quote::IdentFragment;
-use ::syn::{Ident, LitBool, LitInt, LitStr};
+use ::syn::{Ident, LitBool, LitInt, LitStr, spanned::Spanned};
 
 use crate::{
     array_expr::typed_value::TypedValue,
@@ -32,6 +32,8 @@ kw_kind!(
         item,
         /// Value is a statement.
         stmt,
+        /// Value is tokens.
+        tokens,
         /// No type, cannot be converted to tokens.
         none,
     }
@@ -108,6 +110,8 @@ enum Content {
     Int(WithCache<isize>),
     /// Content is a boolean.
     Bool(WithCache<bool>),
+    /// Content is a token stream.
+    Tokens(WithCache<TokenStream>),
 }
 
 impl Default for Content {
@@ -123,6 +127,7 @@ impl Content {
             Content::String(value) => value,
             Content::Int(value) => String::from(value),
             Content::Bool(value) => String::from(value),
+            Content::Tokens(value) => String::from(value),
         });
 
         match self {
@@ -137,6 +142,7 @@ impl Content {
             Content::String(string) => string,
             Content::Int(value) => value.as_str(),
             Content::Bool(value) => value.as_str(),
+            Content::Tokens(value) => value.as_str(),
         }
     }
 }
@@ -172,6 +178,25 @@ impl Value {
             content: Content::Int(WithCache::new(value)),
             span: None,
             ty: TyKind::int,
+        }
+    }
+
+    /// Construct a new value from a boolean.
+    pub const fn new_bool(value: bool) -> Self {
+        Self {
+            content: Content::Bool(WithCache::new(value)),
+            span: None,
+            ty: TyKind::bool,
+        }
+    }
+
+    /// Construct a new value from a token stream.
+    pub fn new_tokens(value: TokenStream) -> Self {
+        let span = value.span();
+        Self {
+            content: Content::Tokens(WithCache::new(value)),
+            span: Some(span),
+            ty: TyKind::tokens,
         }
     }
 
@@ -276,6 +301,7 @@ impl Value {
                     "values of type none cannot be output",
                 ));
             }
+            TyKind::tokens => TypedValue::Tokens(self.parse()?),
         })
     }
 }
@@ -361,5 +387,11 @@ impl From<&LitBool> for Value {
             span: Some(*span),
             ty: TyKind::bool,
         }
+    }
+}
+
+impl From<TokenStream> for Value {
+    fn from(value: TokenStream) -> Self {
+        Self::new_tokens(value)
     }
 }
