@@ -13,6 +13,7 @@ pub mod builtin {
     pub mod clear;
     pub mod count;
     pub mod enumerate;
+    pub mod fork;
     pub mod join;
     pub mod rev;
     pub mod set;
@@ -30,6 +31,7 @@ use crate::array_expr::function::builtin::{
     clear::clear,
     count::count,
     enumerate::enumerate,
+    fork::fork,
     join::join,
     rev::rev,
     set::{global, local},
@@ -70,11 +72,13 @@ function_enum!(
         Enumerate(enumerate),
         /// Reverse array.
         Rev(rev),
-        /// Trim array elements.
+        /// Trim array array.
         Trim(trim),
-        /// Shift/Rotate elements.
+        /// Shift/Rotate array.
         Shift(shift),
-        /// Count array elements.
+        /// Fork array.
+        Fork(fork),
+        /// Count array values.
         Count(count),
         /// Split array into chunks.
         Chunks(chunk),

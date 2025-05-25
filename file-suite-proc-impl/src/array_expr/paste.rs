@@ -54,14 +54,14 @@ impl FoldTokens<2> for ArrayExprPaste {
                 ::syn::Error::new(span.get(), "expected delimited group following '++!'")
             })?;
 
-        self.storage.with_local_layer(|storage| {
-            for node in Node::parse_multiple.parse2(group.stream())? {
-                for value in node.to_array_expr().compute_with_storage(storage)? {
-                    value.try_to_typed()?.to_tokens(tokens);
-                }
+        for node in Node::parse_multiple.parse2(group.stream())? {
+            for value in self
+                .storage
+                .with_local_layer(|storage| node.to_array_expr().compute_with_storage(storage))?
+            {
+                value.try_to_typed()?.to_tokens(tokens);
             }
-
-            Ok(())
-        })
+        }
+        Ok(())
     }
 }

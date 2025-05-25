@@ -33,7 +33,9 @@ pub fn array_expr(input: TokenStream) -> ::syn::Result<TokenStream> {
     let mut tokens = TokenStream::default();
     let mut storage = Storage::default();
     for node in Node::parse_multiple.parse2(input)? {
-        for value in node.to_array_expr().compute_with_storage(&mut storage)? {
+        for value in storage
+            .with_local_layer(|storage| node.to_array_expr().compute_with_storage(storage))?
+        {
             value.try_to_typed()?.to_tokens(&mut tokens);
         }
     }

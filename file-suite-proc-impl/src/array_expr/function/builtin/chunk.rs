@@ -71,14 +71,16 @@ impl Call for ChunkCallable {
                 break;
             }
 
-            match &self.remainder {
-                Some(remainder) if values.len() != self.size.get() => {
-                    out_array.extend(FunctionChain::call_chain(remainder, values, storage)?);
-                }
-                _ => {
-                    out_array.extend(FunctionChain::call_chain(&self.chain, values, storage)?);
-                }
-            }
+            let chain = match &self.remainder {
+                Some(remainder) if values.len() != self.size.get() => remainder,
+                _ => &self.chain,
+            };
+
+            out_array.extend(
+                storage.with_local_layer(|storage| {
+                    FunctionChain::call_chain(chain, values, storage)
+                })?,
+            );
         }
 
         Ok(out_array)
