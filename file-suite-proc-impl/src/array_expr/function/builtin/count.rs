@@ -1,7 +1,5 @@
 //! [count] impl.
 
-use std::borrow::Cow;
-
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
@@ -39,7 +37,7 @@ impl Call for CountCallable {
         &self,
         input: crate::array_expr::value_array::ValueArray,
         _: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    ) -> crate::Result<ValueArray> {
         let mut value = Value::new_int(input.len().try_into().unwrap_or_else(|_| unreachable!()));
         if let Some(span) = input.span() {
             value.set_span(span);

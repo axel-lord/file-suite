@@ -1,7 +1,5 @@
 //! [UseAlias] impl.
 
-use ::std::borrow::Cow;
-
 use ::quote::ToTokens;
 use ::syn::{Token, parse::ParseStream};
 
@@ -47,17 +45,10 @@ pub struct UseAliasCallable {
 }
 
 impl Call for UseAliasCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
-        let alias = storage.get_alias(&self.alias_key).ok_or_else(|| {
-            Cow::Owned(format!(
-                "could net get chain alias for key '{}'",
-                self.alias_key
-            ))
-        })?;
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
+        let alias = storage
+            .get_alias(&self.alias_key)
+            .ok_or_else(|| format!("could net get chain alias for key '{}'", self.alias_key))?;
 
         storage.with_local_layer(|storage| FunctionChain::call_chain(&alias, array, storage))
     }

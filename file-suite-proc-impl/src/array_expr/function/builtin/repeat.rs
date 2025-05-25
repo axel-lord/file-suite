@@ -1,6 +1,6 @@
 //! [repeat] impl
 
-use ::std::{borrow::Cow, num::NonZero};
+use ::std::num::NonZero;
 
 use crate::{
     array_expr::{
@@ -39,11 +39,7 @@ pub struct RepeatCallable {
 }
 
 impl Call for RepeatCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        _storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, array: ValueArray, _storage: &mut Storage) -> crate::Result<ValueArray> {
         Ok(::std::iter::repeat_n((), self.times.get())
             .flat_map(|_| array.iter().cloned())
             .collect())

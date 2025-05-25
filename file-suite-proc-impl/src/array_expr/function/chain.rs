@@ -1,7 +1,5 @@
 //! [FunctionChain] impl.
 
-use ::std::borrow::Cow;
-
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -81,7 +79,7 @@ impl FunctionChain {
         chain: &[FunctionCallable],
         mut array: ValueArray,
         storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    ) -> crate::Result<ValueArray> {
         for func in chain {
             array = func.call(array, storage)?;
         }

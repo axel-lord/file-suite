@@ -1,7 +1,5 @@
 //! [trim] impl
 
-use ::std::borrow::Cow;
-
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
@@ -34,11 +32,7 @@ impl ToCallable for trim {
 pub struct TrimCallable;
 
 impl Call for TrimCallable {
-    fn call(
-        &self,
-        mut array: ValueArray,
-        _storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, mut array: ValueArray, _storage: &mut Storage) -> crate::Result<ValueArray> {
         for value in &mut array {
             // make_string may not be cheap. And the created string needs an addr.
             if value.is_empty() {

@@ -1,7 +1,6 @@
 //! [enumerate] impl.
 
 use ::std::num::NonZero;
-use std::borrow::Cow;
 
 use ::quote::ToTokens;
 use ::syn::{
@@ -84,7 +83,7 @@ impl Default for EnumerateCallable {
 }
 
 impl Call for EnumerateCallable {
-    fn call(&self, input: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
         let mut offset = self.offset;
         let step = self.step;
         let span = self.array_span.get();
@@ -98,9 +97,9 @@ impl Call for EnumerateCallable {
             for _ in 1..span {
                 output.extend(input.next());
             }
-            offset = offset.checked_add(step).ok_or_else(|| {
-                Cow::Owned(format!("integer over/underflow adding {step} to {offset}"))
-            })?;
+            offset = offset
+                .checked_add(step)
+                .ok_or_else(|| format!("integer over/underflow adding {step} to {offset}"))?;
         }
 
         Ok(ValueArray::from_vec(output))

@@ -63,13 +63,12 @@ impl ToCallable for local {
 pub struct LocalCallable(Behaviour);
 
 impl Call for LocalCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, std::borrow::Cow<'static, str>> {
-        self.0
-            .set_variables(array, storage, |storage, key| storage.insert(key, false))?;
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
+        self.0.set_variables(array, storage, |storage, key| {
+            storage
+                .insert(key, false)
+                .map_err(|key| format!("read-only local with key '{key}' already exists").into())
+        })?;
         Ok(ValueArray::new())
     }
 }
@@ -79,13 +78,11 @@ impl Call for LocalCallable {
 pub struct GlobalCallable(Behaviour);
 
 impl Call for GlobalCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, std::borrow::Cow<'static, str>> {
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         self.0.set_variables(array, storage, |storage, key| {
-            storage.insert_global(key, false)
+            storage
+                .insert_global(key, false)
+                .map_err(|key| format!("read-only global with key '{key}' already exists").into())
         })?;
         Ok(ValueArray::new())
     }
@@ -112,17 +109,9 @@ impl Behaviour {
     /// # Errors
     /// If the values cannot be computed, in the case of SetArray.
     /// Or if the variables to be set are read-only.
-    fn set_variables<I>(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-        insert: I,
-    ) -> Result<(), std::borrow::Cow<'static, str>>
+    fn set_variables<I>(&self, array: ValueArray, storage: &mut Storage, insert: I) -> crate::Result
     where
-        I: for<'a, 'k> Fn(
-            &'a mut Storage,
-            Cow<'k, str>,
-        ) -> Result<&'a mut ValueArray, Cow<'k, str>>,
+        I: for<'a, 'k> Fn(&'a mut Storage, Cow<'k, str>) -> crate::Result<&'a mut ValueArray>,
     {
         match self {
             Behaviour::SetArray { key_expr } => {
@@ -131,18 +120,16 @@ impl Behaviour {
                     .map_err(|err| err.to_string())?;
 
                 for key in array.into_iter().map(String::from) {
-                    let var = insert(storage, Cow::Owned(key)).map_err(|key| {
-                        Cow::Owned(format!("cannot set read-only variable '{key}'"))
-                    })?;
+                    let var = insert(storage, Cow::Owned(key))
+                        .map_err(|key| format!("cannot set read-only variable '{key}'"))?;
 
                     *var = values.clone();
                 }
             }
             Behaviour::SetInput { keys } => {
                 for key in keys {
-                    let var = insert(storage, Cow::Borrowed(key)).map_err(|key| {
-                        Cow::Owned(format!("cannot set read-only variable '{key}'"))
-                    })?;
+                    let var = insert(storage, Cow::Borrowed(key))
+                        .map_err(|key| format!("cannot set read-only variable '{key}'"))?;
 
                     *var = array.clone();
                 }

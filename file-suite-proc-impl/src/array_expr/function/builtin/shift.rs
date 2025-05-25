@@ -1,7 +1,5 @@
 //! [shift] impl.
 
-use ::std::borrow::Cow;
-
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
@@ -49,11 +47,7 @@ impl Default for ShiftCallable {
 }
 
 impl Call for ShiftCallable {
-    fn call(
-        &self,
-        mut array: ValueArray,
-        _storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, mut array: ValueArray, _storage: &mut Storage) -> crate::Result<ValueArray> {
         if array.len() <= 1 || self.by == 0 {
             Ok(array)
         } else if self.by < 0 {

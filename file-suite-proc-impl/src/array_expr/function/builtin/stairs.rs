@@ -1,7 +1,5 @@
 //! [stairs] impl.
 
-use ::std::borrow::Cow;
-
 use crate::{
     array_expr::{
         function::{Call, FunctionCallable, FunctionChain, ToCallable, function_struct},
@@ -40,11 +38,7 @@ pub struct StairsCallable {
 }
 
 impl Call for StairsCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         if array.is_empty() {
             return storage.with_local_layer(|storage| {
                 FunctionChain::call_chain(&self.chain, array, storage)

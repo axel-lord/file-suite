@@ -1,7 +1,5 @@
 //! [fork] impl.
 
-use ::std::borrow::Cow;
-
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -53,11 +51,7 @@ pub struct ForkCallable {
 }
 
 impl Call for ForkCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         let mut output_array = ValueArray::new();
 
         for chain in &self.chains {

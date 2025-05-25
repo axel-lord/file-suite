@@ -1,7 +1,5 @@
 //! [join] impl.
 
-use std::borrow::Cow;
-
 use ::syn::{LitChar, LitStr};
 
 use crate::{
@@ -70,7 +68,7 @@ pub enum JoinCallable {
 }
 
 impl Call for JoinCallable {
-    fn call(&self, input: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
         Ok(match self {
             JoinCallable::Str(sep) => input.join_by_str(sep),
             JoinCallable::Char(sep) => {

@@ -1,7 +1,5 @@
 //! [paste] impl.
 
-use ::std::borrow::Cow;
-
 use ::proc_macro2::TokenStream;
 
 use crate::{
@@ -43,18 +41,13 @@ pub struct PasteCallable {
 }
 
 impl Call for PasteCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         if !array.is_empty() {
-            return Err(Cow::Borrowed(
-                "paste should not be used with a non-empty array, use clear to clear it if this is intended",
-            ));
+            return Err(
+                "paste should not be used with a non-empty array, use clear to clear it if this is intended".into(),
+            );
         }
-        let tokens = fold_token_stream(&mut ArrayExprPaste { storage }, self.content.clone())
-            .map_err(|err| Cow::Owned(err.to_string()))?;
+        let tokens = fold_token_stream(&mut ArrayExprPaste { storage }, self.content.clone())?;
         let value = Value::new_tokens(tokens);
         Ok(ValueArray::from_value(value))
     }

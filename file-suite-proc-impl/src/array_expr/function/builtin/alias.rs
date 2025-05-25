@@ -1,7 +1,5 @@
 //! [alias] impl.
 
-use ::std::borrow::Cow;
-
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
 
@@ -42,11 +40,7 @@ pub struct AliasCallable {
 }
 
 impl Call for AliasCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         for value in array {
             storage.set_alias(value.into(), self.chain.clone());
         }

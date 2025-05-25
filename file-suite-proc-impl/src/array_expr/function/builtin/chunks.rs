@@ -1,6 +1,6 @@
 //! [chunk] impl.
 
-use ::std::{borrow::Cow, num::NonZero};
+use ::std::num::NonZero;
 
 use ::quote::ToTokens;
 use ::syn::{
@@ -57,11 +57,7 @@ pub struct ChunksCallable {
 }
 
 impl Call for ChunksCallable {
-    fn call(
-        &self,
-        array: ValueArray,
-        storage: &mut Storage,
-    ) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         let mut array = array.into_iter();
         let mut out_array = ValueArray::new();
 

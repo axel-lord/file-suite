@@ -1,7 +1,5 @@
 //! [rev] impl.
 
-use std::borrow::Cow;
-
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
@@ -34,7 +32,7 @@ impl ToCallable for rev {
 pub struct RevCallable;
 
 impl Call for RevCallable {
-    fn call(&self, input: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
         let mut values = input;
         values.reverse();
         Ok(values)

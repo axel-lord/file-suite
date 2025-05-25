@@ -1,7 +1,5 @@
 //! [clear] impl.
 
-use std::borrow::Cow;
-
 use crate::{
     array_expr::{
         function::{Call, ToCallable, function_struct},
@@ -34,7 +32,7 @@ impl ToCallable for clear {
 pub struct ClearCallable;
 
 impl Call for ClearCallable {
-    fn call(&self, _: ValueArray, _: &mut Storage) -> Result<ValueArray, Cow<'static, str>> {
+    fn call(&self, _: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
         Ok(ValueArray::new())
     }
 }
