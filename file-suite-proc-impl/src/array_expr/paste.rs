@@ -15,13 +15,13 @@ use crate::{
 };
 
 /// [FoldTokens] for finding array expressions.
-#[derive(Debug, Default)]
-pub(crate) struct ArrayExprPaste {
+#[derive(Debug)]
+pub(crate) struct ArrayExprPaste<'s> {
     /// Variable storage for paste expression.
-    storage: Storage,
+    pub storage: &'s mut Storage,
 }
 
-impl FoldTokens<2> for ArrayExprPaste {
+impl FoldTokens<2> for ArrayExprPaste<'_> {
     fn fold_punct(
         &mut self,
         punct: proc_macro2::Punct,

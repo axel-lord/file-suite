@@ -23,18 +23,18 @@ function_struct!(
     /// Split array into chunks and run input chain on them.
     #[derive(Debug, Clone)]
     #[expect(non_camel_case_types)]
-    chunk {
+    chunks {
         /// Chunk specification.
         spec: GroupSingle<Spec>,
     }
 );
 
-impl ToCallable for chunk {
-    type Call = ChunkCallable;
+impl ToCallable for chunks {
+    type Call = ChunksCallable;
 
     fn to_callable(&self) -> Self::Call {
         let content = &self.spec.content;
-        ChunkCallable {
+        ChunksCallable {
             size: content.chunk_size.value,
             chain: content.chain.to_call_chain(),
             remainder: content
@@ -45,9 +45,9 @@ impl ToCallable for chunk {
     }
 }
 
-/// [Call] implementor for [chunk].
+/// [Call] implementor for [chunks].
 #[derive(Debug, Clone)]
-pub struct ChunkCallable {
+pub struct ChunksCallable {
     /// Size of chunks (with exceptions for last chunk).
     size: NonZero<usize>,
     /// Chain to call on chunks.
@@ -56,7 +56,7 @@ pub struct ChunkCallable {
     remainder: Option<Vec<FunctionCallable>>,
 }
 
-impl Call for ChunkCallable {
+impl Call for ChunksCallable {
     fn call(
         &self,
         array: ValueArray,

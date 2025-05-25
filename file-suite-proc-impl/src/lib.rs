@@ -21,7 +21,12 @@ pub mod util;
 /// If the expression cannot be parsed.
 /// Or if it cannot be computed.
 pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
-    fold_token_stream(&mut ArrayExprPaste::default(), input)
+    fold_token_stream(
+        &mut ArrayExprPaste {
+            storage: &mut Storage::default(),
+        },
+        input,
+    )
 }
 
 /// Compute array expression expressed as macro input.

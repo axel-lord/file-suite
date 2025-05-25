@@ -9,12 +9,13 @@ pub mod builtin {
 
     pub mod alias;
     pub mod case;
-    pub mod chunk;
+    pub mod chunks;
     pub mod clear;
     pub mod count;
     pub mod enumerate;
     pub mod fork;
     pub mod join;
+    pub mod paste;
     pub mod repeat;
     pub mod rev;
     pub mod set;
@@ -29,12 +30,13 @@ pub mod builtin {
 use crate::array_expr::function::builtin::{
     alias::alias,
     case::case,
-    chunk::chunk,
+    chunks::chunks,
     clear::clear,
     count::count,
     enumerate::enumerate,
     fork::fork,
     join::join,
+    paste::paste,
     repeat::repeat,
     rev::rev,
     set::{global, local},
@@ -86,10 +88,12 @@ function_enum!(
         Repeat(repeat),
         /// Stair array.
         Stairs(stairs),
+        /// Paste tokens.
+        Paste(paste),
         /// Count array values.
         Count(count),
         /// Split array into chunks.
-        Chunks(chunk),
+        Chunks(chunks),
         /// Clear array.
         Clear(clear),
         /// Set a global variable.
