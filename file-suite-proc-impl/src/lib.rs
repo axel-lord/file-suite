@@ -2,10 +2,10 @@
 
 use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
-use ::syn::parse::{Parse, Parser};
+use ::syn::parse::Parser;
 
 use crate::{
-    array_expr::{ArrayExprPaste, Node},
+    array_expr::{ArrayExprPaste, Node, storage::Storage},
     util::fold_tokens::fold_token_stream,
 };
 
@@ -31,8 +31,11 @@ pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
 /// Or if it cannot be computed.
 pub fn array_expr(input: TokenStream) -> ::syn::Result<TokenStream> {
     let mut tokens = TokenStream::default();
-    for value in Node::parse.parse2(input)?.to_array_expr().compute()? {
-        value.try_to_typed()?.to_tokens(&mut tokens);
+    let mut storage = Storage::default();
+    for node in Node::parse_multiple.parse2(input)? {
+        for value in node.to_array_expr().compute_with_storage(&mut storage)? {
+            value.try_to_typed()?.to_tokens(&mut tokens);
+        }
     }
     Ok(tokens)
 }
