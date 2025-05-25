@@ -7,7 +7,7 @@ use ::syn::{Token, parse::ParseStream};
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable},
+        function::{Call, FunctionChain, ToCallable},
         storage::Storage,
         typed_value::TypedValue,
         value_array::ValueArray,
@@ -49,21 +49,17 @@ pub struct UseAliasCallable {
 impl Call for UseAliasCallable {
     fn call(
         &self,
-        mut array: ValueArray,
+        array: ValueArray,
         storage: &mut Storage,
     ) -> Result<ValueArray, Cow<'static, str>> {
-        let Some(alias) = storage.get_alias(&self.alias_key) else {
-            return Err(Cow::Owned(format!(
+        let alias = storage.get_alias(&self.alias_key).ok_or_else(|| {
+            Cow::Owned(format!(
                 "could net get chain alias for key '{}'",
                 self.alias_key
-            )));
-        };
+            ))
+        })?;
 
-        for func in alias.as_ref() {
-            array = func.call(array, storage)?;
-        }
-
-        Ok(array)
+        storage.with_local_layer(|storage| FunctionChain::call_chain(&alias, array, storage))
     }
 }
 
