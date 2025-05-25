@@ -3,11 +3,11 @@
 use ::std::borrow::Cow;
 
 use ::quote::ToTokens;
-use ::syn::{Token, parse::Parse};
+use ::syn::parse::Parse;
 
 use crate::{
     array_expr::{
-        function::{Call, Function, ToCallable, function_struct},
+        function::{Call, Function, FunctionChain, ToCallable, function_struct},
         storage::Storage,
         value_array::ValueArray,
     },
@@ -29,13 +29,7 @@ impl ToCallable for alias {
 
     fn to_callable(&self) -> Self::Call {
         AliasCallable {
-            chain: self
-                .spec
-                .content
-                .chain
-                .iter()
-                .map(|(_, f)| f.to_callable())
-                .collect(),
+            chain: self.spec.content.chain.to_call_chain(),
         }
     }
 }
@@ -65,13 +59,13 @@ impl Call for AliasCallable {
 #[derive(Debug, Clone)]
 pub struct Spec {
     /// Function chain for alias.
-    chain: Vec<(Option<Token![.]>, Function)>,
+    chain: FunctionChain,
 }
 
 impl Parse for Spec {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            chain: Function::parse_chain(input)?,
+            chain: FunctionChain::parse(input)?,
         })
     }
 }
@@ -79,10 +73,6 @@ impl Parse for Spec {
 impl ToTokens for Spec {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { chain } = self;
-
-        for (dot, func) in chain {
-            dot.to_tokens(tokens);
-            func.to_tokens(tokens);
-        }
+        chain.to_tokens(tokens);
     }
 }

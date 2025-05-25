@@ -2,10 +2,6 @@
 
 use ::std::fmt::Debug;
 
-use ::syn::{
-    Token,
-    parse::{End, Lookahead1, ParseStream},
-};
 pub(crate) use macros::{function_enum, function_struct, spec_impl};
 
 pub mod builtin {
@@ -13,6 +9,7 @@ pub mod builtin {
 
     pub mod alias;
     pub mod case;
+    pub mod chunk;
     pub mod clear;
     pub mod count;
     pub mod enumerate;
@@ -26,30 +23,36 @@ pub mod builtin {
     pub mod use_alias;
 }
 
-use crate::{
-    array_expr::function::builtin::{
-        alias::alias,
-        case::case,
-        clear::clear,
-        count::count,
-        enumerate::enumerate,
-        join::join,
-        rev::rev,
-        set::{global, local},
-        shift::shift,
-        split::split,
-        trim::trim,
-        ty::ty,
-        use_alias::UseAlias,
-    },
-    util::lookahead_parse::{LookaheadParse, lookahead_parse},
+use crate::array_expr::function::builtin::{
+    alias::alias,
+    case::case,
+    chunk::chunk,
+    clear::clear,
+    count::count,
+    enumerate::enumerate,
+    join::join,
+    rev::rev,
+    set::{global, local},
+    shift::shift,
+    split::split,
+    trim::trim,
+    ty::ty,
+    use_alias::UseAlias,
 };
 
-pub use self::call::{Call, ToCallable};
+pub use self::{
+    call::{Call, ToCallable},
+    chain::FunctionChain,
+};
 
 mod macros;
 
 mod call;
+
+mod chain;
+
+/// Type used in call chains, result of [ToCallable] on [Function].
+pub type FunctionCallable = <Function as ToCallable>::Call;
 
 function_enum!(
     /// Enum collecting [Call] implementors.
@@ -73,6 +76,8 @@ function_enum!(
         Shift(shift),
         /// Count array elements.
         Count(count),
+        /// Split array into chunks.
+        Chunks(chunk),
         /// Clear array.
         Clear(clear),
         /// Set a global variable.
@@ -85,54 +90,3 @@ function_enum!(
         UseAlias(UseAlias),
     }
 );
-
-impl Function {
-    /// Parse a function chain with a custom termination condition.
-    ///
-    /// # Note
-    /// If termination condition never returns true
-    /// this funtion may loop forever.
-    ///
-    /// # Errors
-    /// On incorrect syntax.
-    pub fn parse_chain_terminated(
-        input: ParseStream,
-        should_terminate: fn(&Lookahead1) -> bool,
-    ) -> ::syn::Result<Vec<(Option<Token![.]>, Self)>> {
-        let lookahead = input.lookahead1();
-        let mut chain = Vec::new();
-
-        if should_terminate(&lookahead) {
-            return Ok(chain);
-        } else if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
-            chain.push((dot, input.call(Function::parse)?));
-        } else if let Some(func) = lookahead_parse(input, &lookahead)? {
-            chain.push((None, func));
-        } else {
-            return Err(lookahead.error());
-        };
-
-        loop {
-            let lookahead = input.lookahead1();
-
-            if should_terminate(&lookahead) {
-                break;
-            } else if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
-                chain.push((dot, input.call(Function::parse)?));
-            } else {
-                return Err(lookahead.error());
-            }
-        }
-
-        Ok(chain)
-    }
-
-    /// Parse a function chain.
-    ///
-    /// # Errors
-    /// On incorrect syntax.
-    #[inline]
-    pub fn parse_chain(input: ParseStream) -> ::syn::Result<Vec<(Option<Token![.]>, Self)>> {
-        Self::parse_chain_terminated(input, |lookahead| lookahead.peek(End))
-    }
-}

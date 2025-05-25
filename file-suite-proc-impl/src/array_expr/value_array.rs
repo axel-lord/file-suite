@@ -54,6 +54,17 @@ impl ValueArray {
         Self::new_inner(ValueArrayInner::Vec(value))
     }
 
+    /// Push a value onto the array. When used multiple times
+    /// [make_vec][ValueArray::make_vec] then pushing to the result may
+    /// be more efficient.
+    pub fn push(&mut self, value: Value) {
+        if self.is_empty() {
+            self.inner = ValueArrayInner::Single(value);
+        } else {
+            self.make_vec().push(value);
+        }
+    }
+
     /// Join a ValueArray by a string slice.
     pub fn join_by_str(self, sep: &str) -> Self {
         if self.len() <= 1 {
@@ -239,5 +250,21 @@ impl FromIterator<Value> for ValueArray {
         vec.extend(iter);
 
         Self::from_vec(vec)
+    }
+}
+
+impl Extend<Value> for ValueArray {
+    fn extend<T: IntoIterator<Item = Value>>(&mut self, iter: T) {
+        let mut iter = iter.into_iter();
+
+        if let Some(value) = iter.next() {
+            self.push(value);
+        }
+
+        if let Some(value) = iter.next() {
+            let vec = self.make_vec();
+            vec.push(value);
+            vec.extend(iter);
+        };
     }
 }

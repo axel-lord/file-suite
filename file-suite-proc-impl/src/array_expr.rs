@@ -10,7 +10,7 @@ use ::syn::{
 
 use crate::{
     array_expr::{
-        function::{Call, Function, ToCallable},
+        function::{Call, Function, FunctionChain, ToCallable},
         input::{Input, NodeInput},
         storage::Storage,
         value::Value,
@@ -121,7 +121,7 @@ pub enum Node {
         /// '->' token.
         arrow_token: Option<Token![->]>,
         /// Transform chain.
-        chain: Vec<(Option<Token![.]>, Function)>,
+        chain: FunctionChain,
     },
 }
 
@@ -146,7 +146,7 @@ impl Node {
                 chain,
             } => {
                 let input = input.iter().map(NodeInput::to_input).collect();
-                let chain = chain.iter().map(|(_, f)| f.to_callable()).collect();
+                let chain = chain.to_call_chain();
 
                 ArrayExpr { input, chain }
             }
@@ -197,7 +197,7 @@ impl Node {
                     return Ok(Self::Transform {
                         input: input_vec,
                         arrow_token: None,
-                        chain: Vec::new(),
+                        chain: FunctionChain::default(),
                     });
                 }
 
@@ -219,7 +219,7 @@ impl Node {
         Ok(Self::Transform {
             input: input_vec,
             arrow_token,
-            chain: Function::parse_chain_terminated(input, should_terminate)?,
+            chain: FunctionChain::parse_terminated(input, should_terminate)?,
         })
     }
 }
@@ -250,10 +250,7 @@ impl ToTokens for Node {
                     value.to_tokens(tokens);
                 }
                 arrow_token.to_tokens(tokens);
-                for (dot, f) in chain {
-                    dot.to_tokens(tokens);
-                    f.to_tokens(tokens);
-                }
+                chain.to_tokens(tokens);
             }
         }
     }
@@ -305,6 +302,11 @@ mod test {
 
         let expr = quote! { 1 1 1 -> enumerate(4:-1:1).join.ty(int)};
         let expected = quote! { 413121 };
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+
+        let expr = quote! { A A A -> .enumerate.chunk(2, shift.join).ty(ident) };
+        let expected = quote! { A1 A2 A3 };
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
     }
