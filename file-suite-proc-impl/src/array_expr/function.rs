@@ -15,10 +15,12 @@ pub mod builtin {
     pub mod enumerate;
     pub mod fork;
     pub mod join;
+    pub mod repeat;
     pub mod rev;
     pub mod set;
     pub mod shift;
     pub mod split;
+    pub mod stairs;
     pub mod trim;
     pub mod ty;
     pub mod use_alias;
@@ -33,10 +35,12 @@ use crate::array_expr::function::builtin::{
     enumerate::enumerate,
     fork::fork,
     join::join,
+    repeat::repeat,
     rev::rev,
     set::{global, local},
     shift::shift,
     split::split,
+    stairs::stairs,
     trim::trim,
     ty::ty,
     use_alias::UseAlias,
@@ -78,6 +82,10 @@ function_enum!(
         Shift(shift),
         /// Fork array.
         Fork(fork),
+        /// Repeat array.
+        Repeat(repeat),
+        /// Stair array.
+        Stairs(stairs),
         /// Count array values.
         Count(count),
         /// Split array into chunks.

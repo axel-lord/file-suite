@@ -305,8 +305,13 @@ mod test {
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
 
-        let expr = quote! { A A A -> .enumerate.chunk(2, shift.join).ty(ident) };
+        let expr = quote! { A -> repeat(3).enumerate.chunk(2, shift.join).ty(ident) };
         let expected = quote! { A1 A2 A3 };
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+
+        let expr = quote! { A -> repeat(3).stairs(join).ty(ident) };
+        let expected = quote! { A AA AAA };
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
     }
