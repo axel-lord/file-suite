@@ -9,7 +9,7 @@ use crate::{
         value::{Ty, TyKind},
         value_array::ValueArray,
     },
-    util::{group_help::GroupSingle, lookahead_parse::ParseWrap},
+    util::{group_help::Delimited, parse_wrap::ParseWrap},
 };
 
 function_struct!(
@@ -18,7 +18,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     ty {
         /// Specification for which type to apply.
-        ty: GroupSingle<ParseWrap<Ty>>,
+        ty: Delimited<ParseWrap<Ty>>,
     }
 );
 
@@ -26,7 +26,7 @@ impl ToCallable for ty {
     type Call = TyKind;
 
     fn to_callable(&self) -> Self::Call {
-        self.ty.content.0.kind
+        self.ty.inner.inner.kind
     }
 }
 

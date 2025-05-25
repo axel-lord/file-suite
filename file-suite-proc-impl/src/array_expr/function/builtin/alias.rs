@@ -11,7 +11,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::group_help::GroupSingle,
+    util::group_help::Delimited,
 };
 
 function_struct!(
@@ -20,7 +20,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     alias {
         /// Specification for what functions to chain for alias.
-        spec: GroupSingle<Spec>,
+        spec: Delimited<Spec>,
     }
 );
 
@@ -29,7 +29,7 @@ impl ToCallable for alias {
 
     fn to_callable(&self) -> Self::Call {
         AliasCallable {
-            chain: self.spec.content.chain.to_call_chain(),
+            chain: self.spec.inner.chain.to_call_chain(),
         }
     }
 }

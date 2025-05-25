@@ -12,7 +12,7 @@ use crate::{
         value::Value,
         value_array::ValueArray,
     },
-    util::{fold_tokens::fold_token_stream, group_help::GroupSingle},
+    util::{fold_tokens::fold_token_stream, group_help::Delimited},
 };
 
 function_struct!(
@@ -21,7 +21,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     paste {
         /// Content to check or array expressions.
-        content: GroupSingle<TokenStream>,
+        content: Delimited<TokenStream>,
     }
 );
 
@@ -30,7 +30,7 @@ impl ToCallable for paste {
 
     fn to_callable(&self) -> Self::Call {
         PasteCallable {
-            content: self.content.content.clone(),
+            content: self.content.inner.clone(),
         }
     }
 }

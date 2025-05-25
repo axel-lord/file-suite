@@ -13,7 +13,7 @@ use crate::{
         value_array::ValueArray,
     },
     util::{
-        group_help::EmptyGroup,
+        group_help::EmptyDelimited,
         lookahead_parse::{LookaheadParse, lookahead_parse, optional_parse},
     },
 };
@@ -26,7 +26,7 @@ pub struct UseAlias {
     /// Alias to use.
     alias_key: TypedValue,
     /// Optional empty delim group for chain parity.
-    delim: Option<EmptyGroup>,
+    delim: Option<EmptyDelimited>,
 }
 
 impl ToCallable for UseAlias {

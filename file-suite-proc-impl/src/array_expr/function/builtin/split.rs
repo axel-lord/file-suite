@@ -10,7 +10,7 @@ use crate::{
         value::Value,
         value_array::ValueArray,
     },
-    util::{group_help::GroupSingle, kw_kind, lookahead_parse::ParseWrap},
+    util::{group_help::Delimited, kw_kind, parse_wrap::ParseWrap},
 };
 
 kw_kind!(
@@ -55,7 +55,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     split {
         /// Specification for to split value
-        spec: GroupSingle<ParseWrap<Spec>>,
+        spec: Delimited<ParseWrap<Spec>>,
     }
 );
 
@@ -74,7 +74,7 @@ impl ToCallable for split {
     type Call = SplitCallable;
 
     fn to_callable(&self) -> Self::Call {
-        match &self.spec.content.0 {
+        match &self.spec.inner.inner {
             Spec::Str(lit_str) => SplitCallable::Str(lit_str.value()),
             Spec::Char(lit_char) => SplitCallable::Char(lit_char.value()),
             Spec::Kw(spec_kw) => SplitCallable::Kw(spec_kw.kind),

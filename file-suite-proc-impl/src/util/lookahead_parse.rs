@@ -1,8 +1,7 @@
 //! Utilities for parsing using a [Lookahead1].
 
-use ::quote::ToTokens;
 use ::syn::{
-    parse::{End, Lookahead1, Parse, ParseStream},
+    parse::{End, Lookahead1, ParseStream},
     punctuated::Punctuated,
 };
 
@@ -73,31 +72,6 @@ pub fn lookahead_parse_terminated<T: LookaheadParse, P: LookaheadParse>(
     }
 
     Ok(Some(punctuated))
-}
-
-/// Wrap a [LookaheadParse] implementor to [Parse].
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub struct ParseWrap<T>(pub T)
-where
-    T: LookaheadParse;
-
-impl<T> ToTokens for ParseWrap<T>
-where
-    T: LookaheadParse + ToTokens,
-{
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self(inner) = self;
-        inner.to_tokens(tokens);
-    }
-}
-
-impl<T> Parse for ParseWrap<T>
-where
-    T: LookaheadParse,
-{
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        input.call(T::parse).map(Self)
-    }
 }
 
 /// Trait for conditional parsing useing a [Lookahead1].

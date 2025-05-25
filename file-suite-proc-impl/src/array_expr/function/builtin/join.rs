@@ -10,7 +10,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::GroupOption, kw_kind, lookahead_parse::ParseWrap},
+    util::{group_help::DelimitedOption, kw_kind, parse_wrap::ParseWrap},
 };
 
 kw_kind!(
@@ -54,7 +54,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     join {
         /// Specification for how to join values.
-        [optional] spec: Option<GroupOption<ParseWrap<Spec>>>,
+        [optional] spec: Option<DelimitedOption<ParseWrap<Spec>>>,
     }
 );
 
@@ -94,11 +94,11 @@ impl ToCallable for join {
     type Call = JoinCallable;
 
     fn to_callable(&self) -> Self::Call {
-        let Some(spec) = self.spec.as_ref().and_then(|spec| spec.content.as_ref()) else {
+        let Some(spec) = self.spec.as_ref().and_then(|spec| spec.inner.as_ref()) else {
             return JoinCallable::Kw(JoinKind::concat);
         };
 
-        match &spec.0 {
+        match &spec.inner {
             Spec::Str(lit_str) => JoinCallable::Str(lit_str.value()),
             Spec::Char(lit_char) => JoinCallable::Char(lit_char.value()),
             Spec::Kw(spec_kw) => JoinCallable::Kw(spec_kw.kind),

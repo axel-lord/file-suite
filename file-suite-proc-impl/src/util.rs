@@ -18,6 +18,7 @@ pub mod delimited;
 pub mod fold_tokens;
 pub mod group_help;
 pub mod lookahead_parse;
+pub mod parse_wrap;
 pub mod spanned_int;
 pub mod tcmp;
 

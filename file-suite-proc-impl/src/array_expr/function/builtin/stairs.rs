@@ -8,7 +8,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::group_help::GroupSingle,
+    util::group_help::Delimited,
 };
 
 function_struct!(
@@ -18,7 +18,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     stairs {
         /// Chain to call on arrays.
-        chain: GroupSingle<FunctionChain>,
+        chain: Delimited<FunctionChain>,
     }
 );
 
@@ -27,7 +27,7 @@ impl ToCallable for stairs {
 
     fn to_callable(&self) -> Self::Call {
         StairsCallable {
-            chain: self.chain.content.to_call_chain(),
+            chain: self.chain.inner.to_call_chain(),
         }
     }
 }

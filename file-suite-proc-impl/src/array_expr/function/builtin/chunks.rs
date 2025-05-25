@@ -16,7 +16,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::GroupSingle, lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
+    util::{group_help::Delimited, lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
 };
 
 function_struct!(
@@ -25,7 +25,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     chunks {
         /// Chunk specification.
-        spec: GroupSingle<Spec>,
+        spec: Delimited<Spec>,
     }
 );
 
@@ -33,7 +33,7 @@ impl ToCallable for chunks {
     type Call = ChunksCallable;
 
     fn to_callable(&self) -> Self::Call {
-        let content = &self.spec.content;
+        let content = &self.spec.inner;
         ChunksCallable {
             size: content.chunk_size.value,
             chain: content.chain.to_call_chain(),

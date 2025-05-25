@@ -18,7 +18,7 @@ use crate::{
     },
     util::{
         ensure_empty,
-        group_help::GroupSingle,
+        group_help::Delimited,
         lookahead_parse::{LookaheadParse, lookahead_parse},
         spanned_int::SpannedInt,
     },
@@ -30,7 +30,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     enumerate {
         /// Delim for spec,
-        [optional] spec: Option<GroupSingle<Spec>>,
+        [optional] spec: Option<Delimited<Spec>>,
     }
 );
 
@@ -40,7 +40,7 @@ impl ToCallable for enumerate {
     fn to_callable(&self) -> Self::Call {
         let mut callable = EnumerateCallable::default();
 
-        if let Some(spec) = self.spec.as_ref().map(|spec| &spec.content) {
+        if let Some(spec) = self.spec.as_ref().map(|spec| &spec.inner) {
             if let Some(offset) = &spec.offset {
                 callable.offset = offset.value;
             }

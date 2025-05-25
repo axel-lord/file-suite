@@ -8,7 +8,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::group_help::EmptyGroup,
+    util::group_help::EmptyDelimited,
 };
 
 function_struct!(
@@ -17,7 +17,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     clear {
         /// Optional macro delimiter.
-        [optional] delim: Option<EmptyGroup>,
+        [optional] delim: Option<EmptyDelimited>,
     }
 );
 

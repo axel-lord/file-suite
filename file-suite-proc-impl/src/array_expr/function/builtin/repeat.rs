@@ -8,7 +8,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::GroupSingle, lookahead_parse::ParseWrap, spanned_int::SpannedInt},
+    util::{group_help::Delimited, parse_wrap::ParseWrap, spanned_int::SpannedInt},
 };
 
 function_struct!(
@@ -17,7 +17,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     repeat {
         /// Amount of times to repeat array.
-        times: GroupSingle<ParseWrap<SpannedInt<NonZero<usize>>>>,
+        times: Delimited<ParseWrap<SpannedInt<NonZero<usize>>>>,
     }
 );
 
@@ -26,7 +26,7 @@ impl ToCallable for repeat {
 
     fn to_callable(&self) -> Self::Call {
         RepeatCallable {
-            times: self.times.content.0.value,
+            times: self.times.inner.inner.value,
         }
     }
 }

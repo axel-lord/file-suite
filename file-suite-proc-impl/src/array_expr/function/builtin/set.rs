@@ -19,7 +19,7 @@ use crate::{
     },
     util::{
         delimited::MacroDelimExt,
-        group_help::GroupSingle,
+        group_help::Delimited,
         lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
     },
 };
@@ -30,7 +30,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     global {
         /// Specification for how to, and with what content set global.
-        spec: GroupSingle<Spec>,
+        spec: Delimited<Spec>,
     }
 
     /// Set a local variable.
@@ -38,7 +38,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     local {
         /// Specification for how to, and with what content set local.
-        spec: GroupSingle<Spec>,
+        spec: Delimited<Spec>,
     }
 );
 
@@ -46,7 +46,7 @@ impl ToCallable for global {
     type Call = GlobalCallable;
 
     fn to_callable(&self) -> Self::Call {
-        GlobalCallable(Behaviour::from(&self.spec.content))
+        GlobalCallable(Behaviour::from(&self.spec.inner))
     }
 }
 
@@ -54,7 +54,7 @@ impl ToCallable for local {
     type Call = LocalCallable;
 
     fn to_callable(&self) -> Self::Call {
-        LocalCallable(Behaviour::from(&self.spec.content))
+        LocalCallable(Behaviour::from(&self.spec.inner))
     }
 }
 
@@ -158,7 +158,7 @@ impl From<&Spec> for Behaviour {
             Spec::SetArray { expr } => Self::SetArray {
                 key_expr: expr
                     .as_ref()
-                    .map(|expr| expr.content.to_array_expr())
+                    .map(|expr| expr.inner.to_array_expr())
                     .unwrap_or_default(),
             },
             Spec::SetInput { keys } => Self::SetInput {
@@ -174,7 +174,7 @@ pub enum Spec {
     /// Use array as variable keys. Setting them to input, which is an array expression.
     SetArray {
         /// Value to set variables to.
-        expr: Option<GroupSingle<Node>>,
+        expr: Option<Delimited<Node>>,
     },
     /// Use input which is a list of values as variable keys. setting them to array.
     SetInput {

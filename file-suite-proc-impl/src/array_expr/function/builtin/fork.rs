@@ -15,7 +15,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::group_help::GroupSingle,
+    util::group_help::Delimited,
 };
 
 function_struct!(
@@ -25,7 +25,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     fork {
         /// Fork function chains.
-        forks: GroupSingle<Forks>,
+        forks: Delimited<Forks>,
     }
 );
 
@@ -36,7 +36,7 @@ impl ToCallable for fork {
         ForkCallable {
             chains: self
                 .forks
-                .content
+                .inner
                 .chains
                 .iter()
                 .map(|chain| chain.to_call_chain())

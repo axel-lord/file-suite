@@ -8,7 +8,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::GroupSingle, kw_kind, lookahead_parse::ParseWrap},
+    util::{group_help::Delimited, kw_kind, parse_wrap::ParseWrap},
 };
 
 kw_kind!(
@@ -34,7 +34,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     case {
         /// Specification for which case to apply.
-        spec: GroupSingle<ParseWrap<Spec>>,
+        spec: Delimited<ParseWrap<Spec>>,
     }
 );
 
@@ -42,7 +42,7 @@ impl ToCallable for case {
     type Call = CaseKind;
 
     fn to_callable(&self) -> Self::Call {
-        self.spec.content.0.kind
+        self.spec.inner.inner.kind
     }
 }
 

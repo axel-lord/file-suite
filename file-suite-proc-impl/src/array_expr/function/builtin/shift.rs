@@ -8,7 +8,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::GroupOption, lookahead_parse::ParseWrap, spanned_int::SpannedInt},
+    util::{group_help::DelimitedOption, parse_wrap::ParseWrap, spanned_int::SpannedInt},
 };
 
 function_struct!(
@@ -17,7 +17,7 @@ function_struct!(
     #[expect(non_camel_case_types)]
     shift {
         /// Amount to shift the elements by.
-        [optional] shift: Option<GroupOption<ParseWrap<SpannedInt<isize>>>>,
+        [optional] shift: Option<DelimitedOption<ParseWrap<SpannedInt<isize>>>>,
     }
 );
 
