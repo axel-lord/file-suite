@@ -11,9 +11,16 @@ use crate::{
 
 mod run;
 
+mod error;
+
 pub mod array_expr;
 
 pub mod util;
+
+pub use error::Error;
+
+/// Crate result type.
+pub type Result<T = ()> = ::std::result::Result<T, Error>;
 
 /// Find array expression in input tokens and compute them, replacing them with their result.
 ///
