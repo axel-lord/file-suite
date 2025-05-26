@@ -51,6 +51,7 @@ use crate::array_expr::function::builtin::{
 pub use self::{
     call::{Call, ToCallable},
     chain::FunctionChain,
+    keyword_function::KwFn,
 };
 
 mod macros;
@@ -58,6 +59,8 @@ mod macros;
 mod call;
 
 mod chain;
+
+mod keyword_function;
 
 /// Type used in call chains, result of [ToCallable] on [Function].
 pub type FunctionCallable = <Function as ToCallable>::Call;

@@ -4,6 +4,7 @@ use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
 use crate::{
+    array_expr::function::ToCallable,
     macro_delimited,
     util::{
         delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse,
@@ -18,6 +19,17 @@ pub struct DelimitedOption<T> {
     pub delim: MacroDelimiter,
     /// Content of group, may be empty.
     pub inner: Option<T>,
+}
+
+impl<T> ToCallable for DelimitedOption<T>
+where
+    Option<T>: ToCallable,
+{
+    type Call = <Option<T> as ToCallable>::Call;
+
+    fn to_callable(&self) -> Self::Call {
+        self.inner.to_callable()
+    }
 }
 
 impl<T> AsRef<Option<T>> for DelimitedOption<T> {

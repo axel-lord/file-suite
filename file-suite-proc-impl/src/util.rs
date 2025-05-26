@@ -16,11 +16,24 @@ mod to_tokens_macros;
 
 pub mod delimited;
 pub mod fold_tokens;
-pub mod group_help;
 pub mod lookahead_parse;
 pub mod parse_wrap;
 pub mod spanned_int;
 pub mod tcmp;
+
+pub mod group_help {
+    //! Helpers for group parsing.
+
+    pub use self::{
+        delimited::Delimited, delimited_option::DelimitedOption, empty_delimited::EmptyDelimited,
+        optional_delimited::OptionalDelimited,
+    };
+
+    mod delimited;
+    mod delimited_option;
+    mod empty_delimited;
+    mod optional_delimited;
+}
 
 /// Ensure a [ParseStream] has reached it's end.
 ///

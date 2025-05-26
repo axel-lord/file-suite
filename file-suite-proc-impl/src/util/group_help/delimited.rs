@@ -4,6 +4,7 @@ use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
 use crate::{
+    array_expr::function::ToCallable,
     macro_delimited,
     util::{delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse},
 };
@@ -15,6 +16,17 @@ pub struct Delimited<T> {
     pub delim: MacroDelimiter,
     /// Content of group.
     pub inner: T,
+}
+
+impl<T> ToCallable for Delimited<T>
+where
+    T: ToCallable,
+{
+    type Call = T::Call;
+
+    fn to_callable(&self) -> Self::Call {
+        self.inner.to_callable()
+    }
 }
 
 impl<T> ToTokens for Delimited<T>
