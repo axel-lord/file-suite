@@ -1,20 +1,21 @@
 //! [split] impl.
 
-use ::syn::{LitChar, LitStr};
+use ::quote::ToTokens;
+use ::syn::{LitChar, LitStr, parse::Parse};
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, function_struct, spec_impl},
+        function::{Call, ToCallable},
         storage::Storage,
         value::Value,
         value_array::ValueArray,
     },
-    util::{group_help::Delimited, kw_kind, parse_wrap::ParseWrap},
+    util::{kw_kind, lookahead_parse::lookahead_parse},
 };
 
 kw_kind!(
     /// Keyword specified split
-    SpecKeyword;
+    SplitKw;
     /// Enum containing possible values for [SpecKw].
     #[expect(non_camel_case_types)]
     SplitKind {
@@ -35,28 +36,41 @@ kw_kind!(
     }
 );
 
-spec_impl!(
-    /// Specification for how to split a value.
-    #[derive(Debug, Clone)]
-    Spec {
-        /// Split is specified by a string literal.
-        Str(LitStr),
-        /// Split is specified by a char literal.
-        Char(LitChar),
-        /// Split is specified by a keyword.
-        Kw(SpecKeyword),
-    }
-);
+/// Specification for how to split a value.
+#[derive(Debug, Clone)]
+pub enum SplitArgs {
+    /// Split is specified by a string literal.
+    Str(LitStr),
+    /// Split is specified by a char literal.
+    Char(LitChar),
+    /// Split is specified by a keyword."
+    Kw(SplitKw),
+}
 
-function_struct!(
-    /// Split input further.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    split {
-        /// Specification for to split value
-        spec: Delimited<ParseWrap<Spec>>,
+impl ToTokens for SplitArgs {
+    fn to_tokens(&self, tokens: &mut ::proc_macro2::TokenStream) {
+        match self {
+            Self::Str(value) => value.to_tokens(tokens),
+            Self::Char(value) => value.to_tokens(tokens),
+            Self::Kw(value) => value.to_tokens(tokens),
+        }
     }
-);
+}
+
+impl Parse for SplitArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        Ok(if let Some(s) = lookahead_parse(input, &lookahead)? {
+            Self::Str(s)
+        } else if let Some(s) = lookahead_parse(input, &lookahead)? {
+            Self::Char(s)
+        } else if let Some(s) = lookahead_parse(input, &lookahead)? {
+            Self::Kw(s)
+        } else {
+            return Err(lookahead.error());
+        })
+    }
+}
 
 /// [Call] implementor for split.
 #[derive(Debug, Clone)]
@@ -69,14 +83,14 @@ pub enum SplitCallable {
     Kw(SplitKind),
 }
 
-impl ToCallable for split {
+impl ToCallable for SplitArgs {
     type Call = SplitCallable;
 
     fn to_callable(&self) -> Self::Call {
-        match &self.spec.inner.inner {
-            Spec::Str(lit_str) => SplitCallable::Str(lit_str.value()),
-            Spec::Char(lit_char) => SplitCallable::Char(lit_char.value()),
-            Spec::Kw(spec_kw) => SplitCallable::Kw(spec_kw.kind),
+        match self {
+            SplitArgs::Str(lit_str) => SplitCallable::Str(lit_str.value()),
+            SplitArgs::Char(lit_char) => SplitCallable::Char(lit_char.value()),
+            SplitArgs::Kw(spec_kw) => SplitCallable::Kw(spec_kw.kind),
         }
     }
 }

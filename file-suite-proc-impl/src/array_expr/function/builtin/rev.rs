@@ -1,34 +1,9 @@
 //! [rev] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, ToCallable, function_struct},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::group_help::EmptyDelimited,
-};
+use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 
-function_struct!(
-    /// Reverse array.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    rev {
-        /// Optional delimiter.
-        [optional] delim: Option<EmptyDelimited>,
-    }
-);
-
-impl ToCallable for rev {
-    type Call = RevCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        RevCallable
-    }
-}
-
-/// [Call] implementor for [rev].
-#[derive(Debug, Clone, Copy)]
+/// [Call] implementor to reverse array.
+#[derive(Debug, Clone, Copy, Default)]
 pub struct RevCallable;
 
 impl Call for RevCallable {

@@ -1,34 +1,9 @@
 //! [trim] impl
 
-use crate::{
-    array_expr::{
-        function::{Call, ToCallable, function_struct},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::group_help::EmptyDelimited,
-};
+use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 
-function_struct!(
-    /// Trim whitespace arround values in array.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    trim {
-        /// Optional delimiter.
-        [optional] delim: Option<EmptyDelimited>,
-    }
-);
-
-impl ToCallable for trim {
-    type Call = TrimCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        TrimCallable
-    }
-}
-
-/// [Call] implementor for [trim].
-#[derive(Debug, Clone, Copy)]
+/// Trim whitespace arround values in array.
+#[derive(Debug, Clone, Copy, Default)]
 pub struct TrimCallable;
 
 impl Call for TrimCallable {

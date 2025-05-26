@@ -12,82 +12,18 @@ use syn::parse::ParseStream;
 
 use crate::{
     array_expr::{
-        function::{Call, FunctionCallable, FunctionChain, ToCallable, function_struct},
+        function::{Call, FunctionCallable, FunctionChain, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::Delimited, lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
+    util::{lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
 };
-
-function_struct!(
-    /// Split array into chunks and run input chain on them.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    chunks {
-        /// Chunk specification.
-        spec: Delimited<Spec>,
-    }
-);
-
-impl ToCallable for chunks {
-    type Call = ChunksCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        let content = &self.spec.inner;
-        ChunksCallable {
-            size: content.chunk_size.value,
-            chain: content.chain.to_call_chain(),
-            remainder: content
-                .remainder
-                .as_ref()
-                .map(|remainder| remainder.chain.to_call_chain()),
-        }
-    }
-}
-
-/// [Call] implementor for [chunks].
-#[derive(Debug, Clone)]
-pub struct ChunksCallable {
-    /// Size of chunks (with exceptions for last chunk).
-    size: NonZero<usize>,
-    /// Chain to call on chunks.
-    chain: Vec<FunctionCallable>,
-    /// Special chain to use on remainder (if none regular chain is used).
-    remainder: Option<Vec<FunctionCallable>>,
-}
-
-impl Call for ChunksCallable {
-    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
-        let mut array = array.into_iter();
-        let mut out_array = ValueArray::new();
-
-        loop {
-            let values = array.by_ref().take(self.size.get()).collect::<ValueArray>();
-            if values.is_empty() {
-                break;
-            }
-
-            let chain = match &self.remainder {
-                Some(remainder) if values.len() != self.size.get() => remainder,
-                _ => &self.chain,
-            };
-
-            out_array.extend(
-                storage.with_local_layer(|storage| {
-                    FunctionChain::call_chain(chain, values, storage)
-                })?,
-            );
-        }
-
-        Ok(out_array)
-    }
-}
 
 /// Specification for how many values are in each chunk (except the last which may be
 /// smaller) and what chain to call on them.
 /// If a second chain is specified (may be empty) it is called on the remainder instead.
 #[derive(Debug, Clone)]
-pub struct Spec {
+pub struct ChunksArgs {
     /// Size of chunks.
     chunk_size: SpannedInt<NonZero<usize>>,
     /// ',' token.
@@ -98,7 +34,22 @@ pub struct Spec {
     remainder: Option<RemainderChain>,
 }
 
-impl ToTokens for Spec {
+impl ToCallable for ChunksArgs {
+    type Call = ChunksCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        ChunksCallable {
+            size: self.chunk_size.value,
+            chain: self.chain.to_call_chain(),
+            remainder: self
+                .remainder
+                .as_ref()
+                .map(|remainder| remainder.chain.to_call_chain()),
+        }
+    }
+}
+
+impl ToTokens for ChunksArgs {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self {
             chunk_size,
@@ -113,7 +64,7 @@ impl ToTokens for Spec {
     }
 }
 
-impl Parse for Spec {
+impl Parse for ChunksArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let chunk_size = input.call(SpannedInt::parse)?;
         let comma_token = input.parse()?;
@@ -159,5 +110,43 @@ impl Parse for RemainderChain {
             comma_token: input.parse()?,
             chain: input.parse()?,
         })
+    }
+}
+
+/// [Call] implementor for [ChunksCallable].
+#[derive(Debug, Clone)]
+pub struct ChunksCallable {
+    /// Size of chunks (with exceptions for last chunk).
+    size: NonZero<usize>,
+    /// Chain to call on chunks.
+    chain: Vec<FunctionCallable>,
+    /// Special chain to use on remainder (if none regular chain is used).
+    remainder: Option<Vec<FunctionCallable>>,
+}
+
+impl Call for ChunksCallable {
+    fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
+        let mut array = array.into_iter();
+        let mut out_array = ValueArray::new();
+
+        loop {
+            let values = array.by_ref().take(self.size.get()).collect::<ValueArray>();
+            if values.is_empty() {
+                break;
+            }
+
+            let chain = match &self.remainder {
+                Some(remainder) if values.len() != self.size.get() => remainder,
+                _ => &self.chain,
+            };
+
+            out_array.extend(
+                storage.with_local_layer(|storage| {
+                    FunctionChain::call_chain(chain, values, storage)
+                })?,
+            );
+        }
+
+        Ok(out_array)
     }
 }

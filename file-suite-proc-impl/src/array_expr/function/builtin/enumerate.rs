@@ -10,58 +10,19 @@ use ::syn::{
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, function_struct},
+        function::{Call, ToCallable},
         storage::Storage,
         value::Value,
         value_array::ValueArray,
     },
     util::{
         ensure_empty,
-        group_help::Delimited,
         lookahead_parse::{LookaheadParse, lookahead_parse},
         spanned_int::SpannedInt,
     },
 };
 
-function_struct!(
-    /// Enumerate array.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    enumerate {
-        /// Delim for spec,
-        [optional] spec: Option<Delimited<Spec>>,
-    }
-);
-
-impl ToCallable for enumerate {
-    type Call = EnumerateCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        let mut callable = EnumerateCallable::default();
-
-        if let Some(spec) = self.spec.as_ref().map(|spec| &spec.inner) {
-            if let Some(offset) = &spec.offset {
-                callable.offset = offset.value;
-            }
-
-            if let Some(step) = spec.step.as_ref().and_then(|step| step.step.as_ref()) {
-                callable.step = step.value;
-            }
-
-            if let Some(array_span) = spec
-                .array_span
-                .as_ref()
-                .and_then(|array_span| array_span.array_span.as_ref())
-            {
-                callable.array_span = array_span.value;
-            }
-        }
-
-        callable
-    }
-}
-
-/// [Call] Implementor fo [Enumerate].
+/// [Call] Implementor for [EnumerateArgs].
 #[derive(Debug, Clone, Copy)]
 pub struct EnumerateCallable {
     /// Offset of enumeration.
@@ -108,7 +69,7 @@ impl Call for EnumerateCallable {
 
 /// Enumeration specification.
 #[derive(Debug, Clone, Default)]
-pub struct Spec {
+pub struct EnumerateArgs {
     /// First value of enumeration.
     pub offset: Option<SpannedInt<isize>>,
 
@@ -119,7 +80,41 @@ pub struct Spec {
     pub array_span: Option<ArraySpan>,
 }
 
-impl Parse for Spec {
+impl ToCallable for EnumerateArgs {
+    type Call = EnumerateCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        let default = EnumerateCallable::default();
+
+        let offset = self
+            .offset
+            .as_ref()
+            .map(|offset| offset.value)
+            .unwrap_or(default.offset);
+
+        let step = self
+            .step
+            .as_ref()
+            .and_then(|step| step.step.as_ref())
+            .map(|step| step.value)
+            .unwrap_or(default.step);
+
+        let array_span = self
+            .array_span
+            .as_ref()
+            .and_then(|array_span| array_span.array_span.as_ref())
+            .map(|array_span| array_span.value)
+            .unwrap_or(default.array_span);
+
+        EnumerateCallable {
+            offset,
+            step,
+            array_span,
+        }
+    }
+}
+
+impl Parse for EnumerateArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut lookahead = input.lookahead1();
         let offset = if let Some(offset) = lookahead_parse(input, &lookahead)? {
@@ -156,7 +151,7 @@ impl Parse for Spec {
     }
 }
 
-impl ToTokens for Spec {
+impl ToTokens for EnumerateArgs {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self {
             offset,

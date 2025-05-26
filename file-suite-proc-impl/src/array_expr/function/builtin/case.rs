@@ -2,17 +2,17 @@
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, function_struct},
+        function::{Call, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::Delimited, kw_kind, parse_wrap::ParseWrap},
+    util::kw_kind,
 };
 
 kw_kind!(
     /// Casing to apply.
-    Spec;
-    /// Enum containing possible values for [Spec]
+    CaseArgs;
+    /// Enum containing possible values for [CaseArgs]
     #[expect(non_camel_case_types)]
     CaseKind {
         /// Convert to PascalCase.
@@ -26,21 +26,11 @@ kw_kind!(
     }
 );
 
-function_struct!(
-    /// Apply case to input.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    case {
-        /// Specification for which case to apply.
-        spec: Delimited<ParseWrap<Spec>>,
-    }
-);
-
-impl ToCallable for case {
+impl ToCallable for CaseArgs {
     type Call = CaseKind;
 
     fn to_callable(&self) -> Self::Call {
-        self.spec.inner.inner.kind
+        self.kind
     }
 }
 

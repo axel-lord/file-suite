@@ -1,20 +1,22 @@
 //! [join] impl.
 
-use ::syn::{LitChar, LitStr};
+use ::proc_macro2::TokenStream;
+use ::quote::ToTokens;
+use ::syn::{LitChar, LitStr, parse::Parse};
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, function_struct, spec_impl},
+        function::{Call, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::DelimitedOption, kw_kind, parse_wrap::ParseWrap},
+    util::{kw_kind, lookahead_parse::lookahead_parse},
 };
 
 kw_kind!(
     /// Keyword specified join.
-    SpecKeyword;
-    /// Enum of possible values for [SpecKw].
+    JoinKw;
+    /// Enum of possible values for [JoinKw].
     #[expect(non_camel_case_types)]
     JoinKind: Default {
         #[default]
@@ -33,30 +35,43 @@ kw_kind!(
     }
 );
 
-spec_impl!(
-    /// Specification for how to join values.
-    #[derive(Debug, Clone)]
-    Spec {
-        /// Join by string.
-        Str(LitStr),
-        /// Join by char.
-        Char(LitChar),
-        /// Join according to keyword.
-        Kw(SpecKeyword),
-    }
-);
+/// Specification for how to join values.
+#[derive(Debug, Clone)]
+pub enum JoinArgs {
+    /// Join by string.
+    Str(LitStr),
+    /// Join by char.
+    Char(LitChar),
+    /// Join according to keyword.
+    Kw(JoinKw),
+}
 
-function_struct!(
-    /// Join input.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    join {
-        /// Specification for how to join values.
-        [optional] spec: Option<DelimitedOption<ParseWrap<Spec>>>,
+impl ToTokens for JoinArgs {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            Self::Str(value) => value.to_tokens(tokens),
+            Self::Char(value) => value.to_tokens(tokens),
+            Self::Kw(value) => value.to_tokens(tokens),
+        }
     }
-);
+}
 
-/// [Call] implementor for [join].
+impl Parse for JoinArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        Ok(if let Some(kw) = lookahead_parse(input, &lookahead)? {
+            Self::Kw(kw)
+        } else if let Some(s) = lookahead_parse(input, &lookahead)? {
+            Self::Str(s)
+        } else if let Some(chr) = lookahead_parse(input, &lookahead)? {
+            Self::Char(chr)
+        } else {
+            return Err(lookahead.error());
+        })
+    }
+}
+
+/// [Call] implementor for [JoinArgs].
 #[derive(Debug, Clone)]
 pub enum JoinCallable {
     /// Join by a string.
@@ -65,6 +80,12 @@ pub enum JoinCallable {
     Char(char),
     /// Join according to keyword.
     Kw(JoinKind),
+}
+
+impl Default for JoinCallable {
+    fn default() -> Self {
+        Self::Kw(JoinKind::concat)
+    }
 }
 
 impl Call for JoinCallable {
@@ -88,18 +109,14 @@ impl Call for JoinCallable {
     }
 }
 
-impl ToCallable for join {
+impl ToCallable for JoinArgs {
     type Call = JoinCallable;
 
     fn to_callable(&self) -> Self::Call {
-        let Some(spec) = self.spec.as_ref().and_then(|spec| spec.inner.as_ref()) else {
-            return JoinCallable::Kw(JoinKind::concat);
-        };
-
-        match &spec.inner {
-            Spec::Str(lit_str) => JoinCallable::Str(lit_str.value()),
-            Spec::Char(lit_char) => JoinCallable::Char(lit_char.value()),
-            Spec::Kw(spec_kw) => JoinCallable::Kw(spec_kw.kind),
+        match self {
+            JoinArgs::Str(lit_str) => JoinCallable::Str(lit_str.value()),
+            JoinArgs::Char(lit_char) => JoinCallable::Char(lit_char.value()),
+            JoinArgs::Kw(spec_kw) => JoinCallable::Kw(spec_kw.kind),
         }
     }
 }

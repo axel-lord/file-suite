@@ -19,3 +19,15 @@ pub trait Call {
     /// If input may not be transformed according to specification.
     fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray>;
 }
+
+impl<T> ToCallable for Option<T>
+where
+    T: ToCallable,
+    T::Call: Default,
+{
+    type Call = T::Call;
+
+    fn to_callable(&self) -> Self::Call {
+        self.as_ref().map(|t| t.to_callable()).unwrap_or_default()
+    }
+}

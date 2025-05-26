@@ -1,31 +1,43 @@
 //! [stairs] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, FunctionCallable, FunctionChain, ToCallable, function_struct},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::group_help::Delimited,
+use ::quote::ToTokens;
+use ::syn::parse::Parse;
+
+use crate::array_expr::{
+    function::{Call, FunctionCallable, FunctionChain, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
-function_struct!(
-    /// Run array through input chain in stairs such that an array [A, B, C]
-    /// Results in the cain being called on [A], [A, B] and [A, B, C].
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    stairs {
-        /// Chain to call on arrays.
-        chain: Delimited<FunctionChain>,
-    }
-);
+/// Run array through input chain in stairs such that an array [A, B, C]
+/// Results in the cain being called on [A], [A, B] and [A, B, C].
+#[derive(Debug, Clone)]
+pub struct StairsArgs {
+    /// Chain to call on arrays.
+    chain: FunctionChain,
+}
 
-impl ToCallable for stairs {
+impl Parse for StairsArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            chain: input.parse()?,
+        })
+    }
+}
+
+impl ToTokens for StairsArgs {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self { chain } = self;
+        chain.to_tokens(tokens);
+    }
+}
+
+impl ToCallable for StairsArgs {
     type Call = StairsCallable;
 
     fn to_callable(&self) -> Self::Call {
         StairsCallable {
-            chain: self.chain.inner.to_call_chain(),
+            chain: self.chain.to_call_chain(),
         }
     }
 }

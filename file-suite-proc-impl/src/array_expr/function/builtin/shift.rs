@@ -1,34 +1,45 @@
 //! [shift] impl.
 
+use ::quote::ToTokens;
+use ::syn::parse::Parse;
+
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, function_struct},
+        function::{Call, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::DelimitedOption, parse_wrap::ParseWrap, spanned_int::SpannedInt},
+    util::{lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
 };
 
-function_struct!(
-    /// Shift alements by given amount (defaults to 1).
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    shift {
-        /// Amount to shift the elements by.
-        [optional] shift: Option<DelimitedOption<ParseWrap<SpannedInt<isize>>>>,
-    }
-);
+/// Arguments for shifting array.
+#[derive(Debug, Clone)]
+pub struct ShiftArgs {
+    /// How much to shift array, and in what direction.
+    amount: SpannedInt<isize>,
+}
 
-impl ToCallable for shift {
+impl Parse for ShiftArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            amount: input.call(SpannedInt::parse)?,
+        })
+    }
+}
+
+impl ToTokens for ShiftArgs {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self { amount } = self;
+        amount.to_tokens(tokens);
+    }
+}
+
+impl ToCallable for ShiftArgs {
     type Call = ShiftCallable;
 
     fn to_callable(&self) -> Self::Call {
         ShiftCallable {
-            by: self
-                .shift
-                .as_ref()
-                .and_then(|by| Some(by.unwrap_parsed()?.value))
-                .unwrap_or(1),
+            by: self.amount.value,
         }
     }
 }

@@ -52,6 +52,13 @@ macro_rules! kw_kind {
             }
         }
 
+        impl ::syn::parse::Parse for $wr_nm {
+            #[inline]
+            fn parse(input: ::syn::parse::ParseStream) -> ::syn::Result<Self> {
+                <Self as $crate::util::lookahead_parse::LookaheadParse>::parse(input)
+            }
+        }
+
         impl ::quote::ToTokens for $wr_nm {
             fn to_tokens(&self, tokens: &mut ::proc_macro2::TokenStream) {
                 match self.kind {$(

@@ -2,36 +2,51 @@
 
 use ::std::num::NonZero;
 
+use ::quote::ToTokens;
+use ::syn::parse::Parse;
+
 use crate::{
     array_expr::{
-        function::{Call, ToCallable, function_struct},
+        function::{Call, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{group_help::Delimited, parse_wrap::ParseWrap, spanned_int::SpannedInt},
+    util::{lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
 };
 
-function_struct!(
-    /// Repeat a value, the input decides the amount of times.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    repeat {
-        /// Amount of times to repeat array.
-        times: Delimited<ParseWrap<SpannedInt<NonZero<usize>>>>,
-    }
-);
+/// Arguments for repeat.
+#[derive(Debug, Clone, Copy)]
+pub struct RepeatArgs {
+    /// How many times to repeat array.
+    times: SpannedInt<NonZero<usize>>,
+}
 
-impl ToCallable for repeat {
+impl Parse for RepeatArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            times: input.call(SpannedInt::parse)?,
+        })
+    }
+}
+
+impl ToTokens for RepeatArgs {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self { times } = self;
+        times.to_tokens(tokens);
+    }
+}
+
+impl ToCallable for RepeatArgs {
     type Call = RepeatCallable;
 
     fn to_callable(&self) -> Self::Call {
         RepeatCallable {
-            times: self.times.inner.inner.value,
+            times: self.times.value,
         }
     }
 }
 
-/// [Call] implementor for [repeat].
+/// [Call] implementor for [RepeatArgs].
 #[derive(Debug, Clone)]
 pub struct RepeatCallable {
     /// Times to repeat.

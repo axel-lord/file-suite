@@ -7,43 +7,13 @@ use ::syn::{
     punctuated::Punctuated,
 };
 
-use crate::{
-    array_expr::{
-        function::{Call, FunctionCallable, FunctionChain, ToCallable, function_struct},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::group_help::Delimited,
+use crate::array_expr::{
+    function::{Call, FunctionCallable, FunctionChain, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
-function_struct!(
-    /// Fork array duplicating it and running all input function chains on
-    /// their own copy, then joining them in order of the function chains.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    fork {
-        /// Fork function chains.
-        forks: Delimited<Forks>,
-    }
-);
-
-impl ToCallable for fork {
-    type Call = ForkCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        ForkCallable {
-            chains: self
-                .forks
-                .inner
-                .chains
-                .iter()
-                .map(|chain| chain.to_call_chain())
-                .collect(),
-        }
-    }
-}
-
-/// [Call] implementor fo [fork].
+/// [Call] implementor fo [ForkArgs].
 #[derive(Debug, Clone)]
 pub struct ForkCallable {
     /// Function chains.
@@ -66,12 +36,25 @@ impl Call for ForkCallable {
 
 /// Function chains to fork to.
 #[derive(Debug, Clone)]
-pub struct Forks {
+pub struct ForkArgs {
     /// Parsed chains.
     chains: Punctuated<FunctionChain, Token![,]>,
 }
 
-impl Parse for Forks {
+impl ToCallable for ForkArgs {
+    type Call = ForkCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        let chains = self
+            .chains
+            .iter()
+            .map(|chain| chain.to_call_chain())
+            .collect();
+        ForkCallable { chains }
+    }
+}
+
+impl Parse for ForkArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let chains = Punctuated::parse_terminated_with(input, |input| {
             FunctionChain::parse_terminated(input, |lookahead| {
@@ -87,7 +70,7 @@ impl Parse for Forks {
     }
 }
 
-impl ToTokens for Forks {
+impl ToTokens for ForkArgs {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { chains } = self;
         chains.to_tokens(tokens);

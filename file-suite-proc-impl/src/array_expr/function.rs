@@ -2,8 +2,6 @@
 
 use ::std::fmt::Debug;
 
-pub(crate) use macros::{function_enum, function_struct, spec_impl};
-
 pub mod builtin {
     //! Builtin funtions.
 
@@ -27,30 +25,38 @@ pub mod builtin {
     pub mod use_alias;
 }
 
-use crate::array_expr::function::builtin::{
-    alias::alias,
-    case::case,
-    chunks::chunks,
-    clear::clear,
-    count::count,
-    enumerate::enumerate,
-    fork::fork,
-    join::join,
-    paste::paste,
-    repeat::repeat,
-    rev::rev,
-    set::{global, local},
-    shift::shift,
-    split::split,
-    stairs::stairs,
-    trim::trim,
-    ty::ty,
-    use_alias::UseAlias,
+use crate::{
+    array_expr::function::{
+        builtin::{
+            alias::AliasArgs,
+            case::CaseArgs,
+            chunks::ChunksArgs,
+            clear::ClearCallable,
+            count::CountCallable,
+            enumerate::EnumerateArgs,
+            fork::ForkArgs,
+            join::JoinArgs,
+            paste::PasteArgs,
+            repeat::RepeatArgs,
+            rev::RevCallable,
+            set::{Global, Local, SetArgs},
+            shift::ShiftArgs,
+            split::SplitArgs,
+            stairs::StairsArgs,
+            trim::TrimCallable,
+            ty::TyArgs,
+            use_alias::UseAlias,
+        },
+        macros::function_enum,
+    },
+    lookahead_parse_keywords,
+    util::group_help::{Delimited, OptionalDelimited},
 };
 
 pub use self::{
     call::{Call, ToCallable},
     chain::FunctionChain,
+    empty_args::EmptyArgs,
     keyword_function::KwFn,
 };
 
@@ -62,49 +68,56 @@ mod chain;
 
 mod keyword_function;
 
+mod empty_args;
+
 /// Type used in call chains, result of [ToCallable] on [Function].
 pub type FunctionCallable = <Function as ToCallable>::Call;
+
+lookahead_parse_keywords![
+    alias, case, chunks, clear, count, split, join, ty, enumerate, rev, trim, shift, fork, repeat,
+    stairs, paste, global, local,
+];
 
 function_enum!(
     /// Enum collecting [Call] implementors.
     #[derive(Debug, Clone)]
     Function {
         /// Split array according to specification
-        Split(split),
+        Split(KwFn<kw::split, Delimited<SplitArgs>>),
         /// Join array according to specification.
-        Join(join),
+        Join(KwFn<kw::join, OptionalDelimited<JoinArgs>>),
         /// Case array according to specification.
-        Case(case),
+        Case(KwFn<kw::case, Delimited<CaseArgs>>),
         /// Convert type of array.
-        Type(ty),
+        Type(KwFn<kw::ty, Delimited<TyArgs>>),
         /// Enumerate array.
-        Enumerate(enumerate),
+        Enumerate(KwFn<kw::enumerate, Option<Delimited<EnumerateArgs>>>),
         /// Reverse array.
-        Rev(rev),
+        Rev(KwFn<kw::rev, EmptyArgs<RevCallable>>),
         /// Trim array array.
-        Trim(trim),
+        Trim(KwFn<kw::trim, EmptyArgs<TrimCallable>>),
         /// Shift/Rotate array.
-        Shift(shift),
+        Shift(KwFn<kw::shift, OptionalDelimited<ShiftArgs>>),
         /// Fork array.
-        Fork(fork),
+        Fork(KwFn<kw::fork, Delimited<ForkArgs>>),
         /// Repeat array.
-        Repeat(repeat),
+        Repeat(KwFn<kw::repeat, Delimited<RepeatArgs>>),
         /// Stair array.
-        Stairs(stairs),
+        Stairs(KwFn<kw::stairs, Delimited<StairsArgs>>),
         /// Paste tokens.
-        Paste(paste),
+        Paste(KwFn<kw::paste, Delimited<PasteArgs>>),
         /// Count array values.
-        Count(count),
+        Count(KwFn<kw::count, EmptyArgs<CountCallable>>),
         /// Split array into chunks.
-        Chunks(chunks),
+        Chunks(KwFn<kw::chunks, Delimited<ChunksArgs>>),
         /// Clear array.
-        Clear(clear),
+        Clear(KwFn<kw::clear, EmptyArgs<ClearCallable>>),
         /// Set a global variable.
-        Global(global),
+        Global(KwFn<kw::global, Delimited<SetArgs<Global>>>),
         /// Set a local variable.
-        Local(local),
+        Local(KwFn<kw::local, Delimited<SetArgs<Local>>>),
         /// Set an alias.
-        Alias(alias),
+        Alias(KwFn<kw::alias, Delimited<AliasArgs>>),
         /// Use an alias.
         UseAlias(UseAlias),
     }

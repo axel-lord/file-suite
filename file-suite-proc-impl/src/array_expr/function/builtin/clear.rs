@@ -1,34 +1,9 @@
 //! [clear] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, ToCallable, function_struct},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::group_help::EmptyDelimited,
-};
+use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 
-function_struct!(
-    /// Consume array outputing nothing.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    clear {
-        /// Optional macro delimiter.
-        [optional] delim: Option<EmptyDelimited>,
-    }
-);
-
-impl ToCallable for clear {
-    type Call = ClearCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        ClearCallable
-    }
-}
-
-/// [Call] implementor for [clear]
-#[derive(Debug, Clone, Copy)]
+/// [Call] implementor to clear array.
+#[derive(Debug, Clone, Copy, Default)]
 pub struct ClearCallable;
 
 impl Call for ClearCallable {

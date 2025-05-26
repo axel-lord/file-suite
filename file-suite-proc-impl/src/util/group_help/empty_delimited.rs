@@ -2,6 +2,7 @@
 
 use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
+use syn::parse::{Lookahead1, ParseStream};
 
 use crate::{
     macro_delimited,
@@ -16,10 +17,7 @@ pub struct EmptyDelimited {
 }
 
 impl LookaheadParse for EmptyDelimited {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
+    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
         if MacroDelimiter::lookahead_peek(lookahead) {
             let content;
             let delim = macro_delimited!(content in input);

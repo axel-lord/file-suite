@@ -3,36 +3,13 @@
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
 
-use crate::{
-    array_expr::{
-        function::{Call, Function, FunctionChain, ToCallable, function_struct},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::group_help::Delimited,
+use crate::array_expr::{
+    function::{Call, Function, FunctionChain, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
-function_struct!(
-    /// Set an alias.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    alias {
-        /// Specification for what functions to chain for alias.
-        spec: Delimited<Spec>,
-    }
-);
-
-impl ToCallable for alias {
-    type Call = AliasCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        AliasCallable {
-            chain: self.spec.inner.chain.to_call_chain(),
-        }
-    }
-}
-
-/// [Call] implementor for [alias].
+/// [Call] implementor for [AliasArgs].
 #[derive(Debug, Clone)]
 pub struct AliasCallable {
     /// Function chain to store.
@@ -49,14 +26,24 @@ impl Call for AliasCallable {
     }
 }
 
+impl ToCallable for AliasArgs {
+    type Call = AliasCallable;
+
+    fn to_callable(&self) -> Self::Call {
+        AliasCallable {
+            chain: self.chain.to_call_chain(),
+        }
+    }
+}
+
 /// Alias input specification.
 #[derive(Debug, Clone)]
-pub struct Spec {
+pub struct AliasArgs {
     /// Function chain for alias.
     chain: FunctionChain,
 }
 
-impl Parse for Spec {
+impl Parse for AliasArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
             chain: FunctionChain::parse(input)?,
@@ -64,7 +51,7 @@ impl Parse for Spec {
     }
 }
 
-impl ToTokens for Spec {
+impl ToTokens for AliasArgs {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { chain } = self;
         chain.to_tokens(tokens);

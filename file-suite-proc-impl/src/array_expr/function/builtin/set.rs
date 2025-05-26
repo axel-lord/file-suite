@@ -4,7 +4,7 @@ use ::std::borrow::Cow;
 
 use ::quote::ToTokens;
 use ::syn::{
-    MacroDelimiter, Token,
+    MacroDelimiter,
     parse::{End, Parse},
     punctuated::Punctuated,
 };
@@ -12,7 +12,7 @@ use ::syn::{
 use crate::{
     array_expr::{
         ArrayExpr, Node,
-        function::{Call, ToCallable, function_struct},
+        function::{Call, ToCallable},
         storage::Storage,
         typed_value::TypedValue,
         value_array::ValueArray,
@@ -21,50 +21,21 @@ use crate::{
         delimited::MacroDelimExt,
         group_help::Delimited,
         lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
+        neverlike::NoPhantomData,
     },
 };
 
-function_struct!(
-    /// Set a global variable.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    global {
-        /// Specification for how to, and with what content set global.
-        spec: Delimited<Spec>,
-    }
-
-    /// Set a local variable.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    local {
-        /// Specification for how to, and with what content set local.
-        spec: Delimited<Spec>,
-    }
-);
-
-impl ToCallable for global {
-    type Call = GlobalCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        GlobalCallable(Behaviour::from(&self.spec.inner))
-    }
-}
-
-impl ToCallable for local {
-    type Call = LocalCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        LocalCallable(Behaviour::from(&self.spec.inner))
-    }
-}
-
-/// [Call] implementor fo [local].
 #[derive(Debug, Clone)]
-pub struct LocalCallable(Behaviour);
+/// Set global variables.
+pub enum Global {}
 
-impl Call for LocalCallable {
+#[derive(Debug, Clone)]
+/// Set local variables.
+pub enum Local {}
+
+impl Call for SetCallable<Local> {
     fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
-        self.0.set_variables(array, storage, |storage, key| {
+        self.set_variables(array, storage, |storage, key| {
             storage
                 .insert(key, false)
                 .map_err(|key| format!("read-only local with key '{key}' already exists").into())
@@ -73,13 +44,9 @@ impl Call for LocalCallable {
     }
 }
 
-/// [Call] implementor fo [global].
-#[derive(Debug, Clone)]
-pub struct GlobalCallable(Behaviour);
-
-impl Call for GlobalCallable {
+impl Call for SetCallable<Global> {
     fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
-        self.0.set_variables(array, storage, |storage, key| {
+        self.set_variables(array, storage, |storage, key| {
             storage
                 .insert_global(key, false)
                 .map_err(|key| format!("read-only global with key '{key}' already exists").into())
@@ -90,7 +57,7 @@ impl Call for GlobalCallable {
 
 /// Whether to set variables specified by array or input, with the other as values.
 #[derive(Debug, Clone)]
-pub enum Behaviour {
+pub enum SetCallable<T> {
     /// Use array as keys.
     SetArray {
         /// Values to set variables to.
@@ -101,9 +68,14 @@ pub enum Behaviour {
         /// Keys of variables to set.
         keys: ValueArray,
     },
+    /// Phantom variant.
+    _P {
+        /// Allow for T.
+        _p: NoPhantomData<fn() -> T>,
+    },
 }
 
-impl Behaviour {
+impl<T> SetCallable<T> {
     /// Set variables according to variant.
     ///
     /// # Errors
@@ -114,7 +86,7 @@ impl Behaviour {
         I: for<'a, 'k> Fn(&'a mut Storage, Cow<'k, str>) -> crate::Result<&'a mut ValueArray>,
     {
         match self {
-            Behaviour::SetArray { key_expr } => {
+            SetCallable::SetArray { key_expr } => {
                 let values = storage
                     .with_local_layer(|storage| key_expr.compute_with_storage(storage))
                     .map_err(|err| err.to_string())?;
@@ -126,7 +98,7 @@ impl Behaviour {
                     *var = values.clone();
                 }
             }
-            Behaviour::SetInput { keys } => {
+            SetCallable::SetInput { keys } => {
                 for key in keys {
                     let var = insert(storage, Cow::Borrowed(key))
                         .map_err(|key| format!("cannot set read-only variable '{key}'"))?;
@@ -134,30 +106,15 @@ impl Behaviour {
                     *var = array.clone();
                 }
             }
+            SetCallable::_P { _p } => _p.unwrap(),
         };
         Ok(())
     }
 }
 
-impl From<&Spec> for Behaviour {
-    fn from(value: &Spec) -> Self {
-        match value {
-            Spec::SetArray { expr } => Self::SetArray {
-                key_expr: expr
-                    .as_ref()
-                    .map(|expr| expr.inner.to_array_expr())
-                    .unwrap_or_default(),
-            },
-            Spec::SetInput { keys } => Self::SetInput {
-                keys: keys.iter().map(|key| key.to_value()).collect(),
-            },
-        }
-    }
-}
-
 /// What variable to set, or what to set variables to.
 #[derive(Debug, Clone)]
-pub enum Spec {
+pub enum SetArgs<T> {
     /// Use array as variable keys. Setting them to input, which is an array expression.
     SetArray {
         /// Value to set variables to.
@@ -166,11 +123,38 @@ pub enum Spec {
     /// Use input which is a list of values as variable keys. setting them to array.
     SetInput {
         /// Variable keys to set.
-        keys: Punctuated<TypedValue, Token![,]>,
+        keys: Punctuated<TypedValue, ::syn::token::Comma>,
+    },
+    /// Phantom variant.
+    _P {
+        /// Allow T.
+        _p: NoPhantomData<fn() -> T>,
     },
 }
 
-impl Parse for Spec {
+impl<T> ToCallable for SetArgs<T>
+where
+    SetCallable<T>: Call,
+{
+    type Call = SetCallable<T>;
+
+    fn to_callable(&self) -> Self::Call {
+        match self {
+            SetArgs::SetArray { expr } => SetCallable::<T>::SetArray {
+                key_expr: expr
+                    .as_ref()
+                    .map(|expr| expr.inner.to_array_expr())
+                    .unwrap_or_default(),
+            },
+            SetArgs::SetInput { keys } => SetCallable::<T>::SetInput {
+                keys: keys.iter().map(|key| key.to_value()).collect(),
+            },
+            SetArgs::_P { _p } => _p.unwrap(),
+        }
+    }
+}
+
+impl<T> Parse for SetArgs<T> {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let lookahead = input.lookahead1();
 
@@ -188,11 +172,12 @@ impl Parse for Spec {
     }
 }
 
-impl ToTokens for Spec {
+impl<T> ToTokens for SetArgs<T> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
-            Spec::SetArray { expr } => expr.to_tokens(tokens),
-            Spec::SetInput { keys } => keys.to_tokens(tokens),
+            SetArgs::SetArray { expr } => expr.to_tokens(tokens),
+            SetArgs::SetInput { keys } => keys.to_tokens(tokens),
+            SetArgs::_P { _p } => _p.unwrap(),
         }
     }
 }

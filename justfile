@@ -25,6 +25,10 @@ test  *EXTRA:
 test-miri *EXTRA:
 	cargo miri test {{EXTRA}}
 
+# Run proc-macro tests
+test-proc:
+	cargo test -p file-suite-proc-impl
+
 # Format crates.
 fmt:
 	cargo fmt --all

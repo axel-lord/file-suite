@@ -1,35 +1,9 @@
 //! [count] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, ToCallable, function_struct},
-        storage::Storage,
-        value::Value,
-        value_array::ValueArray,
-    },
-    util::group_help::EmptyDelimited,
-};
+use crate::array_expr::{function::Call, storage::Storage, value::Value, value_array::ValueArray};
 
-function_struct!(
-    /// Count amount of values passed.
-    #[derive(Debug, Clone)]
-    #[expect(non_camel_case_types)]
-    count {
-        /// Optional macro delimiter.
-        [optional] delim: Option<EmptyDelimited>,
-    }
-);
-
-impl ToCallable for count {
-    type Call = CountCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        CountCallable
-    }
-}
-
-/// [Call] implementor for [count].
-#[derive(Debug, Clone, Copy)]
+/// [Call] implementor to count array elements.
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CountCallable;
 
 impl Call for CountCallable {
