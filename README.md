@@ -17,3 +17,14 @@ Todo:
 4. [ ] Some method of passing parameters to aliases, perhaps as locals somehow.
 5. [ ] Tests for at least all chain functions.
 6. [ ] Allow variables to be used in most places expecting arguments.
+7. [ ] Punctuation type.
+
+Function Todo:
+1. [ ] Take (negative value should result in back elements being taken)
+2. [ ] Chain
+3. [ ] Skip (negative value should result in back elements being skipped)
+3. [ ] Intersperse
+4. [ ] Get (variable, not by index)
+5. [ ] Nth (with error on failure, and negative indexing)
+6. [ ] Every (could be emulated by .chunks(N, .take(1)))
+7. [ ] Block (Chain with same locals as parent)
