@@ -1,4 +1,4 @@
-//! [split] impl.
+//! [SplitArgs] impl.
 
 use ::quote::ToTokens;
 use ::syn::{LitChar, LitStr, parse::Parse};
@@ -16,7 +16,7 @@ use crate::{
 kw_kind!(
     /// Keyword specified split
     SplitKw;
-    /// Enum containing possible values for [SpecKw].
+    /// Enum containing possible values for [SplitKw].
     #[expect(non_camel_case_types)]
     SplitKind {
         /// Split by PascalCase.

@@ -1,4 +1,4 @@
-//! [stairs] impl.
+//! [StairsArgs] impl.
 
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
@@ -9,8 +9,8 @@ use crate::array_expr::{
     value_array::ValueArray,
 };
 
-/// Run array through input chain in stairs such that an array [A, B, C]
-/// Results in the cain being called on [A], [A, B] and [A, B, C].
+/// Run array through input chain in stairs such that an array \[A, B, C\]
+/// Results in the cain being called on \[A\], \[A, B\] and \[A, B, C\].
 #[derive(Debug, Clone)]
 pub struct StairsArgs {
     /// Chain to call on arrays.
@@ -42,7 +42,7 @@ impl ToCallable for StairsArgs {
     }
 }
 
-/// [Call] implementor for [stairs].
+/// [Call] implementor for [StairsArgs].
 #[derive(Debug, Clone)]
 pub struct StairsCallable {
     /// Chain to call.

@@ -1,4 +1,4 @@
-//! [enumerate] impl.
+//! [EnumerateArgs] impl.
 
 use ::std::num::NonZero;
 

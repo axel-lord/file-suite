@@ -1,4 +1,4 @@
-//! [shift] impl.
+//! [ShiftArgs] impl.
 
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
@@ -44,7 +44,7 @@ impl ToCallable for ShiftArgs {
     }
 }
 
-/// [Call] impl for [shift].
+/// [Call] impl for [ShiftArgs].
 #[derive(Debug, Clone, Copy)]
 pub struct ShiftCallable {
     /// What to shift by.

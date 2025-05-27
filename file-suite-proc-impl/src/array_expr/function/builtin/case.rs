@@ -1,4 +1,4 @@
-//! [case] impl.
+//! [CaseArgs] impl.
 
 use crate::{
     array_expr::{

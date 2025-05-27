@@ -1,4 +1,4 @@
-//! [clear] impl.
+//! [ClearCallable] impl.
 
 use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 

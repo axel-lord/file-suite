@@ -1,4 +1,4 @@
-//! [fork] impl.
+//! [ForkArgs] impl.
 
 use ::quote::ToTokens;
 use ::syn::{

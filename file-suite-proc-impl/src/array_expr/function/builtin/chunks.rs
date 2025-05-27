@@ -1,4 +1,4 @@
-//! [chunk] impl.
+//! [ChunksArgs] impl.
 
 use ::std::num::NonZero;
 

@@ -1,4 +1,4 @@
-//! [count] impl.
+//! [CountCallable] impl.
 
 use crate::array_expr::{function::Call, storage::Storage, value::Value, value_array::ValueArray};
 

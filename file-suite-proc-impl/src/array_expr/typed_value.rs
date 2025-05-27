@@ -10,7 +10,7 @@ use ::syn::{
 
 use crate::{array_expr::value::Value, util::lookahead_parse::LookaheadParse};
 
-/// A typed [KebabValue] which may be converted to tokens.
+/// A typed [Value] which may be converted to tokens.
 #[derive(Debug, Clone)]
 pub enum TypedValue {
     /// Value is an [identifier][Ident].

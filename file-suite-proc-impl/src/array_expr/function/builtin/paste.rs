@@ -1,4 +1,4 @@
-//! [paste] impl.
+//! [PasteArgs] impl.
 
 use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;

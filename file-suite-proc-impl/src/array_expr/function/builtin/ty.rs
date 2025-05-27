@@ -1,4 +1,4 @@
-//! [Ty] impl.
+//! [TyArgs] impl.
 
 use ::quote::ToTokens;
 use ::syn::parse::Parse;

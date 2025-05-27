@@ -1,4 +1,4 @@
-//! [global] and [local] impl.
+//! [Global] and [Local], [SetArgs] impl.
 
 use ::std::borrow::Cow;
 

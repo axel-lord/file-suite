@@ -1,4 +1,4 @@
-//! [alias] impl.
+//! [AliasArgs] impl.
 
 use ::quote::ToTokens;
 use ::syn::parse::Parse;

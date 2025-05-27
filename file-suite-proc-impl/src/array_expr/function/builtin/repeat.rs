@@ -1,4 +1,4 @@
-//! [repeat] impl
+//! [RepeatArgs] impl
 
 use ::std::num::NonZero;
 
