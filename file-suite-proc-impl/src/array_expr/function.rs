@@ -91,7 +91,7 @@ function_enum!(
         /// Convert type of array.
         Type(KwFn<kw::ty, Delimited<TyArgs>>),
         /// Enumerate array.
-        Enumerate(KwFn<kw::enumerate, Option<Delimited<EnumerateArgs>>>),
+        Enumerate(KwFn<kw::enumerate, OptionalDelimited<EnumerateArgs>>),
         /// Reverse array.
         Rev(KwFn<kw::rev, EmptyArgs<RevCallable>>),
         /// Trim array array.
