@@ -1,10 +1,20 @@
 //! [TrimCallable] impl
 
-use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
+use crate::array_expr::{
+    function::{Call, DefaultArgs},
+    storage::Storage,
+    value_array::ValueArray,
+};
 
 /// Trim whitespace arround values in array.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct TrimCallable;
+
+impl DefaultArgs for TrimCallable {
+    fn default_args() -> Self {
+        Self
+    }
+}
 
 impl Call for TrimCallable {
     fn call(&self, mut array: ValueArray, _storage: &mut Storage) -> crate::Result<ValueArray> {

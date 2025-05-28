@@ -6,7 +6,7 @@ use ::syn::{LitChar, LitStr, parse::Parse};
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable},
+        function::{Call, DefaultArgs, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
@@ -82,8 +82,8 @@ pub enum JoinCallable {
     Kw(JoinKind),
 }
 
-impl Default for JoinCallable {
-    fn default() -> Self {
+impl DefaultArgs for JoinCallable {
+    fn default_args() -> Self {
         Self::Kw(JoinKind::concat)
     }
 }

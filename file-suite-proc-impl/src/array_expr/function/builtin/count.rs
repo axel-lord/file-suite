@@ -1,10 +1,21 @@
 //! [CountCallable] impl.
 
-use crate::array_expr::{function::Call, storage::Storage, value::Value, value_array::ValueArray};
+use crate::array_expr::{
+    function::{Call, DefaultArgs},
+    storage::Storage,
+    value::Value,
+    value_array::ValueArray,
+};
 
 /// [Call] implementor to count array elements.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct CountCallable;
+
+impl DefaultArgs for CountCallable {
+    fn default_args() -> Self {
+        Self
+    }
+}
 
 impl Call for CountCallable {
     fn call(

@@ -7,7 +7,7 @@ use ::syn::MacroDelimiter;
 use syn::parse::{Lookahead1, ParseStream};
 
 use crate::{
-    array_expr::function::{Call, ToCallable},
+    array_expr::function::{Call, DefaultArgs, ToCallable},
     macro_delimited,
     util::{delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse},
 };
@@ -24,12 +24,12 @@ pub struct EmptyArgs<T> {
 
 impl<T> ToCallable for EmptyArgs<T>
 where
-    T: Default + Call,
+    T: DefaultArgs + Call,
 {
     type Call = T;
 
     fn to_callable(&self) -> Self::Call {
-        T::default()
+        T::default_args()
     }
 }
 

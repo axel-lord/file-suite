@@ -54,7 +54,7 @@ use crate::{
 };
 
 pub use self::{
-    call::{Call, ToCallable},
+    call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
     empty_args::EmptyArgs,
     keyword_function::KwFn,

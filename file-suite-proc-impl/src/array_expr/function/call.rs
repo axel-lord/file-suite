@@ -23,11 +23,23 @@ pub trait Call {
 impl<T> ToCallable for Option<T>
 where
     T: ToCallable,
-    T::Call: Default,
+    T::Call: DefaultArgs,
 {
     type Call = T::Call;
 
     fn to_callable(&self) -> Self::Call {
-        self.as_ref().map(|t| t.to_callable()).unwrap_or_default()
+        self.as_ref()
+            .map(|t| t.to_callable())
+            .unwrap_or_else(DefaultArgs::default_args)
     }
+}
+
+/// Default arguments for [Call] implementor,
+/// allowing it to be created without any parsed tokens.
+pub trait DefaultArgs
+where
+    Self: Sized,
+{
+    /// Get default arguments.
+    fn default_args() -> Self;
 }

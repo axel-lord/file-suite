@@ -5,7 +5,7 @@ use ::syn::parse::Parse;
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable},
+        function::{Call, DefaultArgs, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
@@ -53,6 +53,12 @@ pub struct ShiftCallable {
 
 impl Default for ShiftCallable {
     fn default() -> Self {
+        Self { by: 1 }
+    }
+}
+
+impl DefaultArgs for ShiftCallable {
+    fn default_args() -> Self {
         Self { by: 1 }
     }
 }

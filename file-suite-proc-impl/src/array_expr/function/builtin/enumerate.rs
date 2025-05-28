@@ -10,7 +10,7 @@ use ::syn::{
 
 use crate::{
     array_expr::{
-        function::{Call, ToCallable},
+        function::{Call, DefaultArgs, ToCallable},
         storage::Storage,
         value::Value,
         value_array::ValueArray,
@@ -33,8 +33,8 @@ pub struct EnumerateCallable {
     array_span: NonZero<usize>,
 }
 
-impl Default for EnumerateCallable {
-    fn default() -> Self {
+impl DefaultArgs for EnumerateCallable {
+    fn default_args() -> Self {
         Self {
             offset: 1,
             step: 1,
@@ -84,7 +84,7 @@ impl ToCallable for EnumerateArgs {
     type Call = EnumerateCallable;
 
     fn to_callable(&self) -> Self::Call {
-        let default = EnumerateCallable::default();
+        let default = EnumerateCallable::default_args();
 
         let offset = self
             .offset
