@@ -15,11 +15,7 @@ use crate::{
         value::Value,
         value_array::ValueArray,
     },
-    util::{
-        ensure_empty,
-        lookahead_parse::{LookaheadParse, lookahead_parse},
-        spanned_int::SpannedInt,
-    },
+    util::{lookahead_parse::optional_lookahead_parse, spanned_int::SpannedInt},
 };
 
 /// [Call] Implementor for [EnumerateArgs].
@@ -80,6 +76,24 @@ pub struct EnumerateArgs {
     pub array_span: Option<ArraySpan>,
 }
 
+/// Step of specification.
+#[derive(Debug, Clone)]
+pub struct Step {
+    /// ':' token.
+    pub colon: Token![:],
+    /// Step value.
+    pub step: Option<SpannedInt<isize>>,
+}
+
+/// Array span of specification.
+#[derive(Debug, Clone)]
+pub struct ArraySpan {
+    /// ':' token.
+    pub colon: Token![:],
+    /// Span value.
+    pub array_span: Option<SpannedInt<NonZero<usize>>>,
+}
+
 impl ToCallable for EnumerateArgs {
     type Call = EnumerateCallable;
 
@@ -117,31 +131,37 @@ impl ToCallable for EnumerateArgs {
 impl Parse for EnumerateArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut lookahead = input.lookahead1();
-        let offset = if let Some(offset) = lookahead_parse(input, &lookahead)? {
-            lookahead = input.lookahead1();
-            Some(offset)
-        } else {
-            None
-        };
 
-        let step = if let Some(step) = lookahead_parse(input, &lookahead)? {
-            Some(step)
-        } else if !lookahead.peek(End) {
+        let offset = optional_lookahead_parse(input, &mut lookahead)?;
+
+        let step = if let Some(colon) = optional_lookahead_parse(input, &mut lookahead)? {
+            let step = optional_lookahead_parse(input, &mut lookahead)?;
+            Some(Step { colon, step })
+        } else if lookahead.peek(End) {
+            return Ok(Self {
+                offset,
+                ..Default::default()
+            });
+        } else {
             return Err(lookahead.error());
-        } else {
-            None
         };
 
-        let lookahead = input.lookahead1();
-        let array_span = if let Some(array_span) = lookahead_parse(input, &lookahead)? {
-            Some(array_span)
-        } else if !lookahead.peek(End) {
+        let array_span = if let Some(colon) = optional_lookahead_parse(input, &mut lookahead)? {
+            let array_span = optional_lookahead_parse(input, &mut lookahead)?;
+            Some(ArraySpan { colon, array_span })
+        } else if lookahead.peek(End) {
+            return Ok(Self {
+                offset,
+                step,
+                ..Default::default()
+            });
+        } else {
             return Err(lookahead.error());
-        } else {
-            None
         };
 
-        ensure_empty(input)?;
+        if !lookahead.peek(End) {
+            return Err(lookahead.error());
+        }
 
         Ok(Self {
             offset,
@@ -164,39 +184,6 @@ impl ToTokens for EnumerateArgs {
     }
 }
 
-/// Step of specification.
-#[derive(Debug, Clone)]
-pub struct Step {
-    /// ':' token.
-    pub colon: Token![:],
-    /// Step value.
-    pub step: Option<SpannedInt<isize>>,
-}
-
-impl LookaheadParse for Step {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        lookahead
-            .peek(Token![:])
-            .then(|| {
-                let colon = input.parse()?;
-                let lookahead = input.lookahead1();
-                let step = if let Some(step) = lookahead_parse(input, &lookahead)? {
-                    Some(step)
-                } else if lookahead.peek(Token![:]) || lookahead.peek(End) {
-                    None
-                } else {
-                    return Err(lookahead.error());
-                };
-
-                Ok(Self { colon, step })
-            })
-            .transpose()
-    }
-}
-
 impl ToTokens for Step {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { colon, step } = self;
@@ -205,42 +192,10 @@ impl ToTokens for Step {
     }
 }
 
-/// Array span of specification.
-#[derive(Debug, Clone)]
-pub struct ArraySpan {
-    /// ':' token.
-    pub colon: Token![:],
-    /// Span value.
-    pub array_span: Option<SpannedInt<NonZero<usize>>>,
-}
-
 impl ToTokens for ArraySpan {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { colon, array_span } = self;
         colon.to_tokens(tokens);
         array_span.to_tokens(tokens);
-    }
-}
-impl LookaheadParse for ArraySpan {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        lookahead
-            .peek(Token![:])
-            .then(|| {
-                let colon = input.parse()?;
-                let lookahead = input.lookahead1();
-                let array_span = if let Some(step) = lookahead_parse(input, &lookahead)? {
-                    Some(step)
-                } else if lookahead.peek(End) {
-                    None
-                } else {
-                    return Err(lookahead.error());
-                };
-
-                Ok(Self { colon, array_span })
-            })
-            .transpose()
     }
 }

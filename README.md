@@ -19,7 +19,8 @@ Todo:
 6. [ ] Allow variables to be used in most places expecting arguments.
 7. [ ] Punctuation type.
 8. [x] DefaultArgs instead of default for arguments with default values.
-9. [ ] Better error messages for situations similar to `LookaheadParse::optional_parse`.
+9. [x] Better error messages for situations similar to `LookaheadParse::optional_parse`.
+10. [ ] Change LookaheadParse signature to take `Lookahead1` as mut ref and drive it forward on success.
 
 Function Todo:
 1. [ ] Take (negative value should result in back elements being taken)
