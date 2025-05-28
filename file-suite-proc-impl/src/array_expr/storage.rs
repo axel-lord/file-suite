@@ -28,12 +28,10 @@ struct StoredAlias {
 }
 
 /// Storage for variables.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Storage {
-    /// Values of storage.
-    globals: Vec<StoredValue>,
-    /// Local values.
-    locals: Vec<Vec<StoredValue>>,
+    /// Variables.
+    variables: Vec<Vec<StoredValue>>,
     /// Chain aliases.
     aliases: Vec<StoredAlias>,
 }
@@ -72,15 +70,23 @@ fn insert<'a, 'k>(
 }
 
 impl Storage {
+    /// Get a new empty storage.
+    pub fn initial() -> Self {
+        Self {
+            variables: Vec::from([Vec::new()]),
+            aliases: Vec::new(),
+        }
+    }
+
     /// Use storage with a new layer for local variables.
     /// The layer will be removed upon return.
     pub fn with_local_layer<F, T>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Storage) -> T,
     {
-        self.locals.push(Vec::new());
+        self.variables.push(Vec::new());
         let value = f(self);
-        self.locals.pop();
+        self.variables.pop();
         value
     }
 
@@ -93,7 +99,11 @@ impl Storage {
         key: Cow<'key, str>,
         read_only: bool,
     ) -> Result<&'this mut ValueArray, Cow<'key, str>> {
-        insert(&mut self.globals, key, read_only)
+        insert(
+            self.variables.first_mut().unwrap_or_else(|| unreachable!()),
+            key,
+            read_only,
+        )
     }
 
     /// Insert a value into the storage if possible.
@@ -106,22 +116,20 @@ impl Storage {
         read_only: bool,
     ) -> Result<&'this mut ValueArray, Cow<'key, str>> {
         let Self {
-            globals,
-            locals,
+            variables,
             aliases: _,
         } = self;
-        let vars = locals.last_mut().unwrap_or(globals);
+        let vars = variables.last_mut().unwrap_or_else(|| unreachable!());
 
         insert(vars, key, read_only)
     }
 
     /// Get a value from the storage.
     pub fn get<'this>(&'this self, key: &'_ str) -> Option<&'this ValueArray> {
-        self.locals
+        self.variables
             .iter()
             .rev()
             .flatten()
-            .chain(&self.globals)
             .find(|value| value.key == key)
             .map(|value| &value.values)
     }

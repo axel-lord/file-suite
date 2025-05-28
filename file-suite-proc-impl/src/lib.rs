@@ -30,7 +30,7 @@ pub type Result<T = ()> = ::std::result::Result<T, Error>;
 pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
     fold_token_stream(
         &mut ArrayExprPaste {
-            storage: &mut Storage::default(),
+            storage: &mut Storage::initial(),
         },
         input,
     )
@@ -43,7 +43,7 @@ pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
 /// Or if it cannot be computed.
 pub fn array_expr(input: TokenStream) -> ::syn::Result<TokenStream> {
     let mut tokens = TokenStream::default();
-    let mut storage = Storage::default();
+    let mut storage = Storage::initial();
     for node in Node::parse_multiple.parse2(input)? {
         for value in storage
             .with_local_layer(|storage| node.to_array_expr().compute_with_storage(storage))?

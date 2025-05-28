@@ -97,7 +97,7 @@ impl ArrayExpr {
     /// # Errors
     /// If any function errors.
     pub fn compute(&self) -> ::syn::Result<ValueArray> {
-        self.compute_with_storage(&mut Storage::default())
+        self.compute_with_storage(&mut Storage::initial())
     }
 }
 
