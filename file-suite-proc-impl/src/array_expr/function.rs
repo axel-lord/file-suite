@@ -7,6 +7,7 @@ pub mod builtin {
 
     pub mod alias;
     pub mod case;
+    pub mod chain;
     pub mod chunks;
     pub mod clear;
     pub mod count;
@@ -30,6 +31,7 @@ use crate::{
         builtin::{
             alias::AliasArgs,
             case::CaseArgs,
+            chain::ChainArgs,
             chunks::ChunksArgs,
             clear::ClearCallable,
             count::CountCallable,
@@ -75,7 +77,7 @@ pub type FunctionCallable = <Function as ToCallable>::Call;
 
 lookahead_parse_keywords![
     alias, case, chunks, clear, count, split, join, ty, enumerate, rev, trim, shift, fork, repeat,
-    stairs, paste, global, local,
+    stairs, paste, global, local, chain,
 ];
 
 function_enum!(
@@ -108,6 +110,8 @@ function_enum!(
         Paste(KwFn<kw::paste, Delimited<PasteArgs>>),
         /// Count array values.
         Count(KwFn<kw::count, EmptyArgs<CountCallable>>),
+        /// Chain an array expr after array.
+        Chain(KwFn<kw::chain, OptionalDelimited<ChainArgs>>),
         /// Split array into chunks.
         Chunks(KwFn<kw::chunks, Delimited<ChunksArgs>>),
         /// Clear array.
