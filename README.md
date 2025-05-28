@@ -18,6 +18,8 @@ Todo:
 5. [ ] Tests for at least all chain functions.
 6. [ ] Allow variables to be used in most places expecting arguments.
 7. [ ] Punctuation type.
+8. [ ] DefaultArgs instead of default for arguments with default values.
+9. [ ] Better error messages for situations similar to `LookaheadParse::optional_parse`.
 
 Function Todo:
 1. [ ] Take (negative value should result in back elements being taken)
