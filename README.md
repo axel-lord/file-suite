@@ -25,10 +25,10 @@ Todo:
 
 Function Todo:
 1. [ ] Take (negative value should result in back elements being taken)
-2. [ ] Chain
+2. [x] Chain
 3. [ ] Skip (negative value should result in back elements being skipped)
 3. [ ] Intersperse
 4. [ ] Get (variable, not by index)
 5. [ ] Nth (with error on failure, and negative indexing)
 6. [ ] Every (could be emulated by .chunks(N, .take(1)))
-7. [ ] Block (Chain with same locals as parent)
+7. [x] Block (Chain with same locals as parent)
