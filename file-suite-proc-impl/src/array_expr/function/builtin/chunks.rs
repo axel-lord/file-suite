@@ -12,7 +12,7 @@ use syn::parse::ParseStream;
 
 use crate::{
     array_expr::{
-        function::{Call, FunctionCallable, FunctionChain, ToCallable},
+        function::{Arg, Call, FunctionCallable, FunctionChain, ParsedArg, ToArg, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
@@ -25,7 +25,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct ChunksArgs {
     /// Size of chunks.
-    chunk_size: SpannedInt<NonZero<usize>>,
+    chunk_size: ParsedArg<SpannedInt<NonZero<usize>>>,
     /// ',' token.
     comma_token: Token![,],
     /// Function chain.
@@ -39,7 +39,7 @@ impl ToCallable for ChunksArgs {
 
     fn to_callable(&self) -> Self::Call {
         ChunksCallable {
-            size: self.chunk_size.value,
+            size: self.chunk_size.to_arg(),
             chain: self.chain.to_call_chain(),
             remainder: self
                 .remainder
@@ -66,7 +66,7 @@ impl ToTokens for ChunksArgs {
 
 impl Parse for ChunksArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let chunk_size = input.call(SpannedInt::parse)?;
+        let chunk_size = input.call(LookaheadParse::parse)?;
         let comma_token = input.parse()?;
         let chain = FunctionChain::parse_terminated(input, |lookahead| {
             lookahead.peek(End) || lookahead.peek(Token![,])
@@ -117,7 +117,7 @@ impl Parse for RemainderChain {
 #[derive(Debug, Clone)]
 pub struct ChunksCallable {
     /// Size of chunks (with exceptions for last chunk).
-    size: NonZero<usize>,
+    size: Arg<NonZero<usize>>,
     /// Chain to call on chunks.
     chain: Vec<FunctionCallable>,
     /// Special chain to use on remainder (if none regular chain is used).
@@ -129,14 +129,16 @@ impl Call for ChunksCallable {
         let mut array = array.into_iter();
         let mut out_array = ValueArray::new();
 
+        let size = self.size.get(storage)?;
+
         loop {
-            let values = array.by_ref().take(self.size.get()).collect::<ValueArray>();
+            let values = array.by_ref().take(size.get()).collect::<ValueArray>();
             if values.is_empty() {
                 break;
             }
 
             let chain = match &self.remainder {
-                Some(remainder) if values.len() != self.size.get() => remainder,
+                Some(remainder) if values.len() != size.get() => remainder,
                 _ => &self.chain,
             };
 
@@ -159,15 +161,21 @@ mod test {
         clippy::missing_panics_doc
     )]
 
-    use ::quote::quote;
-
-    use crate::array_expr;
+    use crate::array_expr::test::assert_arr_expr;
 
     #[test]
     fn chunks() {
-        let expr = quote! { A -> repeat(3).enumerate.chunks(2, shift.join).ty(ident) };
-        let expected = quote! { A1 A2 A3 };
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
+        assert_arr_expr!(
+            { A -> repeat(3).enumerate.chunks(2, shift.join).ty(ident) },
+            { A1 A2 A3 },
+        );
+
+        assert_arr_expr!(
+            {
+                2 -> global(by),
+                A B C D -> chunks(=by, join).ty(ident),
+            },
+            { AB CD },
+        );
     }
 }

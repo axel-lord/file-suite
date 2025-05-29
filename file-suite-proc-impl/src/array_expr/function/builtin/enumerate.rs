@@ -10,7 +10,7 @@ use ::syn::{
 
 use crate::{
     array_expr::{
-        function::{Call, DefaultArgs, ToCallable},
+        function::{Arg, Call, DefaultArgs, ParsedArg, ToArg, ToCallable},
         storage::Storage,
         value::Value,
         value_array::ValueArray,
@@ -19,31 +19,31 @@ use crate::{
 };
 
 /// [Call] Implementor for [EnumerateArgs].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct EnumerateCallable {
     /// Offset of enumeration.
-    offset: isize,
+    offset: Arg<isize>,
     /// Step of enumeration.
-    step: isize,
+    step: Arg<isize>,
     /// Span of enumeration.
-    array_span: NonZero<usize>,
+    array_span: Arg<NonZero<usize>>,
 }
 
 impl DefaultArgs for EnumerateCallable {
     fn default_args() -> Self {
         Self {
-            offset: 1,
-            step: 1,
-            array_span: const { NonZero::new(1).unwrap() },
+            offset: Arg::Value(1),
+            step: Arg::Value(1),
+            array_span: Arg::Value(const { NonZero::new(1).unwrap() }),
         }
     }
 }
 
 impl Call for EnumerateCallable {
-    fn call(&self, input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
-        let mut offset = self.offset;
-        let step = self.step;
-        let span = self.array_span.get();
+    fn call(&self, input: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
+        let mut offset = self.offset.get(storage)?;
+        let step = self.step.get(storage)?;
+        let span = self.array_span.get(storage)?.get();
 
         let mut output = Vec::with_capacity(input.len());
         let mut input = input.into_iter();
@@ -67,7 +67,7 @@ impl Call for EnumerateCallable {
 #[derive(Debug, Clone, Default)]
 pub struct EnumerateArgs {
     /// First value of enumeration.
-    pub offset: Option<SpannedInt<isize>>,
+    pub offset: Option<ParsedArg<SpannedInt<isize>>>,
 
     /// What to change enumeration value by for each step.
     pub step: Option<Step>,
@@ -82,7 +82,7 @@ pub struct Step {
     /// ':' token.
     pub colon: Token![:],
     /// Step value.
-    pub step: Option<SpannedInt<isize>>,
+    pub step: Option<ParsedArg<SpannedInt<isize>>>,
 }
 
 /// Array span of specification.
@@ -91,7 +91,7 @@ pub struct ArraySpan {
     /// ':' token.
     pub colon: Token![:],
     /// Span value.
-    pub array_span: Option<SpannedInt<NonZero<usize>>>,
+    pub array_span: Option<ParsedArg<SpannedInt<NonZero<usize>>>>,
 }
 
 impl ToCallable for EnumerateArgs {
@@ -103,21 +103,21 @@ impl ToCallable for EnumerateArgs {
         let offset = self
             .offset
             .as_ref()
-            .map(|offset| offset.value)
+            .map(|offset| offset.to_arg())
             .unwrap_or(default.offset);
 
         let step = self
             .step
             .as_ref()
             .and_then(|step| step.step.as_ref())
-            .map(|step| step.value)
+            .map(|step| step.to_arg())
             .unwrap_or(default.step);
 
         let array_span = self
             .array_span
             .as_ref()
             .and_then(|array_span| array_span.array_span.as_ref())
-            .map(|array_span| array_span.value)
+            .map(|array_span| array_span.to_arg())
             .unwrap_or(default.array_span);
 
         EnumerateCallable {
@@ -208,15 +208,22 @@ mod test {
         clippy::missing_panics_doc
     )]
 
-    use ::quote::quote;
-
-    use crate::array_expr;
+    use crate::array_expr::test::assert_arr_expr;
 
     #[test]
     fn enumerate() {
-        let expr = quote! { 1 1 1 -> enumerate(4:-1:1).join.ty(int)};
-        let expected = quote! { 413121 };
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
+        assert_arr_expr!(
+            { 1 1 1 -> enumerate(4:-1:1).join.ty(int) },
+            { 413121 },
+        );
+        assert_arr_expr!(
+            {
+                4 -> global(start),
+                -1 -> global(step),
+                1 -> global(span),
+                1 1 1 -> enumerate(=start:=step:=span).join.ty(int)
+            },
+            { 413121 },
+        );
     }
 }

@@ -21,3 +21,27 @@ impl Call for ClearCallable {
         Ok(ValueArray::new())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn clear() {
+        assert_arr_expr!(
+            { A B C -> .clear },
+            {},
+        );
+
+        assert_arr_expr!(
+            { A B C -> .fork(.clear, .join) },
+            { ABC },
+        );
+    }
+}

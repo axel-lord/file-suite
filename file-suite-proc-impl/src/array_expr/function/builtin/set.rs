@@ -181,3 +181,39 @@ impl<T> ToTokens for SetArgs<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn set_global() {
+        assert_arr_expr!(
+            {
+                -> .chain(-> .chain(-> .chain(-> .chain( value -> global(var) )))),
+                =var,
+            },
+            { value }
+        );
+    }
+
+    #[test]
+    fn set_local() {
+        assert_arr_expr!(
+            {
+                1234 ->
+                    .local(N)
+                    .chain( 5678 -> .local(N) )
+                    .chain( 9 -> .global(N) )
+                    .chain(=N)
+            },
+            { 1234 },
+        );
+    }
+}

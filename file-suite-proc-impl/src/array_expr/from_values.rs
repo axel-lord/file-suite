@@ -16,19 +16,38 @@ where
     fn from_values(values: &[Value]) -> crate::Result<Self>;
 }
 
+/// Message given when trying to convert from a value array where there
+/// should be at least one value.
+const EMPTY_MSG: &str = "value array should not be empty";
+/// Message given when trying to convert from a value array where there shoulf be only one value
+const LARGE_MSG: &str = "value array should only contain one value";
+
+/// Get a single value from a slice of values.
+///
+/// # Errors
+/// If the value slice does not contain one, and only one, value.
+pub fn ensure_single(values: &[Value]) -> crate::Result<&Value> {
+    match values {
+        [value] => Ok(value),
+        [] => Err(EMPTY_MSG.into()),
+        [first, ..] => Err(first.span().map_or_else(
+            || LARGE_MSG.into(),
+            |span| ::syn::Error::new(span, LARGE_MSG).into(),
+        )),
+    }
+}
+
+/// Get a string slice from a slice of values.
+///
+/// # Errors
+/// If the value slice does not contain one, and only one, value.
+pub fn str_from_values(values: &[Value]) -> crate::Result<&str> {
+    ensure_single(values).map(|value| value.as_str())
+}
+
 impl FromValues for Value {
     fn from_values(values: &[Value]) -> crate::Result<Self> {
-        const EMPTY_MSG: &str = "cannot convert empty value array to a single value";
-        const LARGE_MSG: &str =
-            "cannot convert a value array of more than one value to a single value";
-        match values {
-            [value] => Ok(value.clone()),
-            [] => Err(EMPTY_MSG.into()),
-            [first, ..] => Err(first.span().map_or_else(
-                || LARGE_MSG.into(),
-                |span| ::syn::Error::new(span, LARGE_MSG).into(),
-            )),
-        }
+        ensure_single(values).cloned()
     }
 }
 
@@ -40,7 +59,7 @@ impl FromValues for ValueArray {
 
 impl FromValues for isize {
     fn from_values(values: &[Value]) -> crate::Result<Self> {
-        Value::from_values(values)?
+        ensure_single(values)?
             .get_int()
             .map_err(crate::Error::from_display)
     }
@@ -69,5 +88,11 @@ impl FromValues for NonZero<usize> {
             .map(NonZero::new)
             .transpose()
             .ok_or("value is not non-zero")?
+    }
+}
+
+impl FromValues for String {
+    fn from_values(values: &[Value]) -> crate::Result<Self> {
+        str_from_values(values).map(String::from)
     }
 }

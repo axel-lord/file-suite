@@ -1,11 +1,7 @@
 //! [CaseArgs] impl.
 
 use crate::{
-    array_expr::{
-        function::{Call, ToCallable},
-        storage::Storage,
-        value_array::ValueArray,
-    },
+    array_expr::{function::Call, storage::Storage, value_array::ValueArray},
     util::kw_kind,
 };
 
@@ -25,14 +21,6 @@ kw_kind!(
         lower,
     }
 );
-
-impl ToCallable for CaseArgs {
-    type Call = CaseKind;
-
-    fn to_callable(&self) -> Self::Call {
-        self.kind
-    }
-}
 
 impl Call for CaseKind {
     fn call(&self, mut input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
@@ -101,20 +89,23 @@ mod test {
         clippy::missing_panics_doc
     )]
 
-    use ::quote::quote;
-
-    use crate::array_expr;
+    use crate::array_expr::test::assert_arr_expr;
 
     #[test]
     fn case_convert() {
-        let expr = quote! {"from-kebab-to-camel" -> split(kebab).case(camel).join.ty(ident)};
-        let exected = quote! {fromKebabToCamel};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), exected.to_string());
+        assert_arr_expr!(
+            { "from-kebab-to-camel" -> split(kebab).case(camel).join.ty(ident) },
+            { fromKebabToCamel },
+        );
 
-        let expr = quote! {CamelToSnake -> split(camel).case(lower).join(snake).ty(ident) };
-        let expected = quote! {_camel_to_snake};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
+        assert_arr_expr!(
+            { CamelToSnake -> split(camel).case(lower).join(snake).ty(ident) },
+            { _camel_to_snake },
+        );
+
+        assert_arr_expr!(
+            { pascal -> global(case), pascal "case" -> case(=case).join.ty(ident) },
+            { PascalCase },
+        );
     }
 }

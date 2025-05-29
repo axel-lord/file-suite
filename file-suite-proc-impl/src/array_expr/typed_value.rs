@@ -8,7 +8,10 @@ use ::syn::{
     parse::{Lookahead1, ParseStream},
 };
 
-use crate::{array_expr::value::Value, util::lookahead_parse::LookaheadParse};
+use crate::{
+    array_expr::{function::ToArg, value::Value},
+    util::lookahead_parse::LookaheadParse,
+};
 
 /// A typed [Value] which may be converted to tokens.
 #[derive(Debug, Clone)]
@@ -23,6 +26,14 @@ pub enum TypedValue {
     LitBool(LitBool),
     /// Value is a token stream (cannot be parsed, but is created in some contexts).
     Tokens(TokenStream),
+}
+
+impl ToArg for TypedValue {
+    type Arg = String;
+
+    fn to_arg(&self) -> Self::Arg {
+        self.to_value().into()
+    }
 }
 
 impl TypedValue {

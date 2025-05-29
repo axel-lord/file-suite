@@ -27,29 +27,31 @@ pub mod builtin {
 }
 
 use crate::{
-    array_expr::function::{
-        builtin::{
-            alias::AliasArgs,
-            block::BlockArgs,
-            case::CaseArgs,
-            chain::ChainArgs,
-            chunks::ChunksArgs,
-            clear::ClearCallable,
-            count::CountCallable,
-            enumerate::EnumerateArgs,
-            fork::ForkArgs,
-            join::JoinArgs,
-            paste::PasteArgs,
-            repeat::RepeatCallable,
-            rev::RevCallable,
-            set::{Global, Local, SetArgs},
-            shift::ShiftCallable,
-            split::SplitArgs,
-            stairs::StairsArgs,
-            trim::TrimCallable,
-            ty::TyArgs,
+    array_expr::{
+        function::{
+            builtin::{
+                alias::AliasArgs,
+                block::BlockArgs,
+                case::CaseKind,
+                chain::ChainArgs,
+                chunks::ChunksArgs,
+                clear::ClearCallable,
+                count::CountCallable,
+                enumerate::EnumerateArgs,
+                fork::ForkArgs,
+                join::{JoinByCallable, JoinKind},
+                paste::PasteArgs,
+                repeat::RepeatCallable,
+                rev::RevCallable,
+                set::{Global, Local, SetArgs},
+                shift::ShiftCallable,
+                split::{SplitByCallable, SplitKind},
+                stairs::StairsArgs,
+                trim::TrimCallable,
+            },
+            macros::function_enum,
         },
-        macros::function_enum,
+        value::TyKind,
     },
     lookahead_parse_keywords,
     util::group_help::{Delimited, OptionalDelimited},
@@ -79,21 +81,25 @@ pub type FunctionCallable = <Function as ToCallable>::Call;
 
 lookahead_parse_keywords![
     alias, case, chunks, clear, count, split, join, ty, enumerate, rev, trim, shift, fork, repeat,
-    stairs, paste, global, local, chain, block,
+    stairs, paste, global, local, chain, block, join_by, split_by,
 ];
 
 function_enum!(
     /// Enum collecting [Call] implementors.
     #[derive(Debug, Clone)]
     Function {
-        /// Split array according to specification
-        Split(KwFn<kw::split, Delimited<SplitArgs>>),
-        /// Join array according to specification.
-        Join(KwFn<kw::join, OptionalDelimited<JoinArgs>>),
+        /// Split array values according to input keyword.
+        Split(KwFn<kw::split, Delimited<SingleArg<SplitKind>>>),
+        /// Split array values by input.
+        SplitBy(KwFn<kw::split_by, Delimited<SingleArg<SplitByCallable>>>),
+        /// Join array according to input keyword.
+        Join(KwFn<kw::join, OptionalDelimited<SingleArg<JoinKind>>>),
+        /// Join an array by a value.
+        JoinBy(KwFn<kw::join_by, OptionalDelimited<SingleArg<JoinByCallable>>>),
         /// Case array according to specification.
-        Case(KwFn<kw::case, Delimited<CaseArgs>>),
+        Case(KwFn<kw::case, Delimited<SingleArg<CaseKind>>>),
         /// Convert type of array.
-        Type(KwFn<kw::ty, Delimited<TyArgs>>),
+        Type(KwFn<kw::ty, Delimited<SingleArg<TyKind>>>),
         /// Enumerate array.
         Enumerate(KwFn<kw::enumerate, OptionalDelimited<EnumerateArgs>>),
         /// Reverse array.

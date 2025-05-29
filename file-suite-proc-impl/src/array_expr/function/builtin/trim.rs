@@ -37,3 +37,27 @@ impl Call for TrimCallable {
         Ok(array)
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn trim() {
+        assert_arr_expr!(
+            { "  hello     " -> trim.ty(ident) },
+            { hello },
+        );
+
+        assert_arr_expr!(
+            { "use, when, splitting" -> .split_by(",").trim.ty(ident) },
+            { use when splitting },
+        );
+    }
+}

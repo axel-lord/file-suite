@@ -1,21 +1,45 @@
 //! [JoinArgs] impl.
 
-use ::proc_macro2::TokenStream;
-use ::quote::ToTokens;
-use ::syn::{LitChar, LitStr, parse::Parse};
-
 use crate::{
     array_expr::{
-        function::{Call, DefaultArgs, ToCallable},
+        function::{Call, DefaultArgs, FromArg, ToCallable},
         storage::Storage,
+        typed_value::TypedValue,
         value_array::ValueArray,
     },
-    util::{kw_kind, lookahead_parse::lookahead_parse},
+    util::kw_kind,
 };
+
+/// Join values by a string.
+#[derive(Debug, Clone)]
+pub struct JoinByCallable {
+    /// String to join values by.
+    by: String,
+}
+
+impl FromArg for JoinByCallable {
+    type ArgFactory = TypedValue;
+
+    fn from_arg(by: String) -> Self {
+        Self { by }
+    }
+}
+
+impl DefaultArgs for JoinByCallable {
+    fn default_args() -> Self {
+        Self { by: String::new() }
+    }
+}
+
+impl Call for JoinByCallable {
+    fn call(&self, array: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
+        Ok(array.join_by_str(&self.by))
+    }
+}
 
 kw_kind!(
     /// Keyword specified join.
-    JoinKw;
+    JoinArgs;
     /// Enum of possible values for [JoinKw].
     #[expect(non_camel_case_types)]
     JoinKind: Default {
@@ -35,89 +59,30 @@ kw_kind!(
     }
 );
 
-/// Specification for how to join values.
-#[derive(Debug, Clone)]
-pub enum JoinArgs {
-    /// Join by string.
-    Str(LitStr),
-    /// Join by char.
-    Char(LitChar),
-    /// Join according to keyword.
-    Kw(JoinKw),
-}
-
-impl ToTokens for JoinArgs {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Self::Str(value) => value.to_tokens(tokens),
-            Self::Char(value) => value.to_tokens(tokens),
-            Self::Kw(value) => value.to_tokens(tokens),
-        }
-    }
-}
-
-impl Parse for JoinArgs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
-        Ok(if let Some(kw) = lookahead_parse(input, &lookahead)? {
-            Self::Kw(kw)
-        } else if let Some(s) = lookahead_parse(input, &lookahead)? {
-            Self::Str(s)
-        } else if let Some(chr) = lookahead_parse(input, &lookahead)? {
-            Self::Char(chr)
-        } else {
-            return Err(lookahead.error());
-        })
-    }
-}
-
-/// [Call] implementor for [JoinArgs].
-#[derive(Debug, Clone)]
-pub enum JoinCallable {
-    /// Join by a string.
-    Str(String),
-    /// Join by a char.
-    Char(char),
-    /// Join according to keyword.
-    Kw(JoinKind),
-}
-
-impl DefaultArgs for JoinCallable {
-    fn default_args() -> Self {
-        Self::Kw(JoinKind::concat)
-    }
-}
-
-impl Call for JoinCallable {
-    fn call(&self, input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
-        Ok(match self {
-            JoinCallable::Str(sep) => input.join_by_str(sep),
-            JoinCallable::Char(sep) => {
-                let mut buf = [0u8; 4];
-                let sep = sep.encode_utf8(&mut buf) as &str;
-                input.join_by_str(sep)
-            }
-            JoinCallable::Kw(kind) => match kind {
-                JoinKind::concat => input.join_by_str(""),
-                JoinKind::kebab => input.join_by_str("-"),
-                JoinKind::snake => input.join_by_str("_"),
-                JoinKind::path => input.join_by_str("::"),
-                JoinKind::space => input.join_by_str(" "),
-                JoinKind::dot => input.join_by_str("."),
-            },
-        })
-    }
-}
-
 impl ToCallable for JoinArgs {
-    type Call = JoinCallable;
+    type Call = JoinKind;
 
     fn to_callable(&self) -> Self::Call {
-        match self {
-            JoinArgs::Str(lit_str) => JoinCallable::Str(lit_str.value()),
-            JoinArgs::Char(lit_char) => JoinCallable::Char(lit_char.value()),
-            JoinArgs::Kw(spec_kw) => JoinCallable::Kw(spec_kw.kind),
-        }
+        self.kind
+    }
+}
+
+impl DefaultArgs for JoinKind {
+    fn default_args() -> Self {
+        Self::concat
+    }
+}
+
+impl Call for JoinKind {
+    fn call(&self, input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {
+        Ok(match self {
+            JoinKind::concat => input.join_by_str(""),
+            JoinKind::kebab => input.join_by_str("-"),
+            JoinKind::snake => input.join_by_str("_"),
+            JoinKind::path => input.join_by_str("::"),
+            JoinKind::space => input.join_by_str(" "),
+            JoinKind::dot => input.join_by_str("."),
+        })
     }
 }
 
@@ -129,15 +94,38 @@ mod test {
         clippy::missing_panics_doc
     )]
 
-    use ::quote::quote;
-
-    use crate::array_expr;
+    use crate::array_expr::test::assert_arr_expr;
 
     #[test]
     fn join_ints() {
-        let expr = quote! {1 0 0 0 -> join.ty(int)};
-        let expected = quote! {1000};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
+        assert_arr_expr!(
+            {1 0 0 0 -> join.ty(int)},
+            {1000},
+        );
+        assert_arr_expr!(
+            {
+                snake -> global(conv),
+                uses snake case -> join(=conv).ty(ident),
+            },
+            {
+                uses_snake_case
+            },
+        );
+    }
+
+    #[test]
+    fn join_by() {
+        assert_arr_expr!(
+            { joined by commas -> join_by(", ").ty(str) },
+            { "joined, by, commas" },
+        );
+
+        assert_arr_expr!(
+            {
+                "." -> global(by),
+                joined by dots -> join_by(=by).ty(str),
+            },
+            { "joined.by.dots" }
+        );
     }
 }

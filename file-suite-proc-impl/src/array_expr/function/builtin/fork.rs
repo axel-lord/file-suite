@@ -76,3 +76,31 @@ impl ToTokens for ForkArgs {
         chains.to_tokens(tokens);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn fork_join() {
+        assert_arr_expr!(
+            {
+                A B C ->
+                    .fork {
+                        .join(space).ty(str),
+                        .join.case(pascal).ty(ident),
+                        ,
+                    }
+            },
+            {
+                "A B C" Abc A B C
+            }
+        );
+    }
+}

@@ -57,3 +57,26 @@ impl ToTokens for AliasArgs {
         chain.to_tokens(tokens);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn define_and_use() {
+        assert_arr_expr!(
+            {
+                toKebab -> alias{ case(lower).join(kebab) },
+                fromCamel -> alias { split(camel) },
+                camelToKebabConv -> =fromCamel.=toKebab.ty(str),
+            },
+            { "camel-to-kebab-conv" },
+        );
+    }
+}

@@ -30,3 +30,46 @@ impl Call for CountCallable {
         Ok(ValueArray::from_value(value))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn count() {
+        assert_arr_expr!(
+            { A B C -> .count },
+            { 3 },
+        );
+
+        assert_arr_expr!(
+            { A_B_C_D -> .split(snake).count },
+            { 4 },
+        );
+
+        assert_arr_expr!(
+            {
+                "Count these words, please?" ->
+                    .fork(
+                        ,
+                        .split(space)
+                        .count
+                        .local(wordcount)
+                        .block{
+                            There are =wordcount words -> join(space).ty(str)
+                        }
+                    )
+            },
+            {
+                "Count these words, please?"
+                "There are 4 words"
+            },
+        );
+    }
+}
