@@ -12,42 +12,50 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{lookahead_parse::LookaheadParse, neverlike::NoPhantomData},
+    util::lookahead_parse::LookaheadParse,
 };
 
+/// Trait for callables which may be created from a single argument.
+pub trait FromArg {
+    /// Parsed argument type.
+    type ArgFactory: ToArg;
+
+    /// Create the value from an argument.
+    fn from_arg(arg: <Self::ArgFactory as ToArg>::Arg) -> Self;
+}
+
 /// Single argument parse implementor.
-pub struct SingleArg<V, C> {
+pub struct SingleArg<C>
+where
+    C: FromArg,
+{
     /// Parsed argument, which may be a variable access.
-    arg: ParsedArg<V>,
+    arg: ParsedArg<C::ArgFactory>,
     /// Allow C to exist.
     _p: PhantomData<fn() -> C>,
 }
 
-impl<V, C> ToTokens for SingleArg<V, C>
+impl<C> ToCallable for SingleArg<C>
 where
-    V: ToTokens,
+    C: FromArg + Call,
+    <C::ArgFactory as ToArg>::Arg: FromValues,
 {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { arg, _p: _ } = self;
-        arg.to_tokens(tokens);
+    type Call = SingleArgCallable<C>;
+
+    fn to_callable(&self) -> Self::Call {
+        match &self.arg {
+            ParsedArg::Variable { eq_token: _, var } => {
+                SingleArgCallable::Variable(var.to_value().into())
+            }
+            ParsedArg::Value(value) => SingleArgCallable::Callable(C::from_arg(value.to_arg())),
+        }
     }
 }
 
-impl<V, C> Parse for SingleArg<V, C>
+impl<C> Clone for SingleArg<C>
 where
-    V: LookaheadParse,
-{
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        Ok(Self {
-            arg: input.call(ParsedArg::parse)?,
-            _p: PhantomData,
-        })
-    }
-}
-
-impl<V, C> Clone for SingleArg<V, C>
-where
-    V: Clone,
+    C: FromArg,
+    C::ArgFactory: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -57,9 +65,10 @@ where
     }
 }
 
-impl<V, C> Debug for SingleArg<V, C>
+impl<C> Debug for SingleArg<C>
 where
-    V: Debug,
+    C: FromArg,
+    C::ArgFactory: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SingleArg")
@@ -69,47 +78,78 @@ where
     }
 }
 
-impl<V, C> ToCallable for SingleArg<V, C>
+impl<C> Parse for SingleArg<C>
 where
-    C: Call + From<V::Arg>,
-    V: ToArg,
-    V::Arg: FromValues,
+    C: FromArg,
+    C::ArgFactory: LookaheadParse,
 {
-    type Call = SingleArgCallable<V::Arg, C>;
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            arg: input.call(LookaheadParse::parse)?,
+            _p: PhantomData,
+        })
+    }
+}
 
-    fn to_callable(&self) -> Self::Call {
-        match &self.arg {
-            ParsedArg::Variable { eq_token: _, var } => {
-                SingleArgCallable::Variable(var.to_value().into())
-            }
-            ParsedArg::Value(value) => SingleArgCallable::Callable(C::from(value.to_arg())),
-        }
+impl<C> ToTokens for SingleArg<C>
+where
+    C: FromArg,
+    C::ArgFactory: ToTokens,
+{
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self { arg, _p: _ } = self;
+        arg.to_tokens(tokens);
     }
 }
 
 /// [Call] implementor for [SingleArg].
-pub enum SingleArgCallable<V, C> {
-    /// Get arg from a variable.
+pub enum SingleArgCallable<C>
+where
+    C: Call,
+{
+    /// Get argument from variable.
     Variable(String),
-    /// Arg is already gotten.
+    /// Already has argument.
     Callable(C),
-    /// Allow for V to exist.
-    _P(NoPhantomData<fn() -> V>),
 }
 
-impl<V, C> DefaultArgs for SingleArgCallable<V, C>
+impl<C> Clone for SingleArgCallable<C>
 where
-    C: DefaultArgs,
+    C: Call + Clone,
+{
+    fn clone(&self) -> Self {
+        match self {
+            Self::Variable(arg0) => Self::Variable(arg0.clone()),
+            Self::Callable(arg0) => Self::Callable(arg0.clone()),
+        }
+    }
+}
+
+impl<C> Debug for SingleArgCallable<C>
+where
+    C: Call + Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Variable(arg0) => f.debug_tuple("Variable").field(arg0).finish(),
+            Self::Callable(arg0) => f.debug_tuple("Callable").field(arg0).finish(),
+        }
+    }
+}
+
+impl<C> DefaultArgs for SingleArgCallable<C>
+where
+    C: Call + DefaultArgs,
 {
     fn default_args() -> Self {
         Self::Callable(C::default_args())
     }
 }
 
-impl<V, C> Call for SingleArgCallable<V, C>
+impl<C> Call for SingleArgCallable<C>
 where
-    V: FromValues,
-    C: Call + From<V>,
+    C: Call + FromArg,
+    <C::ArgFactory as ToArg>::Arg: FromValues,
 {
     fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         match self {
@@ -118,37 +158,10 @@ where
                 .ok_or_else(|| {
                     crate::Error::from(format!("could not get variable with key '{key}'"))
                 })
-                .and_then(|values| V::from_values(values))
-                .map(C::from)?
+                .and_then(|values| <C::ArgFactory as ToArg>::Arg::from_values(values))
+                .map(C::from_arg)?
                 .call(array, storage),
             SingleArgCallable::Callable(callable) => callable.call(array, storage),
-            SingleArgCallable::_P(no_phantom_data) => no_phantom_data.unwrap(),
-        }
-    }
-}
-
-impl<V, C> Clone for SingleArgCallable<V, C>
-where
-    C: Clone,
-{
-    fn clone(&self) -> Self {
-        match self {
-            Self::Variable(key) => Self::Variable(key.clone()),
-            Self::Callable(val) => Self::Callable(val.clone()),
-            Self::_P(no_phantom_data) => no_phantom_data.unwrap(),
-        }
-    }
-}
-
-impl<V, C> Debug for SingleArgCallable<V, C>
-where
-    C: Debug,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Variable(key) => f.debug_tuple("Variable").field(key).finish(),
-            Self::Callable(value) => f.debug_tuple("Callable").field(value).finish(),
-            Self::_P(no_phantom_data) => no_phantom_data.unwrap(),
         }
     }
 }
