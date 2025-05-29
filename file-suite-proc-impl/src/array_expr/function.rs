@@ -1,6 +1,6 @@
 //! [Function] impl.
 
-use ::std::fmt::Debug;
+use ::std::{fmt::Debug, num::NonZero};
 
 pub mod builtin {
     //! Builtin funtions.
@@ -41,7 +41,7 @@ use crate::{
             fork::ForkArgs,
             join::JoinArgs,
             paste::PasteArgs,
-            repeat::RepeatArgs,
+            repeat::RepeatCallable,
             rev::RevCallable,
             set::{Global, Local, SetArgs},
             shift::ShiftArgs,
@@ -54,7 +54,10 @@ use crate::{
         macros::function_enum,
     },
     lookahead_parse_keywords,
-    util::group_help::{Delimited, OptionalDelimited},
+    util::{
+        group_help::{Delimited, OptionalDelimited},
+        spanned_int::SpannedInt,
+    },
 };
 
 pub use self::{
@@ -105,7 +108,7 @@ function_enum!(
         /// Fork array.
         Fork(KwFn<kw::fork, Delimited<ForkArgs>>),
         /// Repeat array.
-        Repeat(KwFn<kw::repeat, Delimited<RepeatArgs>>),
+        Repeat(KwFn<kw::repeat, Delimited<SingleArg<SpannedInt<NonZero<usize>>, RepeatCallable>>>),
         /// Stair array.
         Stairs(KwFn<kw::stairs, Delimited<StairsArgs>>),
         /// Paste tokens.
