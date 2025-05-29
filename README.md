@@ -21,7 +21,7 @@ Todo:
 8. [x] DefaultArgs instead of default for arguments with default values.
 9. [x] Better error messages for situations similar to `LookaheadParse::optional_parse`.
 10. [ ] Change LookaheadParse signature to take `Lookahead1` as mut ref and drive it forward on success.
-11. [ ] Move function tests to respective modules.
+11. [x] Move function tests to respective modules.
 
 Function Todo:
 1. [ ] Take (negative value should result in back elements being taken)
