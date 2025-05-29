@@ -24,7 +24,6 @@ pub mod builtin {
     pub mod stairs;
     pub mod trim;
     pub mod ty;
-    pub mod use_alias;
 }
 
 use crate::{
@@ -49,7 +48,6 @@ use crate::{
             stairs::StairsArgs,
             trim::TrimCallable,
             ty::TyArgs,
-            use_alias::UseAlias,
         },
         macros::function_enum,
     },
@@ -64,6 +62,7 @@ pub use self::{
     empty_args::EmptyArgs,
     keyword_function::KwFn,
     single_arg::{FromArg, SingleArg},
+    use_alias::UseAlias,
 };
 
 mod arg;
@@ -73,6 +72,7 @@ mod empty_args;
 mod keyword_function;
 mod macros;
 mod single_arg;
+mod use_alias;
 
 /// Type used in call chains, result of [ToCallable] on [Function].
 pub type FunctionCallable = <Function as ToCallable>::Call;
