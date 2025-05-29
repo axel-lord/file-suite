@@ -38,6 +38,11 @@ impl Error {
             Error::Syn(err) => err,
         }
     }
+
+    /// Convert any value implementing [Display] to self.
+    pub fn from_display<E: Display>(err: E) -> Self {
+        Self::Owned(err.to_string())
+    }
 }
 
 impl Display for Error {

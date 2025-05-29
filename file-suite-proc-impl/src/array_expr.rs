@@ -23,17 +23,13 @@ pub(crate) use paste::ArrayExprPaste;
 
 mod paste;
 
-pub mod storage;
-
-pub mod value_array;
-
-pub mod input;
-
+pub mod from_values;
 pub mod function;
-
-pub mod value;
-
+pub mod input;
+pub mod storage;
 pub mod typed_value;
+pub mod value;
+pub mod value_array;
 
 /// Array expression. Without parsing details.
 #[derive(Debug, Clone, Default)]

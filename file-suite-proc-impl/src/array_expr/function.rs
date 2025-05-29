@@ -58,21 +58,21 @@ use crate::{
 };
 
 pub use self::{
+    arg::{Arg, ParsedArg, ToArg},
     call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
     empty_args::EmptyArgs,
     keyword_function::KwFn,
+    single_arg::SingleArg,
 };
 
-mod macros;
-
+mod arg;
 mod call;
-
 mod chain;
-
-mod keyword_function;
-
 mod empty_args;
+mod keyword_function;
+mod macros;
+mod single_arg;
 
 /// Type used in call chains, result of [ToCallable] on [Function].
 pub type FunctionCallable = <Function as ToCallable>::Call;

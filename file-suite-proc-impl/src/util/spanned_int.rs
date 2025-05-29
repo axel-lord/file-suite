@@ -9,7 +9,7 @@ use ::syn::{
     parse::{Lookahead1, ParseStream},
 };
 
-use crate::util::lookahead_parse::LookaheadParse;
+use crate::{array_expr::function::ToArg, util::lookahead_parse::LookaheadParse};
 
 #[doc(hidden)]
 mod sealed {
@@ -29,7 +29,7 @@ where
 }
 
 impl_spanned_int_primitive! {
-    usize, u128, u64, u32, u16, u8, isize, i128, i64, i32, i16, i8,
+    usize, /* u128, u64, u32, u16, u8, */ isize, /* i128, i64, i32, i16, i8, */
 }
 
 /// An integer value with a span.
@@ -42,6 +42,17 @@ where
     pub value: N,
     /// Span of value.
     pub span: Span,
+}
+
+impl<N> ToArg for SpannedInt<N>
+where
+    N: SpannedIntPrimitive,
+{
+    type Arg = N;
+
+    fn to_arg(&self) -> Self::Arg {
+        self.value
+    }
 }
 
 impl<N> ToTokens for SpannedInt<N>
