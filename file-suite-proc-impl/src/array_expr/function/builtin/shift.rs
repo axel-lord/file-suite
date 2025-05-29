@@ -1,48 +1,13 @@
-//! [ShiftArgs] impl.
-
-use ::quote::ToTokens;
-use ::syn::parse::Parse;
+//! [ShiftCallable] impl.
 
 use crate::{
     array_expr::{
-        function::{Call, DefaultArgs, ToCallable},
+        function::{Call, DefaultArgs, FromArg},
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
+    util::spanned_int::SpannedInt,
 };
-
-/// Arguments for shifting array.
-#[derive(Debug, Clone)]
-pub struct ShiftArgs {
-    /// How much to shift array, and in what direction.
-    amount: SpannedInt<isize>,
-}
-
-impl Parse for ShiftArgs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        Ok(Self {
-            amount: input.call(SpannedInt::parse)?,
-        })
-    }
-}
-
-impl ToTokens for ShiftArgs {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { amount } = self;
-        amount.to_tokens(tokens);
-    }
-}
-
-impl ToCallable for ShiftArgs {
-    type Call = ShiftCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        ShiftCallable {
-            by: self.amount.value,
-        }
-    }
-}
 
 /// [Call] impl for [ShiftArgs].
 #[derive(Debug, Clone, Copy)]
@@ -51,15 +16,17 @@ pub struct ShiftCallable {
     by: isize,
 }
 
-impl Default for ShiftCallable {
-    fn default() -> Self {
+impl DefaultArgs for ShiftCallable {
+    fn default_args() -> Self {
         Self { by: 1 }
     }
 }
 
-impl DefaultArgs for ShiftCallable {
-    fn default_args() -> Self {
-        Self { by: 1 }
+impl FromArg for ShiftCallable {
+    type ArgFactory = SpannedInt<isize>;
+
+    fn from_arg(by: isize) -> Self {
+        Self { by }
     }
 }
 
@@ -78,5 +45,35 @@ impl Call for ShiftCallable {
 
             Ok(array)
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn shift_array() {
+        assert_arr_expr!(
+            { A B C D -> shift(1) },
+            { D A B C },
+        );
+        assert_arr_expr!(
+            { A B C D -> shift(-1) },
+            { B C D A },
+        );
+        assert_arr_expr!(
+            {
+                -1 -> global(by),
+                A B C D -> shift(=by),
+            },
+            { B C D A },
+        );
     }
 }

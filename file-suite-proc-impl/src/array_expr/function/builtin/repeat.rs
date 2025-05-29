@@ -1,4 +1,4 @@
-//! [RepeatArgs] impl
+//! [RepeatCallable] impl
 
 use ::std::num::NonZero;
 
@@ -48,6 +48,14 @@ mod test {
     fn repeat_value() {
         assert_arr_expr!(
             { ABC -> repeat(3).ty(ident) },
+            { ABC ABC ABC },
+        );
+
+        assert_arr_expr!(
+            {
+                3 -> global(by),
+                ABC -> repeat(=by).ty(ident),
+            },
             { ABC ABC ABC },
         );
     }

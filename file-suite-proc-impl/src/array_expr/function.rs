@@ -44,7 +44,7 @@ use crate::{
             repeat::RepeatCallable,
             rev::RevCallable,
             set::{Global, Local, SetArgs},
-            shift::ShiftArgs,
+            shift::ShiftCallable,
             split::SplitArgs,
             stairs::StairsArgs,
             trim::TrimCallable,
@@ -101,7 +101,7 @@ function_enum!(
         /// Trim array array.
         Trim(KwFn<kw::trim, EmptyArgs<TrimCallable>>),
         /// Shift/Rotate array.
-        Shift(KwFn<kw::shift, OptionalDelimited<ShiftArgs>>),
+        Shift(KwFn<kw::shift, OptionalDelimited<SingleArg<ShiftCallable>>>),
         /// Fork array.
         Fork(KwFn<kw::fork, Delimited<ForkArgs>>),
         /// Repeat array.
