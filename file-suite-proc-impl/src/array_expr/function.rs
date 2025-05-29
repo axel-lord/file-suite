@@ -20,8 +20,10 @@ pub mod builtin {
     pub mod rev;
     pub mod set;
     pub mod shift;
+    pub mod skip;
     pub mod split;
     pub mod stairs;
+    pub mod take;
     pub mod trim;
     pub mod ty;
 }
@@ -45,8 +47,10 @@ use crate::{
                 rev::RevCallable,
                 set::{Global, Local, SetArgs},
                 shift::ShiftCallable,
+                skip::SkipCallable,
                 split::{SplitByCallable, SplitKind},
                 stairs::StairsArgs,
+                take::TakeCallable,
                 trim::TrimCallable,
             },
             macros::function_enum,
@@ -81,7 +85,7 @@ pub type FunctionCallable = <Function as ToCallable>::Call;
 
 lookahead_parse_keywords![
     alias, case, chunks, clear, count, split, join, ty, enumerate, rev, trim, shift, fork, repeat,
-    stairs, paste, global, local, chain, block, join_by, split_by,
+    stairs, paste, global, local, chain, block, join_by, split_by, take, skip,
 ];
 
 function_enum!(
@@ -106,6 +110,10 @@ function_enum!(
         Rev(KwFn<kw::rev, EmptyArgs<RevCallable>>),
         /// Trim array array.
         Trim(KwFn<kw::trim, EmptyArgs<TrimCallable>>),
+        /// Take an amount of values from array.
+        Take(KwFn<kw::take, Delimited<SingleArg<TakeCallable>>>),
+        /// Skip an amount of values of array.
+        Skip(KwFn<kw::skip, Delimited<SingleArg<SkipCallable>>>),
         /// Shift/Rotate array.
         Shift(KwFn<kw::shift, OptionalDelimited<SingleArg<ShiftCallable>>>),
         /// Fork array.
