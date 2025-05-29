@@ -79,7 +79,22 @@ mod tests {
     use crate::array_expr;
 
     #[test]
-    fn chain_fn() {
+    fn local_scope() {
+        let expr = quote! {
+            A B C ->
+                .local(values)
+                .chain( =values D E F -> .local(values) )
+                .chain( =values 1 2 3 )
+                .join
+                .ty(ident)
+        };
+        let expected = quote! {ABC123};
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn chained_expressions() {
         let expr = quote! {
             A B C ->
                 .join

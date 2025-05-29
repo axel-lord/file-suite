@@ -158,3 +158,24 @@ impl Call for SplitCallable {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use ::quote::quote;
+
+    use crate::array_expr;
+
+    #[test]
+    fn split_path() {
+        let expr = quote! {(!split::a::path) -> split(path).trim.ty(ident)};
+        let expected = quote! {split a path};
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+}

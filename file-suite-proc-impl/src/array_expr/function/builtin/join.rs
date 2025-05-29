@@ -120,3 +120,24 @@ impl ToCallable for JoinArgs {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use ::quote::quote;
+
+    use crate::array_expr;
+
+    #[test]
+    fn join_ints() {
+        let expr = quote! {1 0 0 0 -> join.ty(int)};
+        let expected = quote! {1000};
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+}

@@ -269,94 +269,9 @@ mod test {
     use crate::array_expr;
 
     #[test]
-    fn case_convert() {
-        let expr = quote! {"from-kebab-to-camel" -> split(kebab).case(camel).join.ty(ident)};
-        let exected = quote! {fromKebabToCamel};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), exected.to_string());
-
-        let expr = quote! {CamelToSnake -> split(camel).case(lower).join(snake).ty(ident) };
-        let expected = quote! {_camel_to_snake};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn join_ints() {
-        let expr = quote! {1 0 0 0 -> join.ty(int)};
-        let expected = quote! {1000};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
     fn stringify() {
         let expr = quote! {(!stringify(expression)) -> ty(str)};
         let expected = quote! {"stringify (expression)"};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn split_path() {
-        let expr = quote! {(!split::a::path) -> split(path).trim.ty(ident)};
-        let expected = quote! {split a path};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn round_trip() {
-        let expr = quote! {(! enum Item { Roundtrip }) -> ty(tokens)};
-        let expected = quote! {enum Item { Roundtrip }};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn enumerate() {
-        let expr = quote! { 1 1 1 -> enumerate(4:-1:1).join.ty(int)};
-        let expected = quote! { 413121 };
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn chunks() {
-        let expr = quote! { A -> repeat(3).enumerate.chunks(2, shift.join).ty(ident) };
-        let expected = quote! { A1 A2 A3 };
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn stairs() {
-        let expr = quote! { A -> repeat(3).stairs(join).ty(ident) };
-        let expected = quote! { A AA AAA };
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn paste() {
-        let expr = quote! {
-            T ->
-                .repeat(3)
-                .enumerate
-                .chunks{ 2, shift.join }
-                .ty(ident)
-                .stairs {
-                    .local(t)
-                    .paste {
-                        Value(++!(=t));
-                    }
-                }
-        };
-        let expected = quote! {
-            Value(T1);
-            Value(T1 T2);
-            Value(T1 T2 T3);
-        };
         let result = array_expr(expr).unwrap();
         assert_eq!(result.to_string(), expected.to_string());
     }

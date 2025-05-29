@@ -48,3 +48,24 @@ impl Call for TyKind {
         Ok(input)
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use ::quote::quote;
+
+    use crate::array_expr;
+
+    #[test]
+    fn round_trip() {
+        let expr = quote! {(! enum Item { Roundtrip }) -> ty(tokens)};
+        let expected = quote! {enum Item { Roundtrip }};
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+}

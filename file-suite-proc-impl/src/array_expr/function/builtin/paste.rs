@@ -65,3 +65,40 @@ impl Call for PasteCallable {
         Ok(ValueArray::from_value(value))
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use ::quote::quote;
+
+    use crate::array_expr;
+
+    #[test]
+    fn paste() {
+        let expr = quote! {
+            T ->
+                .repeat(3)
+                .enumerate
+                .chunks{ 2, shift.join }
+                .ty(ident)
+                .stairs {
+                    .local(t)
+                    .paste {
+                        Value(++!(=t));
+                    }
+                }
+        };
+        let expected = quote! {
+            Value(T1);
+            Value(T1 T2);
+            Value(T1 T2 T3);
+        };
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+}

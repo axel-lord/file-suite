@@ -150,3 +150,24 @@ impl Call for ChunksCallable {
         Ok(out_array)
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use ::quote::quote;
+
+    use crate::array_expr;
+
+    #[test]
+    fn chunks() {
+        let expr = quote! { A -> repeat(3).enumerate.chunks(2, shift.join).ty(ident) };
+        let expected = quote! { A1 A2 A3 };
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+}

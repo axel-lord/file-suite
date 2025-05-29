@@ -71,3 +71,24 @@ impl Call for StairsCallable {
         Ok(output_array)
     }
 }
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use ::quote::quote;
+
+    use crate::array_expr;
+
+    #[test]
+    fn stairs() {
+        let expr = quote! { A -> repeat(3).stairs(join).ty(ident) };
+        let expected = quote! { A AA AAA };
+        let result = array_expr(expr).unwrap();
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+}
