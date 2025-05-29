@@ -260,15 +260,21 @@ mod test {
         clippy::missing_panics_doc
     )]
 
-    use ::quote::quote;
-
-    use crate::array_expr;
-
     #[test]
     fn stringify() {
-        let expr = quote! {(!stringify(expression)) -> ty(str)};
-        let expected = quote! {"stringify (expression)"};
-        let result = array_expr(expr).unwrap();
-        assert_eq!(result.to_string(), expected.to_string());
+        assert_arr_expr!(
+            { (!stringify(expression)) -> ty(str) },
+            { "stringify (expression)" },
+        );
     }
+
+    /// Assert the result of an array expression.
+    macro_rules! assert_arr_expr {
+        ({$($expr:tt)*}, {$($expected:tt)*} $(,)?) => {{
+            let result = $crate::array_expr(::quote::quote!($($expr)*)).unwrap().to_string();
+            let expected = ::quote::quote!($($expected)*).to_string();
+            assert_eq!(result, expected);
+        }};
+    }
+    pub(crate) use assert_arr_expr;
 }

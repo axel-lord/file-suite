@@ -53,10 +53,35 @@ pub struct RepeatCallable {
     times: NonZero<usize>,
 }
 
+impl From<NonZero<usize>> for RepeatCallable {
+    fn from(times: NonZero<usize>) -> Self {
+        Self { times }
+    }
+}
+
 impl Call for RepeatCallable {
     fn call(&self, array: ValueArray, _storage: &mut Storage) -> crate::Result<ValueArray> {
         Ok(::std::iter::repeat_n((), self.times.get())
             .flat_map(|_| array.iter().cloned())
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use crate::array_expr::test::assert_arr_expr;
+
+    #[test]
+    fn repeat_value() {
+        assert_arr_expr!(
+            { ABC -> repeat(3).ty(ident) },
+            { ABC ABC ABC },
+        );
     }
 }
