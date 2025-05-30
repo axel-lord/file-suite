@@ -17,6 +17,7 @@ pub mod builtin {
     pub mod get;
     pub mod intersperse;
     pub mod join;
+    pub mod nth;
     pub mod paste;
     pub mod repeat;
     pub mod rev;
@@ -46,6 +47,7 @@ use crate::{
                 get::GetCallable,
                 intersperse::IntersperseCallable,
                 join::{JoinByCallable, JoinKind},
+                nth::NthCallable,
                 paste::PasteArgs,
                 repeat::RepeatCallable,
                 rev::RevCallable,
@@ -118,6 +120,7 @@ lookahead_parse_keywords![
     skip,
     intersperse,
     get,
+    nth,
 ];
 
 function_enum!(
@@ -162,6 +165,8 @@ function_enum!(
         Count(KwFn<kw::count, EmptyArgs<CountCallable>>),
         /// Chain an array expr after array.
         Chain(KwFn<kw::chain, OptionalDelimited<ChainArgs>>),
+        /// Get nth value.
+        Nth(KwFn<kw::nth, Delimited<SingleArg<NthCallable>>>),
         /// Chain an array expr after array with local variable access.
         Block(KwFn<kw::block, OptionalDelimited<BlockArgs>>),
         /// Split array into chunks.
