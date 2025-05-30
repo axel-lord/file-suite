@@ -125,6 +125,20 @@ impl Storage {
     }
 
     /// Get a value from the storage.
+    ///
+    /// # Errors
+    /// If the variable cannot be found a [NoVar][crate::Error::NoVar] error is returned.
+    pub fn try_get<'this>(&'this self, key: &'_ str) -> crate::Result<&'this ValueArray> {
+        self.variables
+            .iter()
+            .rev()
+            .flatten()
+            .find(|value| value.key == key)
+            .map(|value| &value.values)
+            .ok_or_else(|| crate::Error::NoVar(key.into()))
+    }
+
+    /// Get a value from the storage.
     pub fn get<'this>(&'this self, key: &'_ str) -> Option<&'this ValueArray> {
         self.variables
             .iter()

@@ -14,6 +14,7 @@ pub mod builtin {
     pub mod count;
     pub mod enumerate;
     pub mod fork;
+    pub mod get;
     pub mod intersperse;
     pub mod join;
     pub mod paste;
@@ -42,6 +43,7 @@ use crate::{
                 count::CountCallable,
                 enumerate::EnumerateArgs,
                 fork::ForkArgs,
+                get::GetCallable,
                 intersperse::IntersperseCallable,
                 join::{JoinByCallable, JoinKind},
                 paste::PasteArgs,
@@ -115,6 +117,7 @@ lookahead_parse_keywords![
     take,
     skip,
     intersperse,
+    get,
 ];
 
 function_enum!(
@@ -167,6 +170,8 @@ function_enum!(
         Clear(KwFn<kw::clear, EmptyArgs<ClearCallable>>),
         /// Set a global variable.
         Global(KwFn<kw::global, Delimited<SetArgs<Global>>>),
+        /// Get a variable.
+        Get(KwFn<kw::get, EmptyArgs<GetCallable>>),
         /// Set a local variable.
         Local(KwFn<kw::local, Delimited<SetArgs<Local>>>),
         /// Set an alias.

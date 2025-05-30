@@ -29,10 +29,7 @@ impl<V> Arg<V> {
     {
         match self {
             Arg::Variable(key) => storage
-                .get(key)
-                .ok_or_else(|| {
-                    crate::Error::from(format!("could not get variable with key '{key}'"))
-                })
+                .try_get(key)
                 .and_then(|values| V::from_values(values)),
             Arg::Value(value) => Ok(value.clone()),
         }

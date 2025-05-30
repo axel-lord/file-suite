@@ -145,10 +145,7 @@ where
     fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         match self {
             SingleArgCallable::Variable(key) => storage
-                .get(key)
-                .ok_or_else(|| {
-                    crate::Error::from(format!("could not get variable with key '{key}'"))
-                })
+                .try_get(key)
                 .and_then(|values| <C::ArgFactory as ToArg>::Arg::from_values(values))
                 .map(C::from_arg)?
                 .call(array, storage),
