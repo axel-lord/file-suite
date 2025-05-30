@@ -24,9 +24,9 @@ Todo:
 11. [x] Move function tests to respective modules.
 
 Function Todo:
-1. [ ] Take (negative value should result in back elements being taken)
+1. [x] Take (negative value should result in back elements being taken)
 2. [x] Chain
-3. [ ] Skip (negative value should result in back elements being skipped)
+3. [x] Skip (negative value should result in back elements being skipped)
 3. [ ] Intersperse
 4. [ ] Get (variable, not by index)
 5. [ ] Nth (with error on failure, and negative indexing)
