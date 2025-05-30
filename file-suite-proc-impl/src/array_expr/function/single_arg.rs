@@ -8,21 +8,12 @@ use ::syn::parse::Parse;
 use crate::{
     array_expr::{
         from_values::FromValues,
-        function::{Call, DefaultArgs, ParsedArg, ToArg, ToCallable},
+        function::{Call, DefaultArgs, FromArg, ParsedArg, ToArg, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
     util::lookahead_parse::LookaheadParse,
 };
-
-/// Trait for callables which may be created from a single argument.
-pub trait FromArg {
-    /// Parsed argument type.
-    type ArgFactory: ToArg;
-
-    /// Create the value from an argument.
-    fn from_arg(arg: <Self::ArgFactory as ToArg>::Arg) -> Self;
-}
 
 /// Single argument parse implementor.
 pub struct SingleArg<C>

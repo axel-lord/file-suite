@@ -14,6 +14,7 @@ pub mod builtin {
     pub mod count;
     pub mod enumerate;
     pub mod fork;
+    pub mod intersperse;
     pub mod join;
     pub mod paste;
     pub mod repeat;
@@ -41,6 +42,7 @@ use crate::{
                 count::CountCallable,
                 enumerate::EnumerateArgs,
                 fork::ForkArgs,
+                intersperse::IntersperseCallable,
                 join::{JoinByCallable, JoinKind},
                 paste::PasteArgs,
                 repeat::RepeatCallable,
@@ -62,12 +64,14 @@ use crate::{
 };
 
 pub use self::{
-    arg::{Arg, ParsedArg, ToArg},
+    arg::{Arg, ParsedArg},
     call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
     empty_args::EmptyArgs,
+    from_arg::{ArgTy, FromArg},
     keyword_function::KwFn,
-    single_arg::{FromArg, SingleArg},
+    single_arg::SingleArg,
+    to_arg::ToArg,
     use_alias::UseAlias,
 };
 
@@ -75,17 +79,42 @@ mod arg;
 mod call;
 mod chain;
 mod empty_args;
+mod from_arg;
 mod keyword_function;
 mod macros;
 mod single_arg;
+mod to_arg;
 mod use_alias;
 
 /// Type used in call chains, result of [ToCallable] on [Function].
 pub type FunctionCallable = <Function as ToCallable>::Call;
 
 lookahead_parse_keywords![
-    alias, case, chunks, clear, count, split, join, ty, enumerate, rev, trim, shift, fork, repeat,
-    stairs, paste, global, local, chain, block, join_by, split_by, take, skip,
+    alias,
+    case,
+    chunks,
+    clear,
+    count,
+    split,
+    join,
+    ty,
+    enumerate,
+    rev,
+    trim,
+    shift,
+    fork,
+    repeat,
+    stairs,
+    paste,
+    global,
+    local,
+    chain,
+    block,
+    join_by,
+    split_by,
+    take,
+    skip,
+    intersperse,
 ];
 
 function_enum!(
@@ -120,6 +149,8 @@ function_enum!(
         Fork(KwFn<kw::fork, Delimited<ForkArgs>>),
         /// Repeat array.
         Repeat(KwFn<kw::repeat, Delimited<SingleArg<RepeatCallable>>>),
+        /// Intersperse array elements with input.
+        Intersperse(KwFn<kw::intersperse, Delimited<SingleArg<IntersperseCallable>>>),
         /// Stair array.
         Stairs(KwFn<kw::stairs, Delimited<StairsArgs>>),
         /// Paste tokens.
