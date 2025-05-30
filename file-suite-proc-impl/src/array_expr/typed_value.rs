@@ -5,13 +5,13 @@ use ::quote::{ToTokens, TokenStreamExt};
 use ::syn::{
     Ident, LitBool, LitInt, LitStr,
     ext::IdentExt,
-    parse::{End, Lookahead1, ParseStream},
+    parse::{Lookahead1, ParseStream},
     punctuated::Punctuated,
 };
 
 use crate::{
     array_expr::{function::ToArg, value::Value, value_array::ValueArray},
-    util::lookahead_parse::{LookaheadParse, lookahead_parse},
+    util::lookahead_parse::{lookahead_parse_terminated, LookaheadParse},
 };
 
 /// A typed [Value] which may be converted to tokens.
@@ -106,16 +106,13 @@ impl ToArg for Vec<TypedValue> {
 
 /// A punctuated list of typed values.
 #[derive(Debug, Clone)]
-pub struct TypedValues<P> {
-    /// List of values.
-    values: Punctuated<TypedValue, P>,
-}
+pub struct TypedValues<P>(Punctuated<TypedValue, P>);
 
 impl<P> ToArg for TypedValues<P> {
     type Arg = ValueArray;
 
     fn to_arg(&self) -> Self::Arg {
-        self.values.to_arg()
+        self.0.to_arg()
     }
 }
 
@@ -124,35 +121,7 @@ where
     P: LookaheadParse,
 {
     fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
-        let mut values = Punctuated::new();
-
-        let Some(first) = lookahead_parse(input, lookahead)? else {
-            return Ok(None);
-        };
-
-        values.push_value(first);
-
-        loop {
-            let lookahead = input.lookahead1();
-            if lookahead.peek(End) {
-                break;
-            }
-            let Some(punct) = lookahead_parse(input, &lookahead)? else {
-                return Err(lookahead.error());
-            };
-            values.push_punct(punct);
-
-            let lookahead = input.lookahead1();
-            if lookahead.peek(End) {
-                break;
-            }
-            let Some(value) = lookahead_parse(input, &lookahead)? else {
-                return Err(lookahead.error());
-            };
-            values.push_value(value);
-        }
-
-        Ok(Some(Self { values }))
+        Ok(lookahead_parse_terminated(input, lookahead)?.map(Self))
     }
 }
 
@@ -161,7 +130,7 @@ where
     P: ToTokens,
 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self { values } = self;
+        let Self(values) = self;
         values.to_tokens(tokens);
     }
 }

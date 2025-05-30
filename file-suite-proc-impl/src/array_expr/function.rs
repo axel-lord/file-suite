@@ -29,6 +29,9 @@ pub mod builtin {
     pub mod take;
     pub mod trim;
     pub mod ty;
+    pub mod every {
+        //! Run chain on every nth element.
+    }
 }
 
 use crate::{
@@ -68,6 +71,7 @@ use crate::{
 };
 
 pub use self::{
+    deferred_args::DeferredArgs,
     arg::{Arg, ParsedArg},
     call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
@@ -80,6 +84,7 @@ pub use self::{
 };
 
 mod arg;
+mod deferred_args;
 mod call;
 mod chain;
 mod empty_args;
