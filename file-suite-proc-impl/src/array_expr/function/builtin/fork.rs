@@ -16,7 +16,7 @@ pub struct ForkCallable {
 }
 
 impl FromArg for ForkCallable {
-    type ArgFactory = FunctionChains;
+    type Factory = FunctionChains;
 
     fn from_arg(chains: ArgTy<Self>) -> Self {
         Self { chains }

@@ -20,7 +20,7 @@ pub struct JoinByCallable {
 }
 
 impl FromArg for JoinByCallable {
-    type ArgFactory = TypedValue;
+    type Factory = TypedValue;
 
     fn from_arg(by: String) -> Self {
         Self { by }

@@ -15,7 +15,7 @@ pub struct IntersperseCallable {
 }
 
 impl FromArg for IntersperseCallable {
-    type ArgFactory = TypedValues<Token![,]>;
+    type Factory = TypedValues<Token![,]>;
 
     fn from_arg(values: ArgTy<Self>) -> Self {
         Self { values }

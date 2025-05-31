@@ -16,7 +16,7 @@ pub struct AliasCallable {
 }
 
 impl FromArg for AliasCallable {
-    type ArgFactory = FunctionChain;
+    type Factory = FunctionChain;
 
     fn from_arg(chain: ArgTy<Self>) -> Self {
         Self { chain }

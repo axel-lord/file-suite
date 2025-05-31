@@ -25,7 +25,7 @@ impl DefaultArgs for ShiftCallable {
 }
 
 impl FromArg for ShiftCallable {
-    type ArgFactory = SpannedInt<isize>;
+    type Factory = SpannedInt<isize>;
 
     fn from_arg(by: isize) -> Self {
         Self { by }

@@ -17,7 +17,7 @@ pub struct NthCallable {
 }
 
 impl FromArg for NthCallable {
-    type ArgFactory = SpannedInt<NonZero<isize>>;
+    type Factory = SpannedInt<NonZero<isize>>;
 
     fn from_arg(n: ArgTy<Self>) -> Self {
         Self { n }

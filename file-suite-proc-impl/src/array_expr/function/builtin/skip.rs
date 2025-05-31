@@ -14,7 +14,7 @@ pub struct SkipCallable {
 }
 
 impl FromArg for SkipCallable {
-    type ArgFactory = SpannedInt<isize>;
+    type Factory = SpannedInt<isize>;
 
     fn from_arg(n: isize) -> Self {
         Self { n }

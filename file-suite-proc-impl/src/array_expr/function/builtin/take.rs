@@ -16,7 +16,7 @@ pub struct TakeCallable {
 }
 
 impl FromArg for TakeCallable {
-    type ArgFactory = SpannedInt<isize>;
+    type Factory = SpannedInt<isize>;
 
     fn from_arg(n: isize) -> Self {
         Self { n }

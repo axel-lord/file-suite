@@ -17,7 +17,7 @@ pub struct RepeatCallable {
 }
 
 impl FromArg for RepeatCallable {
-    type ArgFactory = SpannedInt<NonZero<usize>>;
+    type Factory = SpannedInt<NonZero<usize>>;
 
     fn from_arg(times: NonZero<usize>) -> Self {
         Self { times }

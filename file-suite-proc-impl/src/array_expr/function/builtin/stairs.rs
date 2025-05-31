@@ -16,7 +16,7 @@ pub struct StairsCallable {
 }
 
 impl FromArg for StairsCallable {
-    type ArgFactory = FunctionChain;
+    type Factory = FunctionChain;
 
     fn from_arg(chain: ArgTy<Self>) -> Self {
         Self { chain }

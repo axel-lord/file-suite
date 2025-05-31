@@ -14,7 +14,7 @@ where
     C: FromArg,
 {
     /// Parsed argument.
-    arg: C::ArgFactory,
+    arg: C::Factory,
     /// Allow for c to exist.
     _p: PhantomData<fn() -> C>,
 }
@@ -22,7 +22,7 @@ where
 impl<C> ToTokens for DeferredArgs<C>
 where
     C: FromArg,
-    C::ArgFactory: ToTokens,
+    C::Factory: ToTokens,
 {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { arg, _p } = self;
@@ -33,7 +33,7 @@ where
 impl<C> Parse for DeferredArgs<C>
 where
     C: FromArg,
-    C::ArgFactory: Parse,
+    C::Factory: Parse,
 {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
@@ -57,7 +57,7 @@ where
 impl<C> Debug for DeferredArgs<C>
 where
     C: FromArg,
-    C::ArgFactory: Debug,
+    C::Factory: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Args")
@@ -70,7 +70,7 @@ where
 impl<C> Clone for DeferredArgs<C>
 where
     C: FromArg,
-    C::ArgFactory: Clone,
+    C::Factory: Clone,
 {
     fn clone(&self) -> Self {
         Self {

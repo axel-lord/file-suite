@@ -21,7 +21,7 @@ pub struct SplitByCallable {
 }
 
 impl FromArg for SplitByCallable {
-    type ArgFactory = TypedValue;
+    type Factory = TypedValue;
 
     fn from_arg(by: String) -> Self {
         Self { by }
