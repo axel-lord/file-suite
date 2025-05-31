@@ -12,6 +12,22 @@ pub trait Lookahead {
     fn input_peek(input: ParseStream) -> bool {
         Self::lookahead_peek(&input.lookahead1())
     }
+
+    /// Parse the type T if [Lookahead::lookahead_peek] returns true.
+    ///
+    /// # Errors
+    /// If [Lookahead::lookahead_peek] returns true and then the parsing fails
+    /// said error will be forwarded.
+    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> ::syn::Result<Option<Self>>
+    where
+        Self: Parse,
+    {
+        if Self::lookahead_peek(lookahead) {
+            input.parse().map(Some)
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 /// Extension trait for [ParseBuffer] using [Lookahead].
@@ -51,11 +67,7 @@ impl ParseBufferExt for ParseBuffer<'_> {
     where
         T: Lookahead + Parse,
     {
-        if T::lookahead_peek(lookahead) {
-            self.parse().map(Some)
-        } else {
-            Ok(None)
-        }
+        T::lookahead_parse(self, lookahead)
     }
 
     #[inline]
@@ -76,6 +88,112 @@ impl ParseBufferExt for ParseBuffer<'_> {
             result @ Ok(Some(..)) => {
                 *lookahead = self.lookahead1();
                 result
+            }
+        }
+    }
+}
+
+/// Crate keywords implementing [Lookahead]
+#[macro_export]
+macro_rules! lookahead_keywords {
+    ($(#[ $($attr:tt)* ])* $vis:vis $mod:ident { $($kw:ident),* $(,)? }) => {
+        $(#[$($attr)*])*
+        mod $mod {
+        $(
+        $crate::__private::custom_keyword!($kw);
+        )*
+        }
+        const _: () = {$(
+        impl $crate::Lookahead for $mod::$kw {
+            fn lookahead_peek(lookahead: &$crate::__private::Lookahead1) -> bool {
+                if lookahead.peek($mod::$kw) {
+                    return true;
+                }
+                false
+            }
+
+            fn input_peek(input: $crate::__private::ParseStream) -> bool {
+                if input.peek($mod::$kw) {
+                    return true;
+                }
+                false
+            }
+
+            fn lookahead_parse(
+                input: $crate::__private::ParseStream,
+                lookahead: &$crate::__private::Lookahead1
+            ) -> $crate::__private::syn::Result<Option<Self>> {
+                if lookahead.peek($mod::$kw) {
+                    return input.parse().map(Some);
+                }
+                Ok(None)
+            }
+        }
+        )*};
+    };
+}
+
+#[doc(hidden)]
+mod impl_for_peek {
+
+    /// Implement lookahead for types implementing peek
+    macro_rules! impl_for_peek {
+        ($($ident:ident),*) => {$(
+            impl Lookahead for $ident {
+                fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+                    lookahead.peek($ident)
+                }
+
+                fn input_peek(input: ParseStream) -> bool {
+                    input.peek($ident)
+                }
+
+                fn lookahead_parse(
+                    input: ParseStream,
+                    lookahead: &Lookahead1,
+                ) -> ::syn::Result<Option<Self>>
+                where
+                    Self: Parse,
+                {
+                    if lookahead.peek($ident) {
+                        input.parse().map(Some)
+                    } else {
+                        Ok(None)
+                    }
+                }
+            }
+        )*};
+    }
+
+    use ::syn::{
+        Ident, LitBool, LitChar, LitInt, LitStr,
+        ext::IdentExt,
+        parse::ParseBuffer,
+        token::{Colon, Comma, Dot, Eq},
+    };
+    use syn::parse::{Lookahead1, Parse, ParseStream};
+
+    use crate::Lookahead;
+
+    impl_for_peek!(LitBool, LitChar, LitInt, LitStr, Colon, Comma, Dot, Eq);
+
+    impl Lookahead for Ident {
+        fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+            lookahead.peek(Ident)
+        }
+
+        fn input_peek(input: syn::parse::ParseStream) -> bool {
+            input.peek(Ident)
+        }
+
+        fn lookahead_parse(input: &ParseBuffer, lookahead: &Lookahead1) -> syn::Result<Option<Self>>
+        where
+            Self: syn::parse::Parse,
+        {
+            if lookahead.peek(Ident) {
+                input.call(Ident::parse_any).map(Some)
+            } else {
+                Ok(None)
             }
         }
     }

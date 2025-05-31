@@ -52,6 +52,18 @@ macro_rules! kw_kind {
             )*
             false
         }
+
+        fn lookahead_parse(
+            input: $crate::__private::ParseStream,
+            lookahead: &$crate::__private::Lookahead1
+        ) -> $crate::__private::syn::Result<Option<Self>> {
+            $(
+            if lookahead.peek(kw::$keyword_ident) {
+                return input.parse().map(Some);
+            }
+            )*
+            Ok(None)
+        }
     }
 
     impl $crate::__private::Parse for $wrap_ident {
