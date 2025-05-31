@@ -1,6 +1,6 @@
 //! [FromArg] trait.
 
-use crate::array_expr::function::ToArg;
+use crate::ToArg;
 
 /// Trait for callables which may be created from a single argument.
 pub trait FromArg {

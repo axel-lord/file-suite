@@ -2,13 +2,14 @@
 
 use ::std::{fmt::Debug, marker::PhantomData};
 
+use ::file_suite_proc_lib::{FromArg, ToArg};
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
 
 use crate::{
     array_expr::{
         from_values::FromValues,
-        function::{Call, DefaultArgs, FromArg, ParsedArg, ToArg, ToCallable},
+        function::{Call, DefaultArgs, ParsedArg, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },

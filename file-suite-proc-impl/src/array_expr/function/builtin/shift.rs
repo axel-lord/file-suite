@@ -1,8 +1,10 @@
 //! [ShiftCallable] impl.
 
+use ::file_suite_proc_lib::FromArg;
+
 use crate::{
     array_expr::{
-        function::{Call, DefaultArgs, FromArg},
+        function::{Call, DefaultArgs},
         storage::Storage,
         value_array::ValueArray,
     },

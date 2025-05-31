@@ -2,10 +2,11 @@
 
 use ::std::{fmt::Debug, marker::PhantomData};
 
+use ::file_suite_proc_lib::{FromArg, ToArg};
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
 
-use crate::array_expr::function::{Call, FromArg, ToArg, ToCallable};
+use crate::array_expr::function::{Call, ToCallable};
 
 /// Deferred argument parse implementor.
 pub struct DeferredArgs<C>

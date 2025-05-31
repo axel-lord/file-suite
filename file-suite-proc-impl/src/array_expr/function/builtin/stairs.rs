@@ -1,7 +1,9 @@
-//! [StairsArgs] impl.
+//! [StairsCallable] impl.
+
+use ::file_suite_proc_lib::{ArgTy, FromArg};
 
 use crate::array_expr::{
-    function::{ArgTy, Call, FromArg, FunctionCallable, FunctionChain},
+    function::{Call, FunctionCallable, FunctionChain},
     storage::Storage,
     value_array::ValueArray,
 };

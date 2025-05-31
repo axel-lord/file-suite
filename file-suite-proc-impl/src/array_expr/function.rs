@@ -73,10 +73,8 @@ pub use self::{
     chain::FunctionChain,
     deferred_args::DeferredArgs,
     empty_args::EmptyArgs,
-    from_arg::{ArgTy, FromArg},
     keyword_function::KwFn,
     single_arg::SingleArg,
-    to_arg::ToArg,
     use_alias::UseAlias,
 };
 
@@ -85,11 +83,9 @@ mod call;
 mod chain;
 mod deferred_args;
 mod empty_args;
-mod from_arg;
 mod keyword_function;
 mod macros;
 mod single_arg;
-mod to_arg;
 mod use_alias;
 
 /// Type used in call chains, result of [ToCallable] on [Function].

@@ -1,8 +1,10 @@
 //! [JoinArgs] impl.
 
+use ::file_suite_proc_lib::FromArg;
+
 use crate::{
     array_expr::{
-        function::{Call, DefaultArgs, FromArg, ToCallable},
+        function::{Call, DefaultArgs, ToCallable},
         storage::Storage,
         typed_value::TypedValue,
         value_array::ValueArray,

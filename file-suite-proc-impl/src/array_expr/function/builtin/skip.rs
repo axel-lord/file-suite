@@ -1,14 +1,11 @@
 //! [SkipCallable] impl.
 
+use ::file_suite_proc_lib::FromArg;
+
 use crate::{
-    array_expr::{
-        function::{Call, FromArg},
-        storage::Storage,
-        value_array::ValueArray,
-    },
+    array_expr::{function::Call, storage::Storage, value_array::ValueArray},
     util::spanned_int::SpannedInt,
 };
-
 /// Skip n values from array. If negative the last n values are skipped.
 #[derive(Debug, Clone, Copy)]
 pub struct SkipCallable {

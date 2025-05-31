@@ -1,11 +1,10 @@
 //! Utilities for arguments which may be gotten from variables.
 
+use ::file_suite_proc_lib::ToArg;
 use ::quote::ToTokens;
 
 use crate::{
-    array_expr::{
-        from_values::FromValues, function::ToArg, storage::Storage, typed_value::TypedValue,
-    },
+    array_expr::{from_values::FromValues, storage::Storage, typed_value::TypedValue},
     util::lookahead_parse::{LookaheadParse, lookahead_parse},
 };
 

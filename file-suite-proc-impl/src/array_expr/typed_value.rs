@@ -1,5 +1,9 @@
 //! [TypedValue] impl
 
+use ::file_suite_proc_lib::{
+    ToArg,
+    to_arg::{PunctuatedToArg, SliceToArg},
+};
 use ::proc_macro2::{Literal, Span, TokenStream};
 use ::quote::{ToTokens, TokenStreamExt};
 use ::syn::{
@@ -10,7 +14,7 @@ use ::syn::{
 };
 
 use crate::{
-    array_expr::{function::ToArg, value::Value, value_array::ValueArray},
+    array_expr::{value::Value, value_array::ValueArray},
     util::lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
 };
 
@@ -88,19 +92,19 @@ impl ToTokens for TypedValue {
     }
 }
 
-impl<P> ToArg for Punctuated<TypedValue, P> {
+impl PunctuatedToArg for TypedValue {
     type Arg = ValueArray;
 
-    fn to_arg(&self) -> Self::Arg {
-        self.iter().map(TypedValue::to_value).collect()
+    fn punctuated_to_arg<P>(punctuated: &Punctuated<Self, P>) -> Self::Arg {
+        punctuated.iter().map(TypedValue::to_value).collect()
     }
 }
 
-impl ToArg for Vec<TypedValue> {
+impl SliceToArg for TypedValue {
     type Arg = ValueArray;
 
-    fn to_arg(&self) -> Self::Arg {
-        self.iter().map(TypedValue::to_value).collect()
+    fn slice_to_arg(slice: &[Self]) -> Self::Arg {
+        slice.iter().map(TypedValue::to_value).collect()
     }
 }
 

@@ -2,6 +2,7 @@
 
 use ::std::num::NonZero;
 
+use ::file_suite_proc_lib::ToArg;
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -10,7 +11,7 @@ use ::syn::{
 
 use crate::{
     array_expr::{
-        function::{Arg, Call, DefaultArgs, ParsedArg, ToArg, ToCallable},
+        function::{Arg, Call, DefaultArgs, ParsedArg, ToCallable},
         storage::Storage,
         value::Value,
         value_array::ValueArray,

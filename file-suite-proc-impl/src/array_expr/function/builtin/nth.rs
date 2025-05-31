@@ -1,12 +1,10 @@
 //! Function to get the nth value of an array, if negative from the back.
 use ::std::num::NonZero;
 
+use ::file_suite_proc_lib::{ArgTy, FromArg};
+
 use crate::{
-    array_expr::{
-        function::{ArgTy, Call, FromArg},
-        storage::Storage,
-        value_array::ValueArray,
-    },
+    array_expr::{function::Call, storage::Storage, value_array::ValueArray},
     util::spanned_int::SpannedInt,
 };
 

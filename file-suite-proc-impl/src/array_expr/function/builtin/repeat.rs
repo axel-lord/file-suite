@@ -2,12 +2,10 @@
 
 use ::std::num::NonZero;
 
+use ::file_suite_proc_lib::FromArg;
+
 use crate::{
-    array_expr::{
-        function::{Call, FromArg},
-        storage::Storage,
-        value_array::ValueArray,
-    },
+    array_expr::{function::Call, storage::Storage, value_array::ValueArray},
     util::spanned_int::SpannedInt,
 };
 

@@ -1,5 +1,6 @@
 //! [FunctionChain] impl.
 
+use ::file_suite_proc_lib::ToArg;
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -9,7 +10,7 @@ use ::syn::{
 
 use crate::{
     array_expr::{
-        function::{Call, Function, FunctionCallable, ToArg, ToCallable},
+        function::{Call, Function, FunctionCallable, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },

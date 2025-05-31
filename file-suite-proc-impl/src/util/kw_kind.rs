@@ -99,13 +99,13 @@ macro_rules! kw_kind {
             }
         }
 
-        impl $crate::array_expr::function::ToArg for $wrap_ident {
+        impl ::file_suite_proc_lib::ToArg for $wrap_ident {
             type Arg = $kind_ident;
 
             fn to_arg(&self) -> Self::Arg { self.kind }
         }
 
-        impl $crate::array_expr::function::FromArg for $kind_ident {
+        impl::file_suite_proc_lib::FromArg for $kind_ident {
             type ArgFactory = $wrap_ident;
 
             fn from_arg(kind: $kind_ident) -> Self {

@@ -2,6 +2,7 @@
 
 use ::std::num::NonZero;
 
+use ::file_suite_proc_lib::ToArg;
 use ::proc_macro2::{Span, TokenStream};
 use ::quote::{ToTokens, quote_spanned};
 use ::syn::{
@@ -9,7 +10,7 @@ use ::syn::{
     parse::{Lookahead1, ParseStream},
 };
 
-use crate::{array_expr::function::ToArg, util::lookahead_parse::LookaheadParse};
+use crate::util::lookahead_parse::LookaheadParse;
 
 #[doc(hidden)]
 mod sealed {

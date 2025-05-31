@@ -1,7 +1,9 @@
 //! [ForkArgs] impl.
 
+use ::file_suite_proc_lib::{ArgTy, FromArg};
+
 use crate::array_expr::{
-    function::{ArgTy, Call, FromArg, FunctionCallable, FunctionChain, chain::FunctionChains},
+    function::{Call, FunctionCallable, FunctionChain, chain::FunctionChains},
     storage::Storage,
     value_array::ValueArray,
 };

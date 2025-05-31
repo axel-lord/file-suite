@@ -1,8 +1,10 @@
 //! [SplitArgs] impl.
 
+use ::file_suite_proc_lib::FromArg;
+
 use crate::{
     array_expr::{
-        function::{Call, FromArg, ToCallable},
+        function::{Call, ToCallable},
         storage::Storage,
         typed_value::TypedValue,
         value::Value,
