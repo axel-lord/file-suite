@@ -1,6 +1,6 @@
 //! [Error] impl.
 
-use ::std::fmt::Display;
+use ::std::{fmt::Display, mem};
 
 use ::proc_macro2::Span;
 
@@ -11,6 +11,8 @@ pub enum Error {
     Owned(String),
     /// Error is a static string slice.
     Borrowed(&'static str),
+    /// Error is a failed variable access.
+    NoVar(String),
     /// Error is a syn error.
     Syn(::syn::Error),
 }
@@ -22,6 +24,9 @@ impl Error {
             Error::Owned(message) => *self = Self::Syn(::syn::Error::new(span, message)),
             Error::Borrowed(message) => *self = Self::Syn(::syn::Error::new(span, message)),
             Error::Syn(_) => (),
+            Error::NoVar(key) => {
+                *self = Self::Syn(::syn::Error::new(span, Self::NoVar(mem::take(key))))
+            }
         }
 
         match self {
@@ -36,6 +41,7 @@ impl Error {
             Error::Owned(message) => ::syn::Error::new(span, message),
             Error::Borrowed(message) => ::syn::Error::new(span, message),
             Error::Syn(err) => err,
+            Error::NoVar(key) => ::syn::Error::new(span, Self::NoVar(key)),
         }
     }
 
@@ -51,6 +57,7 @@ impl Display for Error {
             Error::Owned(msg) => Display::fmt(msg, f),
             Error::Borrowed(msg) => Display::fmt(msg, f),
             Error::Syn(error) => Display::fmt(error, f),
+            Error::NoVar(key) => write!(f, "could not find variable '{key}'"),
         }
     }
 }

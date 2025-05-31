@@ -54,6 +54,16 @@ impl ValueArray {
         Self::new_inner(ValueArrayInner::Vec(value))
     }
 
+    /// Crate a value array with at least the specified capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        match capacity {
+            // There is capacity for no or 1 value by default.
+            0 | 1 => Self::new(),
+            // For greater capacities use a vec.
+            _ => Self::from_vec(Vec::with_capacity(capacity)),
+        }
+    }
+
     /// Push a value onto the array. When used multiple times
     /// [make_vec][ValueArray::make_vec] then pushing to the result may
     /// be more efficient.

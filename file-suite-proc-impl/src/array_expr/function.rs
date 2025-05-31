@@ -14,7 +14,10 @@ pub mod builtin {
     pub mod count;
     pub mod enumerate;
     pub mod fork;
+    pub mod get;
+    pub mod intersperse;
     pub mod join;
+    pub mod nth;
     pub mod paste;
     pub mod repeat;
     pub mod rev;
@@ -32,7 +35,7 @@ use crate::{
     array_expr::{
         function::{
             builtin::{
-                alias::AliasArgs,
+                alias::AliasCallable,
                 block::BlockArgs,
                 case::CaseKind,
                 chain::ChainArgs,
@@ -40,8 +43,11 @@ use crate::{
                 clear::ClearCallable,
                 count::CountCallable,
                 enumerate::EnumerateArgs,
-                fork::ForkArgs,
+                fork::ForkCallable,
+                get::GetCallable,
+                intersperse::IntersperseCallable,
                 join::{JoinByCallable, JoinKind},
+                nth::NthCallable,
                 paste::PasteArgs,
                 repeat::RepeatCallable,
                 rev::RevCallable,
@@ -49,7 +55,7 @@ use crate::{
                 shift::ShiftCallable,
                 skip::SkipCallable,
                 split::{SplitByCallable, SplitKind},
-                stairs::StairsArgs,
+                stairs::StairsCallable,
                 take::TakeCallable,
                 trim::TrimCallable,
             },
@@ -62,30 +68,61 @@ use crate::{
 };
 
 pub use self::{
-    arg::{Arg, ParsedArg, ToArg},
+    arg::{Arg, ParsedArg},
     call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
+    deferred_args::DeferredArgs,
     empty_args::EmptyArgs,
+    from_arg::{ArgTy, FromArg},
     keyword_function::KwFn,
-    single_arg::{FromArg, SingleArg},
+    single_arg::SingleArg,
+    to_arg::ToArg,
     use_alias::UseAlias,
 };
 
 mod arg;
 mod call;
 mod chain;
+mod deferred_args;
 mod empty_args;
+mod from_arg;
 mod keyword_function;
 mod macros;
 mod single_arg;
+mod to_arg;
 mod use_alias;
 
 /// Type used in call chains, result of [ToCallable] on [Function].
 pub type FunctionCallable = <Function as ToCallable>::Call;
 
 lookahead_parse_keywords![
-    alias, case, chunks, clear, count, split, join, ty, enumerate, rev, trim, shift, fork, repeat,
-    stairs, paste, global, local, chain, block, join_by, split_by, take, skip,
+    alias,
+    case,
+    chunks,
+    clear,
+    count,
+    split,
+    join,
+    ty,
+    enumerate,
+    rev,
+    trim,
+    shift,
+    fork,
+    repeat,
+    stairs,
+    paste,
+    global,
+    local,
+    chain,
+    block,
+    join_by,
+    split_by,
+    take,
+    skip,
+    intersperse,
+    get,
+    nth,
 ];
 
 function_enum!(
@@ -117,17 +154,21 @@ function_enum!(
         /// Shift/Rotate array.
         Shift(KwFn<kw::shift, OptionalDelimited<SingleArg<ShiftCallable>>>),
         /// Fork array.
-        Fork(KwFn<kw::fork, Delimited<ForkArgs>>),
+        Fork(KwFn<kw::fork, Delimited<DeferredArgs<ForkCallable>>>),
         /// Repeat array.
         Repeat(KwFn<kw::repeat, Delimited<SingleArg<RepeatCallable>>>),
+        /// Intersperse array elements with input.
+        Intersperse(KwFn<kw::intersperse, Delimited<SingleArg<IntersperseCallable>>>),
         /// Stair array.
-        Stairs(KwFn<kw::stairs, Delimited<StairsArgs>>),
+        Stairs(KwFn<kw::stairs, Delimited<DeferredArgs<StairsCallable>>>),
         /// Paste tokens.
         Paste(KwFn<kw::paste, Delimited<PasteArgs>>),
         /// Count array values.
         Count(KwFn<kw::count, EmptyArgs<CountCallable>>),
         /// Chain an array expr after array.
         Chain(KwFn<kw::chain, OptionalDelimited<ChainArgs>>),
+        /// Get nth value.
+        Nth(KwFn<kw::nth, Delimited<SingleArg<NthCallable>>>),
         /// Chain an array expr after array with local variable access.
         Block(KwFn<kw::block, OptionalDelimited<BlockArgs>>),
         /// Split array into chunks.
@@ -136,10 +177,12 @@ function_enum!(
         Clear(KwFn<kw::clear, EmptyArgs<ClearCallable>>),
         /// Set a global variable.
         Global(KwFn<kw::global, Delimited<SetArgs<Global>>>),
+        /// Get a variable.
+        Get(KwFn<kw::get, EmptyArgs<GetCallable>>),
         /// Set a local variable.
         Local(KwFn<kw::local, Delimited<SetArgs<Local>>>),
         /// Set an alias.
-        Alias(KwFn<kw::alias, Delimited<AliasArgs>>),
+        Alias(KwFn<kw::alias, Delimited<DeferredArgs<AliasCallable>>>),
         /// Use an alias.
         UseAlias(UseAlias),
     }

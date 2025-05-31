@@ -1,52 +1,24 @@
 //! [StairsArgs] impl.
 
-use ::quote::ToTokens;
-use ::syn::parse::Parse;
-
 use crate::array_expr::{
-    function::{Call, FunctionCallable, FunctionChain, ToCallable},
+    function::{ArgTy, Call, FromArg, FunctionCallable, FunctionChain},
     storage::Storage,
     value_array::ValueArray,
 };
-
-/// Run array through input chain in stairs such that an array \[A, B, C\]
-/// Results in the cain being called on \[A\], \[A, B\] and \[A, B, C\].
-#[derive(Debug, Clone)]
-pub struct StairsArgs {
-    /// Chain to call on arrays.
-    chain: FunctionChain,
-}
-
-impl Parse for StairsArgs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        Ok(Self {
-            chain: input.parse()?,
-        })
-    }
-}
-
-impl ToTokens for StairsArgs {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { chain } = self;
-        chain.to_tokens(tokens);
-    }
-}
-
-impl ToCallable for StairsArgs {
-    type Call = StairsCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        StairsCallable {
-            chain: self.chain.to_call_chain(),
-        }
-    }
-}
 
 /// [Call] implementor for [StairsArgs].
 #[derive(Debug, Clone)]
 pub struct StairsCallable {
     /// Chain to call.
     chain: Vec<FunctionCallable>,
+}
+
+impl FromArg for StairsCallable {
+    type ArgFactory = FunctionChain;
+
+    fn from_arg(chain: ArgTy<Self>) -> Self {
+        Self { chain }
+    }
 }
 
 impl Call for StairsCallable {

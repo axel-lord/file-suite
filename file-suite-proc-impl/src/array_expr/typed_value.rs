@@ -6,11 +6,12 @@ use ::syn::{
     Ident, LitBool, LitInt, LitStr,
     ext::IdentExt,
     parse::{Lookahead1, ParseStream},
+    punctuated::Punctuated,
 };
 
 use crate::{
-    array_expr::{function::ToArg, value::Value},
-    util::lookahead_parse::LookaheadParse,
+    array_expr::{function::ToArg, value::Value, value_array::ValueArray},
+    util::lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
 };
 
 /// A typed [Value] which may be converted to tokens.
@@ -84,5 +85,52 @@ impl ToTokens for TypedValue {
             TypedValue::LitBool(lit_bool) => lit_bool.to_tokens(tokens),
             TypedValue::Tokens(token_stream) => token_stream.to_tokens(tokens),
         }
+    }
+}
+
+impl<P> ToArg for Punctuated<TypedValue, P> {
+    type Arg = ValueArray;
+
+    fn to_arg(&self) -> Self::Arg {
+        self.iter().map(TypedValue::to_value).collect()
+    }
+}
+
+impl ToArg for Vec<TypedValue> {
+    type Arg = ValueArray;
+
+    fn to_arg(&self) -> Self::Arg {
+        self.iter().map(TypedValue::to_value).collect()
+    }
+}
+
+/// A punctuated list of typed values.
+#[derive(Debug, Clone)]
+pub struct TypedValues<P>(Punctuated<TypedValue, P>);
+
+impl<P> ToArg for TypedValues<P> {
+    type Arg = ValueArray;
+
+    fn to_arg(&self) -> Self::Arg {
+        self.0.to_arg()
+    }
+}
+
+impl<P> LookaheadParse for TypedValues<P>
+where
+    P: LookaheadParse,
+{
+    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
+        Ok(lookahead_parse_terminated(input, lookahead)?.map(Self))
+    }
+}
+
+impl<P> ToTokens for TypedValues<P>
+where
+    P: ToTokens,
+{
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Self(values) = self;
+        values.to_tokens(tokens);
     }
 }

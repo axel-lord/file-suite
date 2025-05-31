@@ -27,8 +27,8 @@ Function Todo:
 1. [x] Take (negative value should result in back elements being taken)
 2. [x] Chain
 3. [x] Skip (negative value should result in back elements being skipped)
-3. [ ] Intersperse
-4. [ ] Get (variable, not by index)
-5. [ ] Nth (with error on failure, and negative indexing)
-6. [ ] Every (could be emulated by .chunks(N, .take(1)))
+3. [x] Intersperse
+4. [x] Get (variable, not by index)
+5. [x] Nth (with error on failure, and negative indexing)
+6. ~~[ ] Every (could be emulated by .chunks(N, .take(1)))~~
 7. [x] Block (Chain with same locals as parent)

@@ -1,14 +1,7 @@
 //! [ForkArgs] impl.
 
-use ::quote::ToTokens;
-use ::syn::{
-    Token,
-    parse::{End, Parse},
-    punctuated::Punctuated,
-};
-
 use crate::array_expr::{
-    function::{Call, FunctionCallable, FunctionChain, ToCallable},
+    function::{ArgTy, Call, FromArg, FunctionCallable, FunctionChain, chain::FunctionChains},
     storage::Storage,
     value_array::ValueArray,
 };
@@ -18,6 +11,14 @@ use crate::array_expr::{
 pub struct ForkCallable {
     /// Function chains.
     chains: Vec<Vec<FunctionCallable>>,
+}
+
+impl FromArg for ForkCallable {
+    type ArgFactory = FunctionChains;
+
+    fn from_arg(chains: ArgTy<Self>) -> Self {
+        Self { chains }
+    }
 }
 
 impl Call for ForkCallable {
@@ -31,49 +32,6 @@ impl Call for ForkCallable {
         }
 
         Ok(output_array)
-    }
-}
-
-/// Function chains to fork to.
-#[derive(Debug, Clone)]
-pub struct ForkArgs {
-    /// Parsed chains.
-    chains: Punctuated<FunctionChain, Token![,]>,
-}
-
-impl ToCallable for ForkArgs {
-    type Call = ForkCallable;
-
-    fn to_callable(&self) -> Self::Call {
-        let chains = self
-            .chains
-            .iter()
-            .map(|chain| chain.to_call_chain())
-            .collect();
-        ForkCallable { chains }
-    }
-}
-
-impl Parse for ForkArgs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let chains = Punctuated::parse_terminated_with(input, |input| {
-            FunctionChain::parse_terminated(input, |lookahead| {
-                lookahead.peek(Token![,]) || lookahead.peek(End)
-            })
-        })?;
-
-        if chains.is_empty() {
-            return Err(input.error("fork expects at least one function chain"));
-        }
-
-        Ok(Self { chains })
-    }
-}
-
-impl ToTokens for ForkArgs {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { chains } = self;
-        chains.to_tokens(tokens);
     }
 }
 

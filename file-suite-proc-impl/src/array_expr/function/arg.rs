@@ -3,18 +3,11 @@
 use ::quote::ToTokens;
 
 use crate::{
-    array_expr::{from_values::FromValues, storage::Storage, typed_value::TypedValue},
+    array_expr::{
+        from_values::FromValues, function::ToArg, storage::Storage, typed_value::TypedValue,
+    },
     util::lookahead_parse::{LookaheadParse, lookahead_parse},
 };
-
-/// Trait for parsed values which may be converted to arguments.
-pub trait ToArg {
-    /// Argument type self converts to.
-    type Arg;
-
-    /// Convert to argument.
-    fn to_arg(&self) -> Self::Arg;
-}
 
 /// An argument that may be either a variable access or a value.
 #[derive(Debug, Clone)]
@@ -36,10 +29,7 @@ impl<V> Arg<V> {
     {
         match self {
             Arg::Variable(key) => storage
-                .get(key)
-                .ok_or_else(|| {
-                    crate::Error::from(format!("could not get variable with key '{key}'"))
-                })
+                .try_get(key)
                 .and_then(|values| V::from_values(values)),
             Arg::Value(value) => Ok(value.clone()),
         }
@@ -60,7 +50,10 @@ pub enum ParsedArg<V> {
     Value(V),
 }
 
-impl<V: ToArg> ToArg for ParsedArg<V> {
+impl<V> ToArg for ParsedArg<V>
+where
+    V: ToArg,
+{
     type Arg = Arg<V::Arg>;
 
     fn to_arg(&self) -> Self::Arg {
