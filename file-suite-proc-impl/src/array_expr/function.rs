@@ -38,7 +38,7 @@ use crate::{
     array_expr::{
         function::{
             builtin::{
-                alias::AliasArgs,
+                alias::AliasCallable,
                 block::BlockArgs,
                 case::CaseKind,
                 chain::ChainArgs,
@@ -46,7 +46,7 @@ use crate::{
                 clear::ClearCallable,
                 count::CountCallable,
                 enumerate::EnumerateArgs,
-                fork::ForkArgs,
+                fork::ForkCallable,
                 get::GetCallable,
                 intersperse::IntersperseCallable,
                 join::{JoinByCallable, JoinKind},
@@ -58,7 +58,7 @@ use crate::{
                 shift::ShiftCallable,
                 skip::SkipCallable,
                 split::{SplitByCallable, SplitKind},
-                stairs::StairsArgs,
+                stairs::StairsCallable,
                 take::TakeCallable,
                 trim::TrimCallable,
             },
@@ -71,10 +71,10 @@ use crate::{
 };
 
 pub use self::{
-    deferred_args::DeferredArgs,
     arg::{Arg, ParsedArg},
     call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
+    deferred_args::DeferredArgs,
     empty_args::EmptyArgs,
     from_arg::{ArgTy, FromArg},
     keyword_function::KwFn,
@@ -84,9 +84,9 @@ pub use self::{
 };
 
 mod arg;
-mod deferred_args;
 mod call;
 mod chain;
+mod deferred_args;
 mod empty_args;
 mod from_arg;
 mod keyword_function;
@@ -157,13 +157,13 @@ function_enum!(
         /// Shift/Rotate array.
         Shift(KwFn<kw::shift, OptionalDelimited<SingleArg<ShiftCallable>>>),
         /// Fork array.
-        Fork(KwFn<kw::fork, Delimited<ForkArgs>>),
+        Fork(KwFn<kw::fork, Delimited<DeferredArgs<ForkCallable>>>),
         /// Repeat array.
         Repeat(KwFn<kw::repeat, Delimited<SingleArg<RepeatCallable>>>),
         /// Intersperse array elements with input.
         Intersperse(KwFn<kw::intersperse, Delimited<SingleArg<IntersperseCallable>>>),
         /// Stair array.
-        Stairs(KwFn<kw::stairs, Delimited<StairsArgs>>),
+        Stairs(KwFn<kw::stairs, Delimited<DeferredArgs<StairsCallable>>>),
         /// Paste tokens.
         Paste(KwFn<kw::paste, Delimited<PasteArgs>>),
         /// Count array values.
@@ -185,7 +185,7 @@ function_enum!(
         /// Set a local variable.
         Local(KwFn<kw::local, Delimited<SetArgs<Local>>>),
         /// Set an alias.
-        Alias(KwFn<kw::alias, Delimited<AliasArgs>>),
+        Alias(KwFn<kw::alias, Delimited<DeferredArgs<AliasCallable>>>),
         /// Use an alias.
         UseAlias(UseAlias),
     }

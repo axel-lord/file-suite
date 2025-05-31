@@ -4,22 +4,34 @@ use ::quote::ToTokens;
 use ::syn::{
     Token,
     parse::{End, Lookahead1, Parse, ParseStream},
+    punctuated::Punctuated,
 };
 
 use crate::{
     array_expr::{
-        function::{Call, Function, FunctionCallable, ToCallable},
+        function::{Call, Function, FunctionCallable, ToArg, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
     util::lookahead_parse::{LookaheadParse, lookahead_parse},
 };
 
+// /// A function chain.
+// #[derive(Debug, Clone, Default)]
+// pub struct FunctionChain {
+//     /// Leading.
+//     dot: Option<Token![.]>,
+//     /// Functions of chain.
+//     functions: Punctuated<Function, Token![.]>,
+// }
+
 /// A function chain.
 #[derive(Debug, Clone, Default)]
 pub struct FunctionChain {
-    /// chain of functions and leading punctuation.
-    pub functions: Vec<(Option<Token![.]>, Function)>,
+    /// Leading dot of function chain, if any.
+    pub leading_dot: Option<Token![.]>,
+    /// Functions of function chain.
+    pub functions: Punctuated<Function, Token![.]>,
 }
 
 impl FunctionChain {
@@ -36,39 +48,56 @@ impl FunctionChain {
         should_terminate: fn(&Lookahead1) -> bool,
     ) -> ::syn::Result<Self> {
         let lookahead = input.lookahead1();
-        let mut chain = Vec::new();
 
         if should_terminate(&lookahead) {
-            return Ok(Self { functions: chain });
-        } else if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
-            chain.push((dot, input.call(Function::parse)?));
-        } else if let Some(func) = lookahead_parse(input, &lookahead)? {
-            chain.push((None, func));
-        } else {
-            return Err(lookahead.error());
-        };
-
-        loop {
-            let lookahead = input.lookahead1();
-
-            if should_terminate(&lookahead) {
-                break;
-            } else if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
-                chain.push((dot, input.call(Function::parse)?));
-            } else {
-                return Err(lookahead.error());
-            }
+            return Ok(Self::default());
         }
 
-        Ok(Self { functions: chain })
+        let mut functions = Punctuated::new();
+        let mut leading_dot = None;
+
+        if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
+            leading_dot = dot;
+            functions.push_value(input.call(LookaheadParse::parse)?);
+        } else if let Some(first) = lookahead_parse(input, &lookahead)? {
+            functions.push_value(first);
+        } else {
+            return Err(lookahead.error());
+        }
+
+        let mut chains = Self {
+            leading_dot,
+            functions,
+        };
+
+        chains.parse_additional(input, should_terminate)?;
+
+        Ok(chains)
+    }
+
+    /// Parse additional functions from input.
+    ///
+    /// # Errors
+    /// If any invalid values are encountered.
+    pub fn parse_additional(
+        &mut self,
+        input: ParseStream,
+        should_terminate: fn(&Lookahead1) -> bool,
+    ) -> ::syn::Result<()> {
+        loop {
+            let lookahead = input.lookahead1();
+            if should_terminate(&lookahead) {
+                return Ok(());
+            }
+
+            self.functions.push_punct(input.parse()?);
+            self.functions.push_value(input.call(Function::parse)?);
+        }
     }
 
     /// Get a callable chain from self.
     pub fn to_call_chain(&self) -> Vec<FunctionCallable> {
-        self.functions
-            .iter()
-            .map(|(_, f)| f.to_callable())
-            .collect()
+        self.functions.iter().map(|f| f.to_callable()).collect()
     }
 
     /// Call a function chain on a value array.
@@ -87,18 +116,90 @@ impl FunctionChain {
     }
 }
 
+impl ToArg for FunctionChain {
+    type Arg = Vec<FunctionCallable>;
+
+    fn to_arg(&self) -> Self::Arg {
+        self.to_call_chain()
+    }
+}
+
 impl Parse for FunctionChain {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Self::parse_terminated(input, |lookahead| lookahead.peek(End))
     }
 }
 
+impl LookaheadParse for FunctionChain {
+    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
+        let mut first = if let leading_dot @ Some(..) = lookahead_parse(input, lookahead)? {
+            let mut functions = Punctuated::new();
+            functions.push_value(input.call(Function::parse)?);
+            FunctionChain {
+                leading_dot,
+                functions,
+            }
+        } else if let Some(func) = lookahead_parse(input, lookahead)? {
+            let mut functions = Punctuated::new();
+            functions.push_value(func);
+            FunctionChain {
+                leading_dot: None,
+                functions,
+            }
+        } else if lookahead.peek(End) {
+            return Ok(Some(Self::default()));
+        } else {
+            return Ok(None);
+        };
+
+        first.parse_additional(input, |lookahead| lookahead.peek(End))?;
+
+        Ok(Some(first))
+    }
+}
+
 impl ToTokens for FunctionChain {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { functions } = self;
-        for (dot, func) in functions {
-            dot.to_tokens(tokens);
-            func.to_tokens(tokens);
+        let Self {
+            functions,
+            leading_dot,
+        } = self;
+        leading_dot.to_tokens(tokens);
+        functions.to_tokens(tokens);
+    }
+}
+
+/// A list set of funvtion chains.
+#[derive(Debug, Clone)]
+pub struct FunctionChains(Punctuated<FunctionChain, Token![,]>);
+
+impl ToArg for FunctionChains {
+    type Arg = Vec<Vec<FunctionCallable>>;
+
+    fn to_arg(&self) -> Self::Arg {
+        self.0.iter().map(|chain| chain.to_call_chain()).collect()
+    }
+}
+
+impl Parse for FunctionChains {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let chains = Punctuated::parse_terminated_with(input, |input| {
+            FunctionChain::parse_terminated(input, |lookahead| {
+                lookahead.peek(Token![,]) || lookahead.peek(End)
+            })
+        })?;
+
+        if chains.is_empty() {
+            return Err(input.error("at least one chain expected"));
         }
+
+        Ok(Self(chains))
+    }
+}
+
+impl ToTokens for FunctionChains {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self(chains) = self;
+        chains.to_tokens(tokens);
     }
 }

@@ -5,10 +5,7 @@ use ::std::{fmt::Debug, marker::PhantomData};
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
 
-use crate::{
-    array_expr::function::{Call, FromArg, ToArg, ToCallable},
-    util::lookahead_parse::LookaheadParse,
-};
+use crate::array_expr::function::{Call, FromArg, ToArg, ToCallable};
 
 /// Deferred argument parse implementor.
 pub struct DeferredArgs<C>
@@ -35,11 +32,11 @@ where
 impl<C> Parse for DeferredArgs<C>
 where
     C: FromArg,
-    C::ArgFactory: LookaheadParse,
+    C::ArgFactory: Parse,
 {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            arg: input.call(LookaheadParse::parse)?,
+            arg: input.parse()?,
             _p: PhantomData,
         })
     }

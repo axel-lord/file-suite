@@ -11,7 +11,7 @@ use ::syn::{
 
 use crate::{
     array_expr::{function::ToArg, value::Value, value_array::ValueArray},
-    util::lookahead_parse::{lookahead_parse_terminated, LookaheadParse},
+    util::lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
 };
 
 /// A typed [Value] which may be converted to tokens.
