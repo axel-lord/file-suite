@@ -11,5 +11,5 @@ pub trait FromArg {
     fn from_arg(arg: ArgTy<Self>) -> Self;
 }
 
-/// Arument type of [FromtArg] implementor.
+/// Arument type of [FromArg] implementor.
 pub type ArgTy<T> = <<T as FromArg>::ArgFactory as ToArg>::Arg;
