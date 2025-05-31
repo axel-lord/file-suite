@@ -22,6 +22,8 @@ Todo:
 - [x] Better error messages for situations similar to `LookaheadParse::optional_parse`.
 - [ ] Change LookaheadParse signature to take `Lookahead1` as mut ref and drive it forward on success.
 - [x] Move function tests to respective modules.
+- [ ] Split up into multiple crates.
+- [ ] Separate array expressions from `syn`, `quote` and `proc_macro2`
 
 Function Todo:
 - [x] Take (negative value should result in back elements being taken)
