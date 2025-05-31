@@ -118,7 +118,7 @@ macro_rules! kw_kind {
     }
 
     impl $crate::FromArg for $kind_ident {
-        type ArgFactory = $wrap_ident;
+        type Factory = $wrap_ident;
 
         fn from_arg(kind: $kind_ident) -> Self {
             kind

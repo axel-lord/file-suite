@@ -1,12 +1,13 @@
 //! [Delimited] impl.
 
+use ::file_suite_proc_lib::ensure_empty;
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
 use crate::{
     array_expr::function::ToCallable,
     macro_delimited,
-    util::{delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse},
+    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
 };
 
 /// A delimited group, {}, [], (), which contains a single value.

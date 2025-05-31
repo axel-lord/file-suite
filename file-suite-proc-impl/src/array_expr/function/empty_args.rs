@@ -2,6 +2,7 @@
 
 use ::std::marker::PhantomData;
 
+use ::file_suite_proc_lib::ensure_empty;
 use ::quote::ToTokens;
 use ::syn::MacroDelimiter;
 use syn::parse::{Lookahead1, ParseStream};
@@ -9,7 +10,7 @@ use syn::parse::{Lookahead1, ParseStream};
 use crate::{
     array_expr::function::{Call, DefaultArgs, ToCallable},
     macro_delimited,
-    util::{delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse},
+    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
 };
 
 /// A delimited empty group, {}, [], (), which may not exist.

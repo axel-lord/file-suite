@@ -1,15 +1,13 @@
 //! [DelimitedOption] impl.
 
+use ::file_suite_proc_lib::ensure_empty;
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
 use crate::{
     array_expr::function::ToCallable,
     macro_delimited,
-    util::{
-        delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse,
-        parse_wrap::ParseWrap,
-    },
+    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse, parse_wrap::ParseWrap},
 };
 
 /// A delimited group, {}, [], (), which may be empty.
