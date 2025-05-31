@@ -7,7 +7,7 @@ edition = "2024"
 proc-macro2 = { workspace = true }
 syn = { workspace = true, features = ["full", "extra-traits"] }
 quote = { workspace = true }
-rand = "0.9.1"
+rand = { workspace = true }
 
 [lints]
 workspace = true
