@@ -37,11 +37,7 @@ macro_rules! kw_kind {
                 input: ::syn::parse::ParseStream,
                 lookahead: &::syn::parse::Lookahead1
             ) -> ::syn::Result<Option<Self>> {
-                if $kind_ident::lookahead_peek(lookahead) {
-                    input.parse().map(Some)
-                } else {
-                    Ok(None)
-                }
+                ::file_suite_proc_lib::lookahead::ParseBufferExt::lookahead_parse(input, lookahead)
             }
         }
 

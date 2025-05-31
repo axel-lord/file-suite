@@ -43,9 +43,8 @@ macro_rules! kw_kind {
         )*
     }
 
-    impl $kind_ident {
-        /// Check if the next token is one of the keywords.
-        pub fn lookahead_peek(lookahead: &$crate::__private::Lookahead1) -> bool {
+    impl $crate::Lookahead for $wrap_ident {
+        fn lookahead_peek(lookahead: &$crate::__private::Lookahead1) -> bool {
             $(
             if lookahead.peek(kw::$keyword_ident) {
                 return true;
