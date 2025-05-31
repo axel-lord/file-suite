@@ -30,5 +30,5 @@ Function Todo:
 3. [x] Intersperse
 4. [x] Get (variable, not by index)
 5. [x] Nth (with error on failure, and negative indexing)
-6. [ ] Every (could be emulated by .chunks(N, .take(1)))
+6. ~~[ ] Every (could be emulated by .chunks(N, .take(1)))~~
 7. [x] Block (Chain with same locals as parent)

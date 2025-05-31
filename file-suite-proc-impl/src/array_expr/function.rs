@@ -29,9 +29,6 @@ pub mod builtin {
     pub mod take;
     pub mod trim;
     pub mod ty;
-    pub mod every {
-        //! Run chain on every nth element.
-    }
 }
 
 use crate::{
