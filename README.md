@@ -12,7 +12,7 @@ Procedural macros for use in other crates, mostly me playing around.
 
 Todo:
 - [ ] String format function of some kind.
-- [ ] Cheap to copy tokenstream, using rc and including groups.
+- [x] Cheap to copy tokenstream, using rc and including groups.
 - [ ] Quote-like token format function, in addition to the existing array expression paste function.
 - [ ] Some method of passing parameters to aliases, perhaps as locals somehow.
 - [x] Tests for at least all chain functions.
@@ -20,10 +20,10 @@ Todo:
 - [ ] Punctuation type.
 - [x] DefaultArgs instead of default for arguments with default values.
 - [x] Better error messages for situations similar to `LookaheadParse::optional_parse`.
-- [ ] Change LookaheadParse signature to take `Lookahead1` as mut ref and drive it forward on success.
+- [ ] ~~Change LookaheadParse signature to take `Lookahead1` as mut ref and drive it forward on success.~~
 - [x] Move function tests to respective modules.
-- [ ] Split up into multiple crates.
-- [ ] Separate array expressions from `syn`, `quote` and `proc_macro2`
+- [x] Split up into multiple crates.
+- [ ] ~~Separate array expressions from `syn`, `quote` and `proc_macro2`~~
 
 Function Todo:
 - [x] Take (negative value should result in back elements being taken)
@@ -34,3 +34,4 @@ Function Todo:
 - [x] Nth (with error on failure, and negative indexing)
 - [ ] ~~Every (could be emulated by .chunks(N, .take(1)))~~
 - [x] Block (Chain with same locals as parent)
+- [ ] Rand (some manner of random values)
