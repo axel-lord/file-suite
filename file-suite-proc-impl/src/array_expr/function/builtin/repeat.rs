@@ -2,12 +2,9 @@
 
 use ::std::num::NonZero;
 
-use ::file_suite_proc_lib::FromArg;
+use ::file_suite_proc_lib::{FromArg, spanned_int::SpannedInt};
 
-use crate::{
-    array_expr::{function::Call, storage::Storage, value_array::ValueArray},
-    util::spanned_int::SpannedInt,
-};
+use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 
 /// [Call] implementor for [RepeatArgs].
 #[derive(Debug, Clone)]

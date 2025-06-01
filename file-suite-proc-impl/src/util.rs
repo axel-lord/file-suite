@@ -11,7 +11,6 @@ mod to_tokens_macros;
 pub mod delimited;
 pub mod fold_tokens;
 pub mod neverlike;
-pub mod spanned_int;
 pub mod tcmp;
 
 pub mod group_help {

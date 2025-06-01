@@ -2,21 +2,18 @@
 
 use ::std::num::NonZero;
 
-use ::file_suite_proc_lib::{ToArg, lookahead::ParseBufferExt};
+use ::file_suite_proc_lib::{ToArg, lookahead::ParseBufferExt, spanned_int::SpannedInt};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
     parse::{End, Parse},
 };
 
-use crate::{
-    array_expr::{
-        function::{Arg, Call, DefaultArgs, ParsedArg, ToCallable},
-        storage::Storage,
-        value::Value,
-        value_array::ValueArray,
-    },
-    util::spanned_int::SpannedInt,
+use crate::array_expr::{
+    function::{Arg, Call, DefaultArgs, ParsedArg, ToCallable},
+    storage::Storage,
+    value::Value,
+    value_array::ValueArray,
 };
 
 /// [Call] Implementor for [EnumerateArgs].

@@ -1,11 +1,8 @@
 //! [TakeCallable] impl.
 
-use ::file_suite_proc_lib::FromArg;
+use ::file_suite_proc_lib::{FromArg, spanned_int::SpannedInt};
 
-use crate::{
-    array_expr::{function::Call, storage::Storage, value_array::ValueArray},
-    util::spanned_int::SpannedInt,
-};
+use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 
 /// Take n values from value array and discard the remainder. If negative
 /// the last n values are taken.

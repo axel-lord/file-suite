@@ -12,7 +12,3 @@ file-suite-proc-lib = { path = "../file-suite-proc-lib/" }
 
 [lints]
 workspace = true
-
-[[bin]]
-name = "type-sizes"
-path = "src/sizes.rs"

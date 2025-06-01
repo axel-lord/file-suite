@@ -2,7 +2,7 @@
 
 use ::std::num::NonZero;
 
-use ::file_suite_proc_lib::ToArg;
+use ::file_suite_proc_lib::{ToArg, spanned_int::SpannedInt};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -11,13 +11,10 @@ use ::syn::{
 use proc_macro2::TokenStream;
 use syn::parse::ParseStream;
 
-use crate::{
-    array_expr::{
-        function::{Arg, Call, Callable, Function, FunctionChain, ParsedArg, ToCallable},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::spanned_int::SpannedInt,
+use crate::array_expr::{
+    function::{Arg, Call, Callable, Function, FunctionChain, ParsedArg, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
 /// Specification for how many values are in each chunk (except the last which may be

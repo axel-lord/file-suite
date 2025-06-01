@@ -1,14 +1,15 @@
-//! Spanned integer value that validates on parse.
+//! Integer literals that are validated when parsed.
 
 use ::std::num::NonZero;
 
-use ::file_suite_proc_lib::{Lookahead, ToArg};
 use ::proc_macro2::{Span, TokenStream};
 use ::quote::{ToTokens, quote_spanned};
 use ::syn::{
     LitInt,
     parse::{Lookahead1, Parse, ParseStream},
 };
+
+use crate::{Lookahead, ToArg};
 
 #[doc(hidden)]
 mod sealed {
@@ -28,10 +29,11 @@ where
 }
 
 impl_spanned_int_primitive! {
-    usize, /* u128, u64, u32, u16, u8, */ isize, /* i128, i64, i32, i16, i8, */
+    usize, u128, u64, u32, u16, u8, isize, i128, i64, i32, i16, i8,
 }
 
-/// An integer value with a span.
+/// An integer literal that is validated when parsed, that may therefore always have a valid
+/// integer value.
 #[derive(Debug, Clone, Copy)]
 pub struct SpannedInt<N>
 where
@@ -88,29 +90,29 @@ where
 
 /// Implement trait for integer primitives and nonzero values.
 macro_rules! impl_spanned_int_primitive {
-    ($($ty:ty),* $(,)?) => {$(
-        impl sealed::Sealed for $ty {}
-        impl sealed::Sealed for NonZero<$ty> {}
-        impl SpannedIntPrimitive for $ty {
-            fn from_lit(lit: LitInt) -> syn::Result<Self> {
-                lit.base10_parse()
-            }
-
-            fn to_tokens(self, span: Span, tokens: &mut TokenStream) {
-                let value = self;
-                tokens.extend(quote_spanned! {span=> #value});
-            }
+($($ty:ty),* $(,)?) => {$(
+    impl sealed::Sealed for $ty {}
+    impl sealed::Sealed for NonZero<$ty> {}
+    impl SpannedIntPrimitive for $ty {
+        fn from_lit(lit: LitInt) -> syn::Result<Self> {
+            lit.base10_parse()
         }
-        impl SpannedIntPrimitive for NonZero<$ty> {
-            fn from_lit(lit: LitInt) -> syn::Result<Self> {
-                lit.base10_parse()
-            }
 
-            fn to_tokens(self, span: Span, tokens: &mut TokenStream) {
-                let value = self.get();
-                tokens.extend(quote_spanned! {span=> #value});
-            }
+        fn to_tokens(self, span: Span, tokens: &mut TokenStream) {
+            let value = self;
+            tokens.extend(quote_spanned! {span=> #value});
         }
-    )*};
+    }
+    impl SpannedIntPrimitive for NonZero<$ty> {
+        fn from_lit(lit: LitInt) -> syn::Result<Self> {
+            lit.base10_parse()
+        }
+
+        fn to_tokens(self, span: Span, tokens: &mut TokenStream) {
+            let value = self.get();
+            tokens.extend(quote_spanned! {span=> #value});
+        }
+    }
+)*};
 }
 use impl_spanned_int_primitive;
