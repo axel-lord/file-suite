@@ -1,4 +1,11 @@
-//! Macro for macro delimited content.
+//! MacroDelim extensions.
+
+use ::proc_macro2::TokenStream;
+use ::syn::{
+    MacroDelimiter,
+    parse::{Lookahead1, ParseStream},
+    token::{Brace, Bracket, Paren},
+};
 
 /// Extension trait for [MacroDelimiter].
 pub trait MacroDelimExt {
@@ -38,22 +45,16 @@ impl MacroDelimExt for MacroDelimiter {
 /// Parse a set of delimiters, brackets, braces or paren and expose their content.
 #[macro_export]
 macro_rules! macro_delimited {
-    ($content:ident in $cursor:expr) => {{
-        let lookahead = ::syn::parse::ParseBuffer::lookahead1($cursor);
-        if lookahead.peek(::syn::token::Bracket) {
-            ::syn::MacroDelimiter::Bracket(::syn::bracketed! ( $content in $cursor ))
-        } else if lookahead.peek(::syn::token::Brace) {
-            ::syn::MacroDelimiter::Brace(::syn::braced! ( $content in $cursor ))
-        } else if lookahead.peek(::syn::token::Paren) {
-            ::syn::MacroDelimiter::Paren(::syn::parenthesized! ( $content in $cursor ))
+    ($content:ident in $expr:expr) => {{
+        let lookahead = $crate::__private::ParseBuffer::lookahead1($expr);
+        if lookahead.peek($crate::__private::Bracket) {
+            $crate::__private::MacroDelimiter::Bracket($crate::__private::bracketed!($content in $expr))
+        } else if lookahead.peek($crate::__private::Brace) {
+            $crate::__private::MacroDelimiter::Brace($crate::__private::braced!($content in $expr))
+        } else if lookahead.peek($crate::__private::Paren) {
+            $crate::__private::MacroDelimiter::Paren($crate::__private::parenthesized!($content in $expr))
         } else {
-            return ::core::result::Result::Err(::syn::parse::Lookahead1::error(lookahead));
+            return ::core::result::Result::Err($crate::__private::Lookahead1::error(lookahead));
         }
     }};
 }
-use ::proc_macro2::TokenStream;
-use ::syn::{
-    MacroDelimiter,
-    parse::{Lookahead1, ParseStream},
-    token::{Brace, Bracket, Paren},
-};

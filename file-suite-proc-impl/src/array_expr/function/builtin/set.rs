@@ -2,7 +2,9 @@
 
 use ::std::borrow::Cow;
 
-use ::file_suite_proc_lib::{lookahead::ParseBufferExt, neverlike::NoPhantomData};
+use ::file_suite_proc_lib::{
+    lookahead::ParseBufferExt, macro_delim::MacroDelimExt, neverlike::NoPhantomData,
+};
 use ::quote::ToTokens;
 use ::syn::{
     MacroDelimiter,
@@ -18,7 +20,7 @@ use crate::{
         typed_value::TypedValue,
         value_array::ValueArray,
     },
-    util::{delimited::MacroDelimExt, group_help::Delimited},
+    util::group_help::Delimited,
 };
 
 #[derive(Debug, Clone)]

@@ -4,7 +4,6 @@ pub use self::lookahead::TokenLookahead;
 
 mod lookahead;
 
-pub mod delimited;
 pub mod fold_tokens;
 pub mod tcmp;
 

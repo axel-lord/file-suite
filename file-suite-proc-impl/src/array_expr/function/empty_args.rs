@@ -2,16 +2,12 @@
 
 use ::std::marker::PhantomData;
 
-use ::file_suite_proc_lib::{Lookahead, ensure_empty};
+use ::file_suite_proc_lib::{Lookahead, ensure_empty, macro_delim::MacroDelimExt, macro_delimited};
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 use syn::parse::{Lookahead1, ParseStream};
 
-use crate::{
-    array_expr::function::{Call, DefaultArgs, ToCallable},
-    macro_delimited,
-    util::delimited::MacroDelimExt,
-};
+use crate::array_expr::function::{Call, DefaultArgs, ToCallable};
 
 /// A delimited empty group, {}, [], (), which may not exist.
 /// The given type T, is used to get a [Call] impl for [ToCallable].

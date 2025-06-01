@@ -1,10 +1,10 @@
 //! [OptionalDelimited] impl.
 
-use ::file_suite_proc_lib::{Lookahead, ensure_empty};
+use ::file_suite_proc_lib::{Lookahead, ensure_empty, macro_delim::MacroDelimExt, macro_delimited};
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
-use crate::{array_expr::function::ToCallable, macro_delimited, util::delimited::MacroDelimExt};
+use crate::array_expr::function::ToCallable;
 
 /// A delimited group, {}, [], (), which may be empty, and may not exist. As such whilst it
 /// implements [LookaheadParse], `Ok(None)` will never be returned by it.

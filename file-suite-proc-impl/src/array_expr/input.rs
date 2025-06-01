@@ -1,16 +1,14 @@
 //! [Input] impl.
 
-use ::file_suite_proc_lib::{Lookahead, lookahead::ParseBufferExt};
+use ::file_suite_proc_lib::{
+    Lookahead, lookahead::ParseBufferExt, macro_delim::MacroDelimExt, macro_delimited,
+};
 use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, Token};
 use syn::parse::Parse;
 
-use crate::{
-    array_expr::{ArrayExpr, Node, typed_value::TypedValue, value::Value},
-    macro_delimited,
-    util::delimited::MacroDelimExt,
-};
+use crate::array_expr::{ArrayExpr, Node, typed_value::TypedValue, value::Value};
 
 /// Input value of an array expression.
 #[derive(Debug, Clone)]

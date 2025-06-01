@@ -7,6 +7,7 @@ pub mod __private;
 pub mod from_arg;
 pub mod kw_kind;
 pub mod lookahead;
+pub mod macro_delim;
 pub mod neverlike;
 pub mod spanned_int;
 pub mod to_arg;
