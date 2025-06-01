@@ -10,6 +10,7 @@ quote = { workspace = true }
 file-suite-proc-lib = { workspace = true }
 fold-tokens = { workspace = true }
 tokens-rc = { workspace = true }
+rand.workspace = true
 
 [lints]
 workspace = true

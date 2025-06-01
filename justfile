@@ -29,6 +29,10 @@ test-miri *EXTRA:
 test-proc:
 	cargo test -p file-suite-proc-lib -p array-expr -p tokens-rc -p run-derive -p fold-tokens
 
+# Run array expression tests
+test-arr-expr:
+	cargo test -p array-expr
+
 # Format crates.
 fmt:
 	cargo fmt --all
