@@ -17,7 +17,7 @@ pub use crate::{
     tokens_rc::TokensRc,
 };
 
-/// Ensure a [ParseStream] has reached it's end.
+/// Ensure a [ParseStream][::syn::parse::ParseStream] has reached it's end.
 ///
 /// # Errors
 /// If the parse buffer is not empty.
