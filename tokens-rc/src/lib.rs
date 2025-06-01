@@ -1,6 +1,11 @@
 //! Reference countet array of tokens.
 
-use ::std::{ops::Deref, rc::Rc};
+use ::std::{
+    cell::{Cell, OnceCell},
+    fmt::Debug,
+    ops::Deref,
+    rc::Rc,
+};
 
 use ::proc_macro2::{Delimiter, Literal, Punct, Span, TokenStream, extra::DelimSpan};
 use ::quote::{ToTokens, TokenStreamExt};
@@ -52,7 +57,7 @@ pub enum TokenTree {
     /// Punctuation token.
     Punct(Punct),
     /// Group tokens.
-    Group(Group),
+    Group(OpaqueGroup),
 }
 
 impl From<::proc_macro2::TokenTree> for TokenTree {
@@ -98,6 +103,7 @@ impl ToTokens for Group {
         tokens.append(group);
     }
 }
+
 impl From<::proc_macro2::Group> for Group {
     fn from(value: ::proc_macro2::Group) -> Self {
         Self {
@@ -105,6 +111,94 @@ impl From<::proc_macro2::Group> for Group {
             delim_span: value.delim_span(),
             delimiter: value.delimiter(),
             stream: value.stream().into(),
+        }
+    }
+}
+
+/// Wrapper for [Group] with lazy conversion from [::proc_macro2::Group].
+pub struct OpaqueGroup {
+    /// Wrapped group.
+    group: OnceCell<Group>,
+    /// Group to lazily convert from.
+    backing: Cell<Option<::proc_macro2::Group>>,
+}
+
+impl OpaqueGroup {
+    /// Get a reference to wrapped group.
+    pub fn as_group(&self) -> &Group {
+        let Self { group, backing } = self;
+
+        group.get_or_init(|| Group::from(backing.take().unwrap_or_else(|| unreachable!())))
+    }
+}
+
+impl Debug for OpaqueGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let backing = self.backing.take();
+        let res = f
+            .debug_struct("OpaqueGroup")
+            .field("group", &self.group)
+            .field("backing", &backing)
+            .finish();
+        self.backing.set(backing);
+        res
+    }
+}
+
+impl Clone for OpaqueGroup {
+    fn clone(&self) -> Self {
+        Self {
+            group: OnceCell::from(self.as_group().clone()),
+            backing: Cell::new(None),
+        }
+    }
+}
+
+impl Deref for OpaqueGroup {
+    type Target = Group;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_group()
+    }
+}
+
+impl From<::proc_macro2::Group> for OpaqueGroup {
+    fn from(value: ::proc_macro2::Group) -> Self {
+        Self {
+            group: OnceCell::new(),
+            backing: Cell::new(Some(value)),
+        }
+    }
+}
+
+impl From<Group> for OpaqueGroup {
+    fn from(value: Group) -> Self {
+        Self {
+            group: OnceCell::from(value),
+            backing: Cell::new(None),
+        }
+    }
+}
+
+impl From<OpaqueGroup> for Group {
+    fn from(value: OpaqueGroup) -> Self {
+        let OpaqueGroup { group, backing } = value;
+
+        if let Some(group) = backing.into_inner() {
+            Group::from(group)
+        } else {
+            group.into_inner().unwrap_or_else(|| unreachable!())
+        }
+    }
+}
+
+impl ToTokens for OpaqueGroup {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        if let Some(group) = self.backing.take() {
+            group.to_tokens(tokens);
+            self.backing.set(Some(group));
+        } else {
+            self.as_group().to_tokens(tokens);
         }
     }
 }

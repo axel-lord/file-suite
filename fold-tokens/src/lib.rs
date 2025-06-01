@@ -170,7 +170,8 @@ pub fn fold_tokens(f: &mut dyn FoldTokens, tokens: TokensRc) -> Result<TokenStre
 
                 match response {
                     Response::Default => match token {
-                        TokenTree::Group(Group { stream, .. }) => {
+                        TokenTree::Group(group) => {
+                            let Group { stream, .. } = group.as_group();
                             let cursor = Cursor::new(stream.clone());
                             context.push((cursor, TokenStream::default()));
                         }
@@ -188,12 +189,13 @@ pub fn fold_tokens(f: &mut dyn FoldTokens, tokens: TokensRc) -> Result<TokenStre
                 };
                 match context.last_mut() {
                     Some((cursor, tokens_lower)) => {
-                        let Some(TokenTree::Group(Group {
-                            span, delimiter, ..
-                        })) = cursor.first()
-                        else {
+                        let Some(TokenTree::Group(group)) = cursor.first() else {
                             unreachable!()
                         };
+                        let Group {
+                            span, delimiter, ..
+                        } = group.as_group();
+
                         let mut group = ::proc_macro2::Group::new(*delimiter, tokens);
                         group.set_span(*span);
                         tokens_lower.append(group);
