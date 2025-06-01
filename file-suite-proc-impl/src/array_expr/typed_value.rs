@@ -1,18 +1,19 @@
 //! [TypedValue] impl
 
+use ::file_suite_proc_lib::{
+    Lookahead, ToArg,
+    to_arg::{PunctuatedToArg, SliceToArg},
+};
 use ::proc_macro2::{Literal, Span, TokenStream};
 use ::quote::{ToTokens, TokenStreamExt};
 use ::syn::{
     Ident, LitBool, LitInt, LitStr,
     ext::IdentExt,
-    parse::{Lookahead1, ParseStream},
+    parse::{Lookahead1, Parse, ParseStream},
     punctuated::Punctuated,
 };
 
-use crate::{
-    array_expr::{function::ToArg, value::Value, value_array::ValueArray},
-    util::lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
-};
+use crate::array_expr::{value::Value, value_array::ValueArray};
 
 /// A typed [Value] which may be converted to tokens.
 #[derive(Debug, Clone)]
@@ -57,8 +58,15 @@ impl TypedValue {
     }
 }
 
-impl LookaheadParse for TypedValue {
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
+impl Lookahead for TypedValue {
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+        lookahead.peek(LitStr) || lookahead.peek(LitInt) || lookahead.peek(Ident)
+    }
+
+    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>>
+    where
+        Self: Parse,
+    {
         Ok(Some(if lookahead.peek(Ident) {
             Self::Ident(input.call(Ident::parse_any)?)
         } else if lookahead.peek(LitStr) {
@@ -69,6 +77,16 @@ impl LookaheadParse for TypedValue {
         } else {
             return Ok(None);
         }))
+    }
+}
+
+impl Parse for TypedValue {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        match <Self as Lookahead>::lookahead_parse(input, &lookahead)? {
+            None => Err(lookahead.error()),
+            Some(value) => Ok(value),
+        }
     }
 }
 
@@ -88,19 +106,19 @@ impl ToTokens for TypedValue {
     }
 }
 
-impl<P> ToArg for Punctuated<TypedValue, P> {
+impl PunctuatedToArg for TypedValue {
     type Arg = ValueArray;
 
-    fn to_arg(&self) -> Self::Arg {
-        self.iter().map(TypedValue::to_value).collect()
+    fn punctuated_to_arg<P>(punctuated: &Punctuated<Self, P>) -> Self::Arg {
+        punctuated.iter().map(TypedValue::to_value).collect()
     }
 }
 
-impl ToArg for Vec<TypedValue> {
+impl SliceToArg for TypedValue {
     type Arg = ValueArray;
 
-    fn to_arg(&self) -> Self::Arg {
-        self.iter().map(TypedValue::to_value).collect()
+    fn slice_to_arg(slice: &[Self]) -> Self::Arg {
+        slice.iter().map(TypedValue::to_value).collect()
     }
 }
 
@@ -116,12 +134,18 @@ impl<P> ToArg for TypedValues<P> {
     }
 }
 
-impl<P> LookaheadParse for TypedValues<P>
+impl<P> Lookahead for TypedValues<P> {
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+        TypedValue::lookahead_peek(lookahead)
+    }
+}
+
+impl<P> Parse for TypedValues<P>
 where
-    P: LookaheadParse,
+    P: Parse,
 {
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
-        Ok(lookahead_parse_terminated(input, lookahead)?.map(Self))
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Punctuated::parse_terminated(input).map(Self)
     }
 }
 

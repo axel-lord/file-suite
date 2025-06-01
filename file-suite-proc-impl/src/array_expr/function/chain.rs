@@ -1,5 +1,6 @@
 //! [FunctionChain] impl.
 
+use ::file_suite_proc_lib::{Lookahead, ToArg, lookahead::ParseBufferExt};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -7,23 +8,11 @@ use ::syn::{
     punctuated::Punctuated,
 };
 
-use crate::{
-    array_expr::{
-        function::{Call, Function, FunctionCallable, ToArg, ToCallable},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::lookahead_parse::{LookaheadParse, lookahead_parse},
+use crate::array_expr::{
+    function::{Call, Callable, Function, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
-
-// /// A function chain.
-// #[derive(Debug, Clone, Default)]
-// pub struct FunctionChain {
-//     /// Leading.
-//     dot: Option<Token![.]>,
-//     /// Functions of chain.
-//     functions: Punctuated<Function, Token![.]>,
-// }
 
 /// A function chain.
 #[derive(Debug, Clone, Default)]
@@ -56,10 +45,10 @@ impl FunctionChain {
         let mut functions = Punctuated::new();
         let mut leading_dot = None;
 
-        if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
+        if let dot @ Some(..) = input.lookahead_parse(&lookahead)? {
             leading_dot = dot;
-            functions.push_value(input.call(LookaheadParse::parse)?);
-        } else if let Some(first) = lookahead_parse(input, &lookahead)? {
+            functions.push_value(input.parse()?);
+        } else if let Some(first) = input.lookahead_parse(&lookahead)? {
             functions.push_value(first);
         } else {
             return Err(lookahead.error());
@@ -91,12 +80,12 @@ impl FunctionChain {
             }
 
             self.functions.push_punct(input.parse()?);
-            self.functions.push_value(input.call(Function::parse)?);
+            self.functions.push_value(input.parse()?);
         }
     }
 
     /// Get a callable chain from self.
-    pub fn to_call_chain(&self) -> Vec<FunctionCallable> {
+    pub fn to_call_chain(&self) -> Vec<Callable<Function>> {
         self.functions.iter().map(|f| f.to_callable()).collect()
     }
 
@@ -105,7 +94,7 @@ impl FunctionChain {
     /// # Errors
     /// If any of the functions in the chain errors.
     pub fn call_chain(
-        chain: &[FunctionCallable],
+        chain: &[Callable<Function>],
         mut array: ValueArray,
         storage: &mut Storage,
     ) -> crate::Result<ValueArray> {
@@ -117,7 +106,7 @@ impl FunctionChain {
 }
 
 impl ToArg for FunctionChain {
-    type Arg = Vec<FunctionCallable>;
+    type Arg = Vec<Callable<Function>>;
 
     fn to_arg(&self) -> Self::Arg {
         self.to_call_chain()
@@ -130,31 +119,11 @@ impl Parse for FunctionChain {
     }
 }
 
-impl LookaheadParse for FunctionChain {
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
-        let mut first = if let leading_dot @ Some(..) = lookahead_parse(input, lookahead)? {
-            let mut functions = Punctuated::new();
-            functions.push_value(input.call(Function::parse)?);
-            FunctionChain {
-                leading_dot,
-                functions,
-            }
-        } else if let Some(func) = lookahead_parse(input, lookahead)? {
-            let mut functions = Punctuated::new();
-            functions.push_value(func);
-            FunctionChain {
-                leading_dot: None,
-                functions,
-            }
-        } else if lookahead.peek(End) {
-            return Ok(Some(Self::default()));
-        } else {
-            return Ok(None);
-        };
-
-        first.parse_additional(input, |lookahead| lookahead.peek(End))?;
-
-        Ok(Some(first))
+impl Lookahead for FunctionChain {
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+        lookahead.peek(End)
+            || lookahead.peek(Token![=])
+            || <Function as Lookahead>::lookahead_peek(lookahead)
     }
 }
 
@@ -174,7 +143,7 @@ impl ToTokens for FunctionChain {
 pub struct FunctionChains(Punctuated<FunctionChain, Token![,]>);
 
 impl ToArg for FunctionChains {
-    type Arg = Vec<Vec<FunctionCallable>>;
+    type Arg = Vec<Vec<Callable<Function>>>;
 
     fn to_arg(&self) -> Self::Arg {
         self.0.iter().map(|chain| chain.to_call_chain()).collect()

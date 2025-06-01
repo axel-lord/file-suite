@@ -4,18 +4,13 @@ use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
 use ::syn::parse::Parser;
 
-use crate::{
-    array_expr::{ArrayExprPaste, Node, storage::Storage},
-    util::fold_tokens::fold_token_stream,
-};
+use crate::array_expr::{ArrayExprPaste, Node, storage::Storage};
 
 mod run;
 
 mod error;
 
 pub mod array_expr;
-
-pub mod util;
 
 pub use error::Error;
 
@@ -28,11 +23,11 @@ pub type Result<T = ()> = ::std::result::Result<T, Error>;
 /// If the expression cannot be parsed.
 /// Or if it cannot be computed.
 pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
-    fold_token_stream(
+    ::fold_tokens::fold_tokens(
         &mut ArrayExprPaste {
             storage: &mut Storage::initial(),
         },
-        input,
+        input.into(),
     )
 }
 

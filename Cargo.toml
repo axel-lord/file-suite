@@ -1,5 +1,5 @@
 [workspace]
-members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "file-suite-proc-impl", "file-suite-dyn"]
+members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "file-suite-proc-impl", "file-suite-dyn", "file-suite-proc-lib", "tokens-rc", "fold-tokens"]
 resolver = "2"
 default-members = ["file-suite"]
 
@@ -77,3 +77,4 @@ tokio-stream = "0.1.16"
 toml = "0.8.20"
 walkdir = "2.5.0"
 wrap-blocking-attr-impl = { path = "wrap-blocking-attr-impl" }
+rand = "0.9.1"

@@ -1,12 +1,11 @@
 //! [ShiftCallable] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, DefaultArgs, FromArg},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::spanned_int::SpannedInt,
+use ::file_suite_proc_lib::{FromArg, spanned_int::SpannedInt};
+
+use crate::array_expr::{
+    function::{Call, DefaultArgs},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
 /// [Call] impl for [ShiftArgs].
@@ -23,7 +22,7 @@ impl DefaultArgs for ShiftCallable {
 }
 
 impl FromArg for ShiftCallable {
-    type ArgFactory = SpannedInt<isize>;
+    type Factory = SpannedInt<isize>;
 
     fn from_arg(by: isize) -> Self {
         Self { by }

@@ -1,13 +1,10 @@
 //! [Delimited] impl.
 
+use ::file_suite_proc_lib::{Lookahead, ensure_empty, macro_delim::MacroDelimExt, macro_delimited};
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
-use crate::{
-    array_expr::function::ToCallable,
-    macro_delimited,
-    util::{delimited::MacroDelimExt, ensure_empty, lookahead_parse::LookaheadParse},
-};
+use crate::array_expr::function::ToCallable;
 
 /// A delimited group, {}, [], (), which contains a single value.
 #[derive(Debug, Clone)]
@@ -42,30 +39,26 @@ where
     }
 }
 
-impl<T> LookaheadParse for Delimited<T>
+impl<T> Lookahead for Delimited<T> {
+    fn lookahead_peek(lookahead: &syn::parse::Lookahead1) -> bool {
+        MacroDelimiter::lookahead_peek(lookahead)
+    }
+}
+
+impl<T> Parse for Delimited<T>
 where
     T: Parse,
 {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        if !MacroDelimiter::lookahead_peek(lookahead) {
-            return Ok(None);
-        }
-
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let content;
         let delim = macro_delimited!(content in input);
 
-        let content = {
+        let inner = {
             let parsed_content = content.parse()?;
             ensure_empty(&content)?;
             parsed_content
         };
 
-        Ok(Some(Self {
-            delim,
-            inner: content,
-        }))
+        Ok(Self { delim, inner })
     }
 }

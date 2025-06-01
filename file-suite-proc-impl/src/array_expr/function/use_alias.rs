@@ -1,19 +1,17 @@
 //! [UseAlias] impl.
 
+use ::file_suite_proc_lib::{End, Lookahead};
 use ::quote::ToTokens;
-use ::syn::{Token, parse::ParseStream};
+use ::syn::{
+    Token,
+    parse::{Parse, ParseStream},
+};
 
-use crate::{
-    array_expr::{
-        function::{Call, FunctionChain, ToCallable},
-        storage::Storage,
-        typed_value::TypedValue,
-        value_array::ValueArray,
-    },
-    util::{
-        group_help::EmptyDelimited,
-        lookahead_parse::{LookaheadParse, lookahead_parse, optional_parse},
-    },
+use crate::array_expr::{
+    function::{Call, FunctionChain, OptionalDelimited, ToCallable},
+    storage::Storage,
+    typed_value::TypedValue,
+    value_array::ValueArray,
 };
 
 /// Use an alias.
@@ -24,7 +22,7 @@ pub struct UseAlias {
     /// Alias to use.
     alias_key: TypedValue,
     /// Optional empty delim group for chain parity.
-    delim: Option<EmptyDelimited>,
+    delim: OptionalDelimited<End>,
 }
 
 impl ToCallable for UseAlias {
@@ -54,23 +52,19 @@ impl Call for UseAliasCallable {
     }
 }
 
-impl LookaheadParse for UseAlias {
-    fn lookahead_parse(
-        input: ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        let Some(eq_token) = lookahead_parse(input, lookahead)? else {
-            return Ok(None);
-        };
+impl Lookahead for UseAlias {
+    fn lookahead_peek(lookahead: &syn::parse::Lookahead1) -> bool {
+        lookahead.peek(Token![=])
+    }
+}
 
-        let alias_key = input.call(TypedValue::parse)?;
-        let delim = optional_parse(input)?;
-
-        Ok(Some(Self {
-            eq_token,
-            alias_key,
-            delim,
-        }))
+impl Parse for UseAlias {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            eq_token: input.parse()?,
+            alias_key: input.parse()?,
+            delim: input.parse()?,
+        })
     }
 }
 

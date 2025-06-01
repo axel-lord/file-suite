@@ -5,11 +5,15 @@ use ::std::{
     str::ParseBoolError,
 };
 
+use ::file_suite_proc_lib::kw_kind;
 use ::proc_macro2::{LexError, Span, TokenStream};
 use ::quote::{IdentFragment, ToTokens, quote_spanned};
 use ::syn::{Ident, LitBool, LitInt, LitStr, spanned::Spanned};
 
-use crate::{array_expr::typed_value::TypedValue, util::kw_kind};
+use crate::array_expr::{
+    from_values::{FromValues, ensure_single},
+    typed_value::TypedValue,
+};
 
 kw_kind!(
     /// A parsed output type (has span).
@@ -32,6 +36,12 @@ kw_kind!(
         none,
     }
 );
+
+impl FromValues for TyKind {
+    fn from_values(values: &[Value]) -> crate::Result<Self> {
+        Ok(ensure_single(values)?.parse()?)
+    }
+}
 
 /// Wrapper to check for equality, including type for values.
 /// To avoid breaking rules for [Borrow].

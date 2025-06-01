@@ -2,6 +2,7 @@
 
 use ::std::num::NonZero;
 
+use ::file_suite_proc_lib::{ToArg, spanned_int::SpannedInt};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -10,13 +11,10 @@ use ::syn::{
 use proc_macro2::TokenStream;
 use syn::parse::ParseStream;
 
-use crate::{
-    array_expr::{
-        function::{Arg, Call, FunctionCallable, FunctionChain, ParsedArg, ToArg, ToCallable},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::{lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
+use crate::array_expr::{
+    function::{Arg, Call, Callable, Function, FunctionChain, ParsedArg, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
 /// Specification for how many values are in each chunk (except the last which may be
@@ -66,7 +64,7 @@ impl ToTokens for ChunksArgs {
 
 impl Parse for ChunksArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let chunk_size = input.call(LookaheadParse::parse)?;
+        let chunk_size = input.parse()?;
         let comma_token = input.parse()?;
         let chain = FunctionChain::parse_terminated(input, |lookahead| {
             lookahead.peek(End) || lookahead.peek(Token![,])
@@ -119,9 +117,9 @@ pub struct ChunksCallable {
     /// Size of chunks (with exceptions for last chunk).
     size: Arg<NonZero<usize>>,
     /// Chain to call on chunks.
-    chain: Vec<FunctionCallable>,
+    chain: Vec<Callable<Function>>,
     /// Special chain to use on remainder (if none regular chain is used).
-    remainder: Option<Vec<FunctionCallable>>,
+    remainder: Option<Vec<Callable<Function>>>,
 }
 
 impl Call for ChunksCallable {

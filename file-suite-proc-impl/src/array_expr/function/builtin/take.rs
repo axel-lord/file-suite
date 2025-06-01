@@ -1,13 +1,8 @@
 //! [TakeCallable] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, FromArg},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::spanned_int::SpannedInt,
-};
+use ::file_suite_proc_lib::{FromArg, spanned_int::SpannedInt};
+
+use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 
 /// Take n values from value array and discard the remainder. If negative
 /// the last n values are taken.
@@ -18,7 +13,7 @@ pub struct TakeCallable {
 }
 
 impl FromArg for TakeCallable {
-    type ArgFactory = SpannedInt<isize>;
+    type Factory = SpannedInt<isize>;
 
     fn from_arg(n: isize) -> Self {
         Self { n }

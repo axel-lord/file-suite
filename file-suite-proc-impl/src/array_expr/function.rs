@@ -31,40 +31,38 @@ pub mod builtin {
     pub mod ty;
 }
 
-use crate::{
-    array_expr::{
-        function::{
-            builtin::{
-                alias::AliasCallable,
-                block::BlockArgs,
-                case::CaseKind,
-                chain::ChainArgs,
-                chunks::ChunksArgs,
-                clear::ClearCallable,
-                count::CountCallable,
-                enumerate::EnumerateArgs,
-                fork::ForkCallable,
-                get::GetCallable,
-                intersperse::IntersperseCallable,
-                join::{JoinByCallable, JoinKind},
-                nth::NthCallable,
-                paste::PasteArgs,
-                repeat::RepeatCallable,
-                rev::RevCallable,
-                set::{Global, Local, SetArgs},
-                shift::ShiftCallable,
-                skip::SkipCallable,
-                split::{SplitByCallable, SplitKind},
-                stairs::StairsCallable,
-                take::TakeCallable,
-                trim::TrimCallable,
-            },
-            macros::function_enum,
+use ::file_suite_proc_lib::lookahead_keywords;
+
+use crate::array_expr::{
+    function::{
+        builtin::{
+            alias::AliasCallable,
+            block::BlockArgs,
+            case::CaseKind,
+            chain::ChainArgs,
+            chunks::ChunksArgs,
+            clear::ClearCallable,
+            count::CountCallable,
+            enumerate::EnumerateArgs,
+            fork::ForkCallable,
+            get::GetCallable,
+            intersperse::IntersperseCallable,
+            join::{JoinByCallable, JoinKind},
+            nth::NthCallable,
+            paste::PasteArgs,
+            repeat::RepeatCallable,
+            rev::RevCallable,
+            set::{Global, Local, SetArgs},
+            shift::ShiftCallable,
+            skip::SkipCallable,
+            split::{SplitByCallable, SplitKind},
+            stairs::StairsCallable,
+            take::TakeCallable,
+            trim::TrimCallable,
         },
-        value::TyKind,
+        macros::function_enum,
     },
-    lookahead_parse_keywords,
-    util::group_help::{Delimited, OptionalDelimited},
+    value::TyKind,
 };
 
 pub use self::{
@@ -72,11 +70,11 @@ pub use self::{
     call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
     deferred_args::DeferredArgs,
+    delimited::Delimited,
     empty_args::EmptyArgs,
-    from_arg::{ArgTy, FromArg},
     keyword_function::KwFn,
+    optional_delimited::OptionalDelimited,
     single_arg::SingleArg,
-    to_arg::ToArg,
     use_alias::UseAlias,
 };
 
@@ -84,46 +82,49 @@ mod arg;
 mod call;
 mod chain;
 mod deferred_args;
+mod delimited;
 mod empty_args;
-mod from_arg;
 mod keyword_function;
 mod macros;
+mod optional_delimited;
 mod single_arg;
-mod to_arg;
 mod use_alias;
 
-/// Type used in call chains, result of [ToCallable] on [Function].
-pub type FunctionCallable = <Function as ToCallable>::Call;
+/// Get the [Call] implementation for [ToCallable] implementors
+pub type Callable<T> = <T as ToCallable>::Call;
 
-lookahead_parse_keywords![
-    alias,
-    case,
-    chunks,
-    clear,
-    count,
-    split,
-    join,
-    ty,
-    enumerate,
-    rev,
-    trim,
-    shift,
-    fork,
-    repeat,
-    stairs,
-    paste,
-    global,
-    local,
-    chain,
-    block,
-    join_by,
-    split_by,
-    take,
-    skip,
-    intersperse,
-    get,
-    nth,
-];
+lookahead_keywords!(
+    #[doc(hidden)]
+    kw {
+        alias,
+        case,
+        chunks,
+        clear,
+        count,
+        split,
+        join,
+        ty,
+        enumerate,
+        rev,
+        trim,
+        shift,
+        fork,
+        repeat,
+        stairs,
+        paste,
+        global,
+        local,
+        chain,
+        block,
+        join_by,
+        split_by,
+        take,
+        skip,
+        intersperse,
+        get,
+        nth,
+    }
+);
 
 function_enum!(
     /// Enum collecting [Call] implementors.

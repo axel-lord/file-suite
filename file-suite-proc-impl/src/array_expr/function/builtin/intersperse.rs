@@ -1,12 +1,10 @@
 //! [IntersperseCallable] impl.
 
+use ::file_suite_proc_lib::{ArgTy, FromArg};
 use ::syn::Token;
 
 use crate::array_expr::{
-    function::{ArgTy, Call, FromArg},
-    storage::Storage,
-    typed_value::TypedValues,
-    value_array::ValueArray,
+    function::Call, storage::Storage, typed_value::TypedValues, value_array::ValueArray,
 };
 
 /// Intersperse array elements with input.
@@ -17,7 +15,7 @@ pub struct IntersperseCallable {
 }
 
 impl FromArg for IntersperseCallable {
-    type ArgFactory = TypedValues<Token![,]>;
+    type Factory = TypedValues<Token![,]>;
 
     fn from_arg(values: ArgTy<Self>) -> Self {
         Self { values }

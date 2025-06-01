@@ -1,12 +1,11 @@
 //! [KwFn] impl.
 
+use ::file_suite_proc_lib::Lookahead;
 use ::quote::ToTokens;
+use ::syn::parse::Parse;
 use syn::parse::{Lookahead1, ParseStream};
 
-use crate::{
-    array_expr::function::ToCallable,
-    util::lookahead_parse::{LookaheadParse, lookahead_parse},
-};
+use crate::array_expr::function::ToCallable;
 
 /// Function composed of a keyword K, and some arguments A.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -40,36 +39,24 @@ where
     }
 }
 
-impl<K, A> LookaheadParse for KwFn<K, Option<A>>
+impl<K, A> Lookahead for KwFn<K, A>
 where
-    K: LookaheadParse,
-    A: LookaheadParse,
+    K: Lookahead,
 {
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
-        lookahead_parse::<K>(input, lookahead)?
-            .map(|keyword| {
-                Ok(Self {
-                    keyword,
-                    args: A::optional_parse(input)?,
-                })
-            })
-            .transpose()
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+        K::lookahead_peek(lookahead)
     }
 }
 
-impl<K, A> LookaheadParse for KwFn<K, A>
+impl<K, A> Parse for KwFn<K, A>
 where
-    K: LookaheadParse,
-    A: LookaheadParse,
+    K: Parse,
+    A: Parse,
 {
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
-        lookahead_parse::<K>(input, lookahead)?
-            .map(|keyword| {
-                Ok(Self {
-                    keyword,
-                    args: A::parse(input)?,
-                })
-            })
-            .transpose()
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            keyword: input.parse()?,
+            args: input.parse()?,
+        })
     }
 }

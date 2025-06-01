@@ -2,6 +2,7 @@
 
 use ::std::{fmt::Display, mem};
 
+use ::file_suite_proc_lib::kw_kind::NotInSetError;
 use ::proc_macro2::Span;
 
 /// Crate error type, wraps and converts to [::syn::Error].
@@ -85,5 +86,11 @@ impl From<::syn::Error> for Error {
 impl From<Error> for ::syn::Error {
     fn from(value: Error) -> Self {
         value.into_syn_error(Span::call_site())
+    }
+}
+
+impl<Kw> From<NotInSetError<Kw>> for Error {
+    fn from(value: NotInSetError<Kw>) -> Self {
+        Self::Owned(value.to_string())
     }
 }

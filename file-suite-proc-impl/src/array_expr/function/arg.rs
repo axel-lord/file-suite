@@ -1,13 +1,10 @@
 //! Utilities for arguments which may be gotten from variables.
 
+use ::file_suite_proc_lib::{Lookahead, ToArg, lookahead::ParseBufferExt};
 use ::quote::ToTokens;
+use ::syn::{Token, parse::Parse};
 
-use crate::{
-    array_expr::{
-        from_values::FromValues, function::ToArg, storage::Storage, typed_value::TypedValue,
-    },
-    util::lookahead_parse::{LookaheadParse, lookahead_parse},
-};
+use crate::array_expr::{from_values::FromValues, storage::Storage, typed_value::TypedValue};
 
 /// An argument that may be either a variable access or a value.
 #[derive(Debug, Clone)]
@@ -64,23 +61,43 @@ where
     }
 }
 
-impl<V> LookaheadParse for ParsedArg<V>
+impl<V> Lookahead for ParsedArg<V>
 where
-    V: LookaheadParse,
+    V: Lookahead + Parse,
 {
+    fn lookahead_peek(lookahead: &syn::parse::Lookahead1) -> bool {
+        lookahead.peek(Token![=]) || V::lookahead_peek(lookahead)
+    }
+
     fn lookahead_parse(
         input: syn::parse::ParseStream,
         lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        if let Some(eq_token) = lookahead_parse(input, lookahead)? {
+    ) -> syn::Result<Option<Self>>
+    where
+        Self: syn::parse::Parse,
+    {
+        if let Some(eq_token) = input.lookahead_parse(lookahead)? {
             Ok(Some(Self::Variable {
                 eq_token,
                 var: input.call(TypedValue::parse)?,
             }))
-        } else if let Some(value) = lookahead_parse(input, lookahead)? {
+        } else if let Some(value) = input.lookahead_parse(lookahead)? {
             Ok(Some(Self::Value(value)))
         } else {
             Ok(None)
+        }
+    }
+}
+
+impl<V> Parse for ParsedArg<V>
+where
+    V: Lookahead + Parse,
+{
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        match input.lookahead_parse(&lookahead)? {
+            Some(value) => Ok(value),
+            None => Err(lookahead.error()),
         }
     }
 }

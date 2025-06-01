@@ -2,14 +2,9 @@
 
 use ::std::num::NonZero;
 
-use crate::{
-    array_expr::{
-        function::{Call, FromArg},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::spanned_int::SpannedInt,
-};
+use ::file_suite_proc_lib::{FromArg, spanned_int::SpannedInt};
+
+use crate::array_expr::{function::Call, storage::Storage, value_array::ValueArray};
 
 /// [Call] implementor for [RepeatArgs].
 #[derive(Debug, Clone)]
@@ -19,7 +14,7 @@ pub struct RepeatCallable {
 }
 
 impl FromArg for RepeatCallable {
-    type ArgFactory = SpannedInt<NonZero<usize>>;
+    type Factory = SpannedInt<NonZero<usize>>;
 
     fn from_arg(times: NonZero<usize>) -> Self {
         Self { times }

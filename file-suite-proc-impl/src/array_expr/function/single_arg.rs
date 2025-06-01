@@ -2,17 +2,15 @@
 
 use ::std::{fmt::Debug, marker::PhantomData};
 
+use ::file_suite_proc_lib::{FromArg, Lookahead, ToArg};
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
 
-use crate::{
-    array_expr::{
-        from_values::FromValues,
-        function::{Call, DefaultArgs, FromArg, ParsedArg, ToArg, ToCallable},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::lookahead_parse::LookaheadParse,
+use crate::array_expr::{
+    from_values::FromValues,
+    function::{Call, DefaultArgs, ParsedArg, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
 /// Single argument parse implementor.
@@ -21,7 +19,7 @@ where
     C: FromArg,
 {
     /// Parsed argument, which may be a variable access.
-    arg: ParsedArg<C::ArgFactory>,
+    arg: ParsedArg<C::Factory>,
     /// Allow C to exist.
     _p: PhantomData<fn() -> C>,
 }
@@ -29,7 +27,7 @@ where
 impl<C> ToCallable for SingleArg<C>
 where
     C: FromArg + Call,
-    <C::ArgFactory as ToArg>::Arg: FromValues,
+    <C::Factory as ToArg>::Arg: FromValues,
 {
     type Call = SingleArgCallable<C>;
 
@@ -46,7 +44,7 @@ where
 impl<C> Clone for SingleArg<C>
 where
     C: FromArg,
-    C::ArgFactory: Clone,
+    C::Factory: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -59,7 +57,7 @@ where
 impl<C> Debug for SingleArg<C>
 where
     C: FromArg,
-    C::ArgFactory: Debug,
+    C::Factory: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SingleArg")
@@ -72,11 +70,11 @@ where
 impl<C> Parse for SingleArg<C>
 where
     C: FromArg,
-    C::ArgFactory: LookaheadParse,
+    C::Factory: Lookahead + Parse,
 {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            arg: input.call(LookaheadParse::parse)?,
+            arg: input.parse()?,
             _p: PhantomData,
         })
     }
@@ -85,7 +83,7 @@ where
 impl<C> ToTokens for SingleArg<C>
 where
     C: FromArg,
-    C::ArgFactory: ToTokens,
+    C::Factory: ToTokens,
 {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { arg, _p: _ } = self;
@@ -140,13 +138,13 @@ where
 impl<C> Call for SingleArgCallable<C>
 where
     C: Call + FromArg,
-    <C::ArgFactory as ToArg>::Arg: FromValues,
+    <C::Factory as ToArg>::Arg: FromValues,
 {
     fn call(&self, array: ValueArray, storage: &mut Storage) -> crate::Result<ValueArray> {
         match self {
             SingleArgCallable::Variable(key) => storage
                 .try_get(key)
-                .and_then(|values| <C::ArgFactory as ToArg>::Arg::from_values(values))
+                .and_then(|values| <C::Factory as ToArg>::Arg::from_values(values))
                 .map(C::from_arg)?
                 .call(array, storage),
             SingleArgCallable::Callable(callable) => callable.call(array, storage),

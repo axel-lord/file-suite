@@ -1,16 +1,10 @@
 //! [OptionalDelimited] impl.
 
+use ::file_suite_proc_lib::{Lookahead, ensure_empty, macro_delim::MacroDelimExt, macro_delimited};
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
-use crate::{
-    array_expr::function::ToCallable,
-    util::{
-        delimited::MacroDelimExt,
-        group_help::DelimitedOption,
-        lookahead_parse::{LookaheadParse, lookahead_parse},
-    },
-};
+use crate::array_expr::function::ToCallable;
 
 /// A delimited group, {}, [], (), which may be empty, and may not exist. As such whilst it
 /// implements [LookaheadParse], `Ok(None)` will never be returned by it.
@@ -45,23 +39,38 @@ where
     }
 }
 
-impl<T> LookaheadParse for OptionalDelimited<T>
+impl<T> Lookahead for OptionalDelimited<T> {
+    fn lookahead_peek(_: &syn::parse::Lookahead1) -> bool {
+        true
+    }
+}
+
+impl<T> Parse for OptionalDelimited<T>
 where
     T: Parse,
 {
-    fn lookahead_parse(
-        input: syn::parse::ParseStream,
-        lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
-        let Some(DelimitedOption { delim, inner }) = lookahead_parse(input, lookahead)? else {
-            return Ok(Some(Self {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        if MacroDelimiter::input_peek(input) {
+            let content;
+            let delim = macro_delimited!(content in input);
+
+            let inner = if content.is_empty() {
+                None
+            } else {
+                let inner = content.parse()?;
+                ensure_empty(&content)?;
+                Some(inner)
+            };
+
+            Ok(Self {
+                delim: Some(delim),
+                inner,
+            })
+        } else {
+            Ok(Self {
                 delim: None,
                 inner: None,
-            }));
-        };
-        Ok(Some(Self {
-            delim: Some(delim),
-            inner,
-        }))
+            })
+        }
     }
 }

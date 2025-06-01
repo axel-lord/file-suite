@@ -1,7 +1,9 @@
-//! [StairsArgs] impl.
+//! [StairsCallable] impl.
+
+use ::file_suite_proc_lib::{ArgTy, FromArg};
 
 use crate::array_expr::{
-    function::{ArgTy, Call, FromArg, FunctionCallable, FunctionChain},
+    function::{Call, Callable, Function, FunctionChain},
     storage::Storage,
     value_array::ValueArray,
 };
@@ -10,11 +12,11 @@ use crate::array_expr::{
 #[derive(Debug, Clone)]
 pub struct StairsCallable {
     /// Chain to call.
-    chain: Vec<FunctionCallable>,
+    chain: Vec<Callable<Function>>,
 }
 
 impl FromArg for StairsCallable {
-    type ArgFactory = FunctionChain;
+    type Factory = FunctionChain;
 
     fn from_arg(chain: ArgTy<Self>) -> Self {
         Self { chain }

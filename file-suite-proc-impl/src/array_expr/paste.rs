@@ -1,18 +1,11 @@
 //! Find array expressions in any token input.
 
-use ::std::cell::Cell;
-
-use ::proc_macro2::TokenTree;
+use ::fold_tokens::{Cursor, Response};
+use ::proc_macro2::{Punct, TokenStream};
 use ::quote::ToTokens;
 use ::syn::parse::Parser;
 
-use crate::{
-    array_expr::{Node, storage::Storage},
-    util::{
-        fold_tokens::{FoldTokens, fold_punct},
-        tcmp::pseq,
-    },
-};
+use crate::array_expr::{Node, storage::Storage};
 
 /// [FoldTokens] for finding array expressions.
 #[derive(Debug)]
@@ -21,38 +14,23 @@ pub(crate) struct ArrayExprPaste<'s> {
     pub storage: &'s mut Storage,
 }
 
-impl FoldTokens<2> for ArrayExprPaste<'_> {
+impl ::fold_tokens::FoldTokens for ArrayExprPaste<'_> {
     fn fold_punct(
         &mut self,
-        punct: proc_macro2::Punct,
-        lookahead: &mut crate::util::TokenLookahead<proc_macro2::TokenStream, 2>,
-        tokens: &mut proc_macro2::TokenStream,
-    ) -> syn::Result<()> {
-        if !lookahead.matches_after(punct.clone(), pseq!('+', '+', '!')) {
-            fold_punct(punct, tokens);
-            return Ok(());
+        _punct: &Punct,
+        cursor: &Cursor,
+        tokens: &mut TokenStream,
+    ) -> fold_tokens::Result<Response> {
+        if !cursor.punct_match("++!") {
+            return Ok(Response::Default);
         }
-        let span = Cell::new(
-            lookahead
-                .discard()
-                .next_back()
-                .unwrap_or_else(|| unreachable!())
-                .span(),
-        );
 
-        let group = lookahead
-            .next()
-            .and_then(|tree| {
-                span.set(tree.span());
-                if let TokenTree::Group(group) = tree {
-                    Some(group)
-                } else {
-                    None
-                }
-            })
-            .ok_or_else(|| {
-                ::syn::Error::new(span.get(), "expected delimited group following '++!'")
-            })?;
+        let Some(::tokens_rc::TokenTree::Group(group)) = cursor.get(3) else {
+            return Err(::syn::Error::new(
+                cursor[2].span(),
+                "expected delimited group following '++!'",
+            ));
+        };
 
         for node in Node::parse_multiple.parse2(group.stream())? {
             for value in self
@@ -62,6 +40,7 @@ impl FoldTokens<2> for ArrayExprPaste<'_> {
                 value.try_to_typed()?.to_tokens(tokens);
             }
         }
-        Ok(())
+
+        Ok(Response::Skip(4))
     }
 }

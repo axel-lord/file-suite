@@ -1,7 +1,9 @@
 //! [AliasArgs] impl.
 
+use ::file_suite_proc_lib::{ArgTy, FromArg};
+
 use crate::array_expr::{
-    function::{ArgTy, Call, FromArg, FunctionCallable, FunctionChain},
+    function::{Call, Callable, Function, FunctionChain},
     storage::Storage,
     value_array::ValueArray,
 };
@@ -10,11 +12,11 @@ use crate::array_expr::{
 #[derive(Debug, Clone)]
 pub struct AliasCallable {
     /// Function chain to store.
-    chain: Vec<FunctionCallable>,
+    chain: Vec<Callable<Function>>,
 }
 
 impl FromArg for AliasCallable {
-    type ArgFactory = FunctionChain;
+    type Factory = FunctionChain;
 
     fn from_arg(chain: ArgTy<Self>) -> Self {
         Self { chain }
@@ -48,6 +50,15 @@ mod tests {
                 toKebab -> alias{ case(lower).join(kebab) },
                 fromCamel -> alias { split(camel) },
                 camelToKebabConv -> =fromCamel.=toKebab.ty(str),
+            },
+            { "camel-to-kebab-conv" },
+        );
+
+        assert_arr_expr!(
+            {
+                toKebab -> alias{ case(lower).join(kebab) },
+                fromCamel -> alias { split(camel) },
+                camelToKebabConv -> =fromCamel{}.=toKebab().ty(str),
             },
             { "camel-to-kebab-conv" },
         );

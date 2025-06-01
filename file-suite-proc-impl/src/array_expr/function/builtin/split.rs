@@ -1,14 +1,14 @@
 //! [SplitArgs] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, FromArg, ToCallable},
-        storage::Storage,
-        typed_value::TypedValue,
-        value::Value,
-        value_array::ValueArray,
-    },
-    util::kw_kind,
+use ::file_suite_proc_lib::{FromArg, kw_kind};
+
+use crate::array_expr::{
+    from_values::{FromValues, ensure_single},
+    function::{Call, ToCallable},
+    storage::Storage,
+    typed_value::TypedValue,
+    value::Value,
+    value_array::ValueArray,
 };
 
 /// Split by a string.
@@ -19,7 +19,7 @@ pub struct SplitByCallable {
 }
 
 impl FromArg for SplitByCallable {
-    type ArgFactory = TypedValue;
+    type Factory = TypedValue;
 
     fn from_arg(by: String) -> Self {
         Self { by }
@@ -54,6 +54,12 @@ kw_kind!(
         dot,
     }
 );
+
+impl FromValues for SplitKind {
+    fn from_values(values: &[Value]) -> crate::Result<Self> {
+        Ok(ensure_single(values)?.parse()?)
+    }
+}
 
 impl ToCallable for SplitArgs {
     type Call = SplitKind;

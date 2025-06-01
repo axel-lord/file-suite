@@ -1,13 +1,13 @@
 //! [JoinArgs] impl.
 
-use crate::{
-    array_expr::{
-        function::{Call, DefaultArgs, FromArg, ToCallable},
-        storage::Storage,
-        typed_value::TypedValue,
-        value_array::ValueArray,
-    },
-    util::kw_kind,
+use ::file_suite_proc_lib::{FromArg, kw_kind};
+
+use crate::array_expr::{
+    from_values::{FromValues, ensure_single},
+    function::{Call, DefaultArgs, ToCallable},
+    storage::Storage,
+    typed_value::TypedValue,
+    value_array::ValueArray,
 };
 
 /// Join values by a string.
@@ -18,7 +18,7 @@ pub struct JoinByCallable {
 }
 
 impl FromArg for JoinByCallable {
-    type ArgFactory = TypedValue;
+    type Factory = TypedValue;
 
     fn from_arg(by: String) -> Self {
         Self { by }
@@ -58,6 +58,12 @@ kw_kind!(
         dot,
     }
 );
+
+impl FromValues for JoinKind {
+    fn from_values(values: &[crate::array_expr::value::Value]) -> crate::Result<Self> {
+        Ok(ensure_single(values)?.parse()?)
+    }
+}
 
 impl ToCallable for JoinArgs {
     type Call = JoinKind;

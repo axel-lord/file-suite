@@ -2,6 +2,9 @@
 
 use ::std::borrow::Cow;
 
+use ::file_suite_proc_lib::{
+    lookahead::ParseBufferExt, macro_delim::MacroDelimExt, neverlike::NoPhantomData,
+};
 use ::quote::ToTokens;
 use ::syn::{
     MacroDelimiter,
@@ -9,20 +12,12 @@ use ::syn::{
     punctuated::Punctuated,
 };
 
-use crate::{
-    array_expr::{
-        ArrayExpr, Node,
-        function::{Call, ToCallable},
-        storage::Storage,
-        typed_value::TypedValue,
-        value_array::ValueArray,
-    },
-    util::{
-        delimited::MacroDelimExt,
-        group_help::Delimited,
-        lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
-        neverlike::NoPhantomData,
-    },
+use crate::array_expr::{
+    ArrayExpr, Node,
+    function::{Call, Delimited, ToCallable},
+    storage::Storage,
+    typed_value::TypedValue,
+    value_array::ValueArray,
 };
 
 #[derive(Debug, Clone)]
@@ -162,9 +157,9 @@ impl<T> Parse for SetArgs<T> {
             Self::SetArray { expr: None }
         } else if MacroDelimiter::lookahead_peek(&lookahead) {
             Self::SetArray {
-                expr: Some(input.call(LookaheadParse::parse)?),
+                expr: Some(input.parse()?),
             }
-        } else if let Some(keys) = lookahead_parse_terminated(input, &lookahead)? {
+        } else if let Some(keys) = input.lookahead_parse_terminated(&lookahead)? {
             Self::SetInput { keys }
         } else {
             return Err(lookahead.error())?;
