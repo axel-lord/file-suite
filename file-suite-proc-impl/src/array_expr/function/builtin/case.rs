@@ -1,8 +1,12 @@
 //! [CaseArgs] impl.
 
-use crate::{
-    array_expr::{function::Call, storage::Storage, value_array::ValueArray},
-    util::kw_kind,
+use ::file_suite_proc_lib::kw_kind;
+
+use crate::array_expr::{
+    from_values::{FromValues, ensure_single},
+    function::Call,
+    storage::Storage,
+    value_array::ValueArray,
 };
 
 kw_kind!(
@@ -21,6 +25,12 @@ kw_kind!(
         lower,
     }
 );
+
+impl FromValues for CaseKind {
+    fn from_values(values: &[crate::array_expr::value::Value]) -> crate::Result<Self> {
+        Ok(ensure_single(values)?.parse()?)
+    }
+}
 
 impl Call for CaseKind {
     fn call(&self, mut input: ValueArray, _: &mut Storage) -> crate::Result<ValueArray> {

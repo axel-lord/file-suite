@@ -1,10 +1,7 @@
 //! Proc macro utilities.
 
-pub(crate) use self::kw_kind::kw_kind;
-
 pub use self::lookahead::TokenLookahead;
 
-mod kw_kind;
 mod lookahead;
 mod to_tokens_macros;
 

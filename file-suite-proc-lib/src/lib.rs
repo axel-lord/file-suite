@@ -2,9 +2,8 @@
 
 pub mod __private;
 
-mod kw_kind;
-
 pub mod from_arg;
+pub mod kw_kind;
 pub mod lookahead;
 pub mod neverlike;
 pub mod spanned_int;
