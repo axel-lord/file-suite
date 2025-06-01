@@ -11,13 +11,11 @@ pub mod macro_delim;
 pub mod neverlike;
 pub mod spanned_int;
 pub mod to_arg;
-pub mod tokens_rc;
 
 pub use crate::{
     from_arg::{ArgTy, FromArg},
     lookahead::Lookahead,
     to_arg::ToArg,
-    tokens_rc::TokensRc,
 };
 
 /// Parsable version of [End][::syn::parse::End].
