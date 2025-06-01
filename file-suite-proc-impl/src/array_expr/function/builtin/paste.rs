@@ -12,7 +12,6 @@ use crate::{
         value::Value,
         value_array::ValueArray,
     },
-    util::fold_tokens::fold_token_stream,
 };
 
 /// Arguments for paste function.
@@ -60,7 +59,10 @@ impl Call for PasteCallable {
                 "paste should not be used with a non-empty array, use clear to clear it if this is intended".into(),
             );
         }
-        let tokens = fold_token_stream(&mut ArrayExprPaste { storage }, self.content.clone())?;
+        let tokens = ::fold_tokens::fold_tokens(
+            &mut ArrayExprPaste { storage },
+            self.content.clone().into(),
+        )?;
         let value = Value::new_tokens(tokens);
         Ok(ValueArray::from_value(value))
     }

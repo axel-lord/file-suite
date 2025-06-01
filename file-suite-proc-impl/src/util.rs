@@ -1,12 +1,5 @@
 //! Proc macro utilities.
 
-pub use self::lookahead::TokenLookahead;
-
-mod lookahead;
-
-pub mod fold_tokens;
-pub mod tcmp;
-
 pub mod group_help {
     //! Helpers for group parsing.
 

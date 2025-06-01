@@ -68,10 +68,11 @@ impl Cursor {
 pub type Result<T = ()> = ::syn::Result<T>;
 
 /// How to handle passed token.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum Response {
     /// Continue as normal, pushin the token to the output stream
     /// and further folding it if it is a group.
+    #[default]
     Default,
     /// Skip the given amount of tokens.
     /// Should probably be used with a count of 1 if

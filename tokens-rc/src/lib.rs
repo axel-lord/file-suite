@@ -153,6 +153,17 @@ impl OpaqueGroup {
             self.as_group().span
         }
     }
+
+    /// Get tokens contained by group as a [TokenStream].
+    pub fn stream(&self) -> TokenStream {
+        if let Some(group) = self.backing.take() {
+            let stream = group.stream();
+            self.backing.set(Some(group));
+            stream
+        } else {
+            self.stream.to_token_stream()
+        }
+    }
 }
 
 impl Debug for OpaqueGroup {
