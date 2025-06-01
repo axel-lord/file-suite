@@ -7,9 +7,10 @@ edition = "2024"
 proc-macro2 = { workspace = true }
 syn = { workspace = true, features = ["full", "extra-traits"] }
 quote = { workspace = true }
-file-suite-proc-lib = { path = "../file-suite-proc-lib/" }
-fold-tokens = { path = "../fold-tokens/" }
-tokens-rc = { path = "../tokens-rc/" }
+file-suite-proc-lib = { workspace = true }
+fold-tokens = { workspace = true }
+tokens-rc = { workspace = true }
+rand.workspace = true
 
 [lints]
 workspace = true

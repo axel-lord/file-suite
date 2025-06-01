@@ -317,7 +317,7 @@ impl Value {
             return Ok(*value.get());
         }
 
-        self.parse()
+        self.trim_start_matches('0').parse()
     }
 
     /// Get value as a token stream.

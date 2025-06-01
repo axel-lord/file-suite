@@ -19,6 +19,7 @@ pub mod builtin {
     pub mod join;
     pub mod nth;
     pub mod paste;
+    pub mod rand;
     pub mod repeat;
     pub mod rev;
     pub mod set;
@@ -50,6 +51,7 @@ use crate::{
             join::{JoinByCallable, JoinKind},
             nth::NthCallable,
             paste::PasteArgs,
+            rand::RandCallable,
             repeat::RepeatCallable,
             rev::RevCallable,
             set::{Global, Local, SetArgs},
@@ -123,6 +125,7 @@ lookahead_keywords!(
         intersperse,
         get,
         nth,
+        rand,
     }
 );
 
@@ -182,6 +185,8 @@ function_enum!(
         Get(KwFn<kw::get, EmptyArgs<GetCallable>>),
         /// Set a local variable.
         Local(KwFn<kw::local, Delimited<SetArgs<Local>>>),
+        /// Convert array to random hexadecimal values.
+        Rand(KwFn<kw::rand, EmptyArgs<RandCallable>>),
         /// Set an alias.
         Alias(KwFn<kw::alias, Delimited<DeferredArgs<AliasCallable>>>),
         /// Use an alias.
