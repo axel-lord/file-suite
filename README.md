@@ -34,4 +34,7 @@ Function Todo:
 - [x] Nth (with error on failure, and negative indexing)
 - [ ] ~~Every (could be emulated by .chunks(N, .take(1)))~~
 - [x] Block (Chain with same locals as parent)
-- [ ] Rand (some manner of random values)
+- [x] Rand (some manner of random values)
+- [ ] Hex to isize conversion.
+- [ ] Len (of values)
+- [ ] Filter + tests/and/or
