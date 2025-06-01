@@ -13,7 +13,7 @@ use syn::parse::ParseStream;
 
 use crate::{
     array_expr::{
-        function::{Arg, Call, FunctionCallable, FunctionChain, ParsedArg, ToCallable},
+        function::{Arg, Call, Callable, Function, FunctionChain, ParsedArg, ToCallable},
         storage::Storage,
         value_array::ValueArray,
     },
@@ -120,9 +120,9 @@ pub struct ChunksCallable {
     /// Size of chunks (with exceptions for last chunk).
     size: Arg<NonZero<usize>>,
     /// Chain to call on chunks.
-    chain: Vec<FunctionCallable>,
+    chain: Vec<Callable<Function>>,
     /// Special chain to use on remainder (if none regular chain is used).
-    remainder: Option<Vec<FunctionCallable>>,
+    remainder: Option<Vec<Callable<Function>>>,
 }
 
 impl Call for ChunksCallable {

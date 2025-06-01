@@ -89,8 +89,8 @@ mod macros;
 mod single_arg;
 mod use_alias;
 
-/// Type used in call chains, result of [ToCallable] on [Function].
-pub type FunctionCallable = <Function as ToCallable>::Call;
+/// Get the [Call] implementation for [ToCallable] implementors
+pub type Callable<T> = <T as ToCallable>::Call;
 
 lookahead_keywords!(
     #[doc(hidden)]

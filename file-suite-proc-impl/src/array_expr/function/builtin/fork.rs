@@ -3,7 +3,7 @@
 use ::file_suite_proc_lib::{ArgTy, FromArg};
 
 use crate::array_expr::{
-    function::{Call, FunctionCallable, FunctionChain, chain::FunctionChains},
+    function::{Call, Callable, Function, FunctionChain, chain::FunctionChains},
     storage::Storage,
     value_array::ValueArray,
 };
@@ -12,7 +12,7 @@ use crate::array_expr::{
 #[derive(Debug, Clone)]
 pub struct ForkCallable {
     /// Function chains.
-    chains: Vec<Vec<FunctionCallable>>,
+    chains: Vec<Vec<Callable<Function>>>,
 }
 
 impl FromArg for ForkCallable {

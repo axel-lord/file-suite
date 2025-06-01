@@ -9,7 +9,7 @@ use ::syn::{
 };
 
 use crate::array_expr::{
-    function::{Call, Function, FunctionCallable, ToCallable},
+    function::{Call, Callable, Function, ToCallable},
     storage::Storage,
     value_array::ValueArray,
 };
@@ -85,7 +85,7 @@ impl FunctionChain {
     }
 
     /// Get a callable chain from self.
-    pub fn to_call_chain(&self) -> Vec<FunctionCallable> {
+    pub fn to_call_chain(&self) -> Vec<Callable<Function>> {
         self.functions.iter().map(|f| f.to_callable()).collect()
     }
 
@@ -94,7 +94,7 @@ impl FunctionChain {
     /// # Errors
     /// If any of the functions in the chain errors.
     pub fn call_chain(
-        chain: &[FunctionCallable],
+        chain: &[Callable<Function>],
         mut array: ValueArray,
         storage: &mut Storage,
     ) -> crate::Result<ValueArray> {
@@ -106,7 +106,7 @@ impl FunctionChain {
 }
 
 impl ToArg for FunctionChain {
-    type Arg = Vec<FunctionCallable>;
+    type Arg = Vec<Callable<Function>>;
 
     fn to_arg(&self) -> Self::Arg {
         self.to_call_chain()
@@ -143,7 +143,7 @@ impl ToTokens for FunctionChain {
 pub struct FunctionChains(Punctuated<FunctionChain, Token![,]>);
 
 impl ToArg for FunctionChains {
-    type Arg = Vec<Vec<FunctionCallable>>;
+    type Arg = Vec<Vec<Callable<Function>>>;
 
     fn to_arg(&self) -> Self::Arg {
         self.0.iter().map(|chain| chain.to_call_chain()).collect()
