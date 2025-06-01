@@ -60,6 +60,18 @@ pub enum TokenTree {
     Group(OpaqueGroup),
 }
 
+impl TokenTree {
+    /// Get span of token tree.
+    pub fn span(&self) -> Span {
+        match self {
+            TokenTree::Literal(literal) => literal.span(),
+            TokenTree::Ident(ident) => ident.span(),
+            TokenTree::Punct(punct) => punct.span(),
+            TokenTree::Group(opaque_group) => opaque_group.span(),
+        }
+    }
+}
+
 impl From<::proc_macro2::TokenTree> for TokenTree {
     fn from(value: ::proc_macro2::TokenTree) -> Self {
         match value {
@@ -129,6 +141,17 @@ impl OpaqueGroup {
         let Self { group, backing } = self;
 
         group.get_or_init(|| Group::from(backing.take().unwrap_or_else(|| unreachable!())))
+    }
+
+    /// Get span of opaque group.
+    pub fn span(&self) -> Span {
+        if let Some(group) = self.backing.take() {
+            let span = group.span();
+            self.backing.set(Some(group));
+            span
+        } else {
+            self.as_group().span
+        }
     }
 }
 

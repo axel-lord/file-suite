@@ -76,7 +76,7 @@ pub enum Response {
     /// Skip the given amount of tokens.
     /// Should probably be used with a count of 1 if
     /// something alternative was pushed to the token stream.
-    Skip(NonZero<usize>),
+    Skip(usize),
 }
 
 /// Trait for token folders to implement.
@@ -150,6 +150,9 @@ pub trait FoldTokens {
 ///
 /// # Errors
 /// Should any fold function of `f` error, said error will be forwarded.
+///
+/// # Panics
+/// If the [FoldTokens] implementor returns `Response::Skip(0)`.
 pub fn fold_tokens(f: &mut dyn FoldTokens, tokens: TokensRc) -> Result<TokenStream> {
     let mut context = Vec::new();
     context.push((Cursor::new(tokens), TokenStream::default()));
@@ -180,7 +183,11 @@ pub fn fold_tokens(f: &mut dyn FoldTokens, tokens: TokensRc) -> Result<TokenStre
                             cursor.forward(1)
                         }
                     },
-                    Response::Skip(non_zero) => cursor.forward(non_zero.get()),
+                    Response::Skip(non_zero) => cursor.forward(
+                        NonZero::new(non_zero)
+                            .unwrap_or_else(|| panic!("skip amount should not be 0"))
+                            .get(),
+                    ),
                 }
             }
             None => {
@@ -205,5 +212,73 @@ pub fn fold_tokens(f: &mut dyn FoldTokens, tokens: TokensRc) -> Result<TokenStre
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(
+        missing_docs,
+        clippy::missing_docs_in_private_items,
+        clippy::missing_panics_doc
+    )]
+
+    use ::quote::{ToTokens, TokenStreamExt, quote};
+    use ::syn::Ident;
+    use ::tokens_rc::TokenTree;
+
+    use crate::{FoldTokens, fold_tokens};
+
+    #[derive(Debug, Clone, Copy)]
+    pub struct F;
+
+    impl FoldTokens for F {
+        fn fold_ident(
+            &mut self,
+            ident: &syn::Ident,
+            _cursor: &crate::Cursor,
+            tokens: &mut proc_macro2::TokenStream,
+        ) -> crate::Result<crate::Response> {
+            if ident.to_string().as_str() == "Hello" {
+                tokens.append(Ident::new("world", ident.span()));
+                Ok(crate::Response::Skip(1))
+            } else {
+                Ok(crate::Response::Default)
+            }
+        }
+
+        fn fold_punct(
+            &mut self,
+            punct: &proc_macro2::Punct,
+            cursor: &crate::Cursor,
+            tokens: &mut proc_macro2::TokenStream,
+        ) -> crate::Result<crate::Response> {
+            if punct.as_char() == '?' && cursor.punct_match("???") {
+                if let Some(TokenTree::Group(g)) = cursor.get(3) {
+                    g.stream.to_tokens(tokens);
+                    Ok(crate::Response::Skip(4))
+                } else {
+                    Err(::syn::Error::new(
+                        cursor[2].span(),
+                        "expected delimited group following '???'",
+                    ))
+                }
+            } else {
+                Ok(crate::Response::Default)
+            }
+        }
+    }
+
+    #[test]
+    fn fold() {
+        let input = quote! {
+            A B Hello C { 1 2 3 ( 4 5  ??? [ "msg" ] ) } ??? ( Unwrap )
+        };
+        let expected = quote! {
+            A B world C { 1 2 3 ( 4 5 "msg" )} Unwrap
+        };
+        let result = fold_tokens(&mut F, input.into()).unwrap();
+
+        assert_eq!(result.to_string(), expected.to_string());
     }
 }
