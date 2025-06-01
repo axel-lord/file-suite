@@ -1,6 +1,6 @@
 //! Reference countet array of tokens.
 
-use ::std::rc::Rc;
+use ::std::{ops::Deref, rc::Rc};
 
 use ::proc_macro2::{Delimiter, Literal, Punct, Span, TokenStream, extra::DelimSpan};
 use ::quote::{ToTokens, TokenStreamExt};
@@ -9,6 +9,14 @@ use ::syn::{Ident, parse::Parse};
 /// Reference countet token array, providing cheap copying.
 #[derive(Debug, Clone)]
 pub struct TokensRc(Rc<[TokenTree]>);
+
+impl Deref for TokensRc {
+    type Target = [TokenTree];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl ToTokens for TokensRc {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
