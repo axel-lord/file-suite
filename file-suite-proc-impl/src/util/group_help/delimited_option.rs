@@ -4,11 +4,7 @@ use ::file_suite_proc_lib::{Lookahead, ensure_empty};
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
-use crate::{
-    array_expr::function::ToCallable,
-    macro_delimited,
-    util::{delimited::MacroDelimExt, parse_wrap::ParseWrap},
-};
+use crate::{array_expr::function::ToCallable, macro_delimited, util::delimited::MacroDelimExt};
 
 /// A delimited group, {}, [], (), which may be empty.
 #[derive(Debug, Clone)]
@@ -45,13 +41,6 @@ impl<T> AsMut<Option<T>> for DelimitedOption<T> {
 impl<T> From<DelimitedOption<T>> for Option<T> {
     fn from(value: DelimitedOption<T>) -> Self {
         value.inner
-    }
-}
-
-impl<T> DelimitedOption<ParseWrap<T>> {
-    /// Get a reference to the value wrapped by ParseWrap, if any.
-    pub fn unwrap_parsed(&self) -> Option<&T> {
-        self.inner.as_ref().map(|content| &content.inner)
     }
 }
 
