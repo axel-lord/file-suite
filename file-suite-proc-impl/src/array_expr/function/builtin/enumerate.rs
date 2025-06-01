@@ -2,7 +2,7 @@
 
 use ::std::num::NonZero;
 
-use ::file_suite_proc_lib::ToArg;
+use ::file_suite_proc_lib::{ToArg, lookahead::ParseBufferExt};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -16,7 +16,7 @@ use crate::{
         value::Value,
         value_array::ValueArray,
     },
-    util::{lookahead_parse::optional_lookahead_parse, spanned_int::SpannedInt},
+    util::spanned_int::SpannedInt,
 };
 
 /// [Call] Implementor for [EnumerateArgs].
@@ -133,10 +133,10 @@ impl Parse for EnumerateArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut lookahead = input.lookahead1();
 
-        let offset = optional_lookahead_parse(input, &mut lookahead)?;
+        let offset = input.forward_parse(&mut lookahead)?;
 
-        let step = if let Some(colon) = optional_lookahead_parse(input, &mut lookahead)? {
-            let step = optional_lookahead_parse(input, &mut lookahead)?;
+        let step = if let Some(colon) = input.forward_parse(&mut lookahead)? {
+            let step = input.forward_parse(&mut lookahead)?;
             Some(Step { colon, step })
         } else if lookahead.peek(End) {
             return Ok(Self {
@@ -147,8 +147,8 @@ impl Parse for EnumerateArgs {
             return Err(lookahead.error());
         };
 
-        let array_span = if let Some(colon) = optional_lookahead_parse(input, &mut lookahead)? {
-            let array_span = optional_lookahead_parse(input, &mut lookahead)?;
+        let array_span = if let Some(colon) = input.forward_parse(&mut lookahead)? {
+            let array_span = input.forward_parse(&mut lookahead)?;
             Some(ArraySpan { colon, array_span })
         } else if lookahead.peek(End) {
             return Ok(Self {

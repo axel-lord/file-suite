@@ -2,6 +2,7 @@
 
 use ::std::borrow::Cow;
 
+use ::file_suite_proc_lib::lookahead::ParseBufferExt;
 use ::quote::ToTokens;
 use ::syn::{
     MacroDelimiter,
@@ -17,10 +18,7 @@ use crate::{
         typed_value::TypedValue,
         value_array::ValueArray,
     },
-    util::{
-        delimited::MacroDelimExt, group_help::Delimited,
-        lookahead_parse::lookahead_parse_terminated, neverlike::NoPhantomData,
-    },
+    util::{delimited::MacroDelimExt, group_help::Delimited, neverlike::NoPhantomData},
 };
 
 #[derive(Debug, Clone)]
@@ -162,7 +160,7 @@ impl<T> Parse for SetArgs<T> {
             Self::SetArray {
                 expr: Some(input.parse()?),
             }
-        } else if let Some(keys) = lookahead_parse_terminated(input, &lookahead)? {
+        } else if let Some(keys) = input.lookahead_parse_terminated(&lookahead)? {
             Self::SetInput { keys }
         } else {
             return Err(lookahead.error())?;

@@ -1,6 +1,6 @@
 //! [FunctionChain] impl.
 
-use ::file_suite_proc_lib::{Lookahead, ToArg};
+use ::file_suite_proc_lib::{Lookahead, ToArg, lookahead::ParseBufferExt};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -14,7 +14,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::lookahead_parse::{LookaheadParse, lookahead_parse},
+    util::lookahead_parse::LookaheadParse,
 };
 
 // /// A function chain.
@@ -57,10 +57,10 @@ impl FunctionChain {
         let mut functions = Punctuated::new();
         let mut leading_dot = None;
 
-        if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
+        if let dot @ Some(..) = input.lookahead_parse(&lookahead)? {
             leading_dot = dot;
             functions.push_value(input.parse()?);
-        } else if let Some(first) = lookahead_parse(input, &lookahead)? {
+        } else if let Some(first) = input.lookahead_parse(&lookahead)? {
             functions.push_value(first);
         } else {
             return Err(lookahead.error());

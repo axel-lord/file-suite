@@ -6,7 +6,7 @@ use ::syn::{Token, parse::Parse};
 
 use crate::{
     array_expr::{from_values::FromValues, storage::Storage, typed_value::TypedValue},
-    util::lookahead_parse::{LookaheadParse, lookahead_parse},
+    util::lookahead_parse::LookaheadParse,
 };
 
 /// An argument that may be either a variable access or a value.
@@ -79,7 +79,7 @@ where
     where
         Self: syn::parse::Parse,
     {
-        if let Some(eq_token) = lookahead_parse(input, lookahead)? {
+        if let Some(eq_token) = input.lookahead_parse(lookahead)? {
             Ok(Some(Self::Variable {
                 eq_token,
                 var: input.call(TypedValue::parse)?,
