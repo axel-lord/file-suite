@@ -10,7 +10,6 @@ mod to_tokens_macros;
 
 pub mod delimited;
 pub mod fold_tokens;
-pub mod neverlike;
 pub mod tcmp;
 
 pub mod group_help {

@@ -6,6 +6,7 @@ mod kw_kind;
 
 pub mod from_arg;
 pub mod lookahead;
+pub mod neverlike;
 pub mod spanned_int;
 pub mod to_arg;
 pub mod tokens_rc;
