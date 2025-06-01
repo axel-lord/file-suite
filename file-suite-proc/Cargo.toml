@@ -9,7 +9,8 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-file-suite-proc-impl = { workspace = true }
+run-derive = { workspace = true }
+array-expr = { path = "../array-expr/" }
 
 [lints]
 workspace = true

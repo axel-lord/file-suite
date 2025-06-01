@@ -1,5 +1,5 @@
 [workspace]
-members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "file-suite-proc-impl", "file-suite-dyn", "file-suite-proc-lib", "tokens-rc", "fold-tokens"]
+members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "run-derive", "file-suite-dyn", "file-suite-proc-lib", "tokens-rc", "fold-tokens", "array-expr"]
 resolver = "2"
 default-members = ["file-suite"]
 
@@ -38,7 +38,7 @@ either = "1.15.0"
 env_logger = "0.11.8"
 file-suite-common = { version = "0.1.0", path = "file-suite-common" }
 file-suite-proc = { path = "file-suite-proc" }
-file-suite-proc-impl = { path = "file-suite-proc-impl" }
+run-derive = { path = "run-derive" }
 futures-core = "0.3.30"
 generate-keyfile = { version = "0.2.0", path = "generate-keyfile" }
 getrandom = "0.3.2"

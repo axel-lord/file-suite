@@ -27,7 +27,7 @@ test-miri *EXTRA:
 
 # Run proc-macro tests
 test-proc:
-	cargo test -p file-suite-proc-impl
+	cargo test -p file-suite-proc-lib -p array-expr -p tokens-rc -p run-derive -p fold-tokens
 
 # Format crates.
 fmt:

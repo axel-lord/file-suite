@@ -5,7 +5,7 @@ use ::proc_macro::TokenStream;
 /// Find array expressions in input token and replace them with computed result.
 #[proc_macro]
 pub fn array_expr_paste(input: TokenStream) -> TokenStream {
-    ::file_suite_proc_impl::array_expr_paste(input.into())
+    ::array_expr::array_expr_paste(input.into())
         .unwrap_or_else(|err| err.into_compile_error())
         .into()
 }
@@ -13,7 +13,7 @@ pub fn array_expr_paste(input: TokenStream) -> TokenStream {
 /// Calculate an array expression on input.
 #[proc_macro]
 pub fn array_expr(input: TokenStream) -> TokenStream {
-    ::file_suite_proc_impl::array_expr(input.into())
+    ::array_expr::array_expr(input.into())
         .unwrap_or_else(|err| err.into_compile_error())
         .into()
 }
