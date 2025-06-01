@@ -33,39 +33,36 @@ pub mod builtin {
 
 use ::file_suite_proc_lib::lookahead_keywords;
 
-use crate::{
-    array_expr::{
-        function::{
-            builtin::{
-                alias::AliasCallable,
-                block::BlockArgs,
-                case::CaseKind,
-                chain::ChainArgs,
-                chunks::ChunksArgs,
-                clear::ClearCallable,
-                count::CountCallable,
-                enumerate::EnumerateArgs,
-                fork::ForkCallable,
-                get::GetCallable,
-                intersperse::IntersperseCallable,
-                join::{JoinByCallable, JoinKind},
-                nth::NthCallable,
-                paste::PasteArgs,
-                repeat::RepeatCallable,
-                rev::RevCallable,
-                set::{Global, Local, SetArgs},
-                shift::ShiftCallable,
-                skip::SkipCallable,
-                split::{SplitByCallable, SplitKind},
-                stairs::StairsCallable,
-                take::TakeCallable,
-                trim::TrimCallable,
-            },
-            macros::function_enum,
+use crate::array_expr::{
+    function::{
+        builtin::{
+            alias::AliasCallable,
+            block::BlockArgs,
+            case::CaseKind,
+            chain::ChainArgs,
+            chunks::ChunksArgs,
+            clear::ClearCallable,
+            count::CountCallable,
+            enumerate::EnumerateArgs,
+            fork::ForkCallable,
+            get::GetCallable,
+            intersperse::IntersperseCallable,
+            join::{JoinByCallable, JoinKind},
+            nth::NthCallable,
+            paste::PasteArgs,
+            repeat::RepeatCallable,
+            rev::RevCallable,
+            set::{Global, Local, SetArgs},
+            shift::ShiftCallable,
+            skip::SkipCallable,
+            split::{SplitByCallable, SplitKind},
+            stairs::StairsCallable,
+            take::TakeCallable,
+            trim::TrimCallable,
         },
-        value::TyKind,
+        macros::function_enum,
     },
-    util::group_help::{Delimited, OptionalDelimited},
+    value::TyKind,
 };
 
 pub use self::{
@@ -73,8 +70,10 @@ pub use self::{
     call::{Call, DefaultArgs, ToCallable},
     chain::FunctionChain,
     deferred_args::DeferredArgs,
+    delimited::Delimited,
     empty_args::EmptyArgs,
     keyword_function::KwFn,
+    optional_delimited::OptionalDelimited,
     single_arg::SingleArg,
     use_alias::UseAlias,
 };
@@ -83,9 +82,11 @@ mod arg;
 mod call;
 mod chain;
 mod deferred_args;
+mod delimited;
 mod empty_args;
 mod keyword_function;
 mod macros;
+mod optional_delimited;
 mod single_arg;
 mod use_alias;
 

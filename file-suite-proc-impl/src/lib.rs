@@ -12,8 +12,6 @@ mod error;
 
 pub mod array_expr;
 
-pub mod util;
-
 pub use error::Error;
 
 /// Crate result type.

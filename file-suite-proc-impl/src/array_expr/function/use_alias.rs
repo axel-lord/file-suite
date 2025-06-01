@@ -7,14 +7,11 @@ use ::syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::{
-    array_expr::{
-        function::{Call, FunctionChain, ToCallable},
-        storage::Storage,
-        typed_value::TypedValue,
-        value_array::ValueArray,
-    },
-    util::group_help::OptionalDelimited,
+use crate::array_expr::{
+    function::{Call, FunctionChain, OptionalDelimited, ToCallable},
+    storage::Storage,
+    typed_value::TypedValue,
+    value_array::ValueArray,
 };
 
 /// Use an alias.
