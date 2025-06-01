@@ -10,12 +10,8 @@ pub mod tcmp;
 pub mod group_help {
     //! Helpers for group parsing.
 
-    pub use self::{
-        delimited::Delimited, empty_delimited::EmptyDelimited,
-        optional_delimited::OptionalDelimited,
-    };
+    pub use self::{delimited::Delimited, optional_delimited::OptionalDelimited};
 
     mod delimited;
-    mod empty_delimited;
     mod optional_delimited;
 }

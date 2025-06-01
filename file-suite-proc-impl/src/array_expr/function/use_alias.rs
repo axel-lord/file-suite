@@ -1,6 +1,6 @@
 //! [UseAlias] impl.
 
-use ::file_suite_proc_lib::{Lookahead, lookahead::ParseBufferExt};
+use ::file_suite_proc_lib::{End, Lookahead};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -14,7 +14,7 @@ use crate::{
         typed_value::TypedValue,
         value_array::ValueArray,
     },
-    util::group_help::EmptyDelimited,
+    util::group_help::OptionalDelimited,
 };
 
 /// Use an alias.
@@ -25,7 +25,7 @@ pub struct UseAlias {
     /// Alias to use.
     alias_key: TypedValue,
     /// Optional empty delim group for chain parity.
-    delim: Option<EmptyDelimited>,
+    delim: OptionalDelimited<End>,
 }
 
 impl ToCallable for UseAlias {
@@ -66,7 +66,7 @@ impl Parse for UseAlias {
         Ok(Self {
             eq_token: input.parse()?,
             alias_key: input.parse()?,
-            delim: input.optional_parse()?,
+            delim: input.parse()?,
         })
     }
 }

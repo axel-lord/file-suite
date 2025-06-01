@@ -20,6 +20,48 @@ pub use crate::{
     tokens_rc::TokensRc,
 };
 
+/// Parsable version of [End][::syn::parse::End].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct End;
+
+impl Lookahead for End {
+    fn lookahead_peek(lookahead: &syn::parse::Lookahead1) -> bool {
+        lookahead.peek(::syn::parse::End)
+    }
+
+    fn input_peek(input: syn::parse::ParseStream) -> bool {
+        input.peek(::syn::parse::End)
+    }
+
+    fn lookahead_parse(
+        _input: syn::parse::ParseStream,
+        lookahead: &syn::parse::Lookahead1,
+    ) -> syn::Result<Option<Self>>
+    where
+        Self: ::syn::parse::Parse,
+    {
+        if lookahead.peek(::syn::parse::End) {
+            Ok(Some(Self))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl ::syn::parse::Parse for End {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        match lookahead::ParseBufferExt::lookahead_parse(input, &lookahead)? {
+            Some(end) => Ok(end),
+            None => Err(lookahead.error()),
+        }
+    }
+}
+
+impl ::quote::ToTokens for End {
+    fn to_tokens(&self, _tokens: &mut proc_macro2::TokenStream) {}
+}
+
 /// Ensure a [ParseStream][::syn::parse::ParseStream] has reached it's end.
 ///
 /// # Errors

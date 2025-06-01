@@ -53,5 +53,14 @@ mod tests {
             },
             { "camel-to-kebab-conv" },
         );
+
+        assert_arr_expr!(
+            {
+                toKebab -> alias{ case(lower).join(kebab) },
+                fromCamel -> alias { split(camel) },
+                camelToKebabConv -> =fromCamel{}.=toKebab().ty(str),
+            },
+            { "camel-to-kebab-conv" },
+        );
     }
 }
