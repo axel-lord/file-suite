@@ -5,10 +5,7 @@ use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 use syn::parse::{Lookahead1, ParseStream};
 
-use crate::{
-    macro_delimited,
-    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
-};
+use crate::{macro_delimited, util::delimited::MacroDelimExt};
 
 /// A delimited empty group, {}, [], ().
 #[derive(Debug, Clone)]
@@ -31,8 +28,6 @@ impl Parse for EmptyDelimited {
         Ok(Self { delim })
     }
 }
-
-impl LookaheadParse for EmptyDelimited {}
 
 impl ToTokens for EmptyDelimited {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {

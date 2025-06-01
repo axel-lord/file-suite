@@ -5,7 +5,7 @@ use ::quote::ToTokens;
 use ::syn::parse::Parse;
 use syn::parse::{Lookahead1, ParseStream};
 
-use crate::{array_expr::function::ToCallable, util::lookahead_parse::LookaheadParse};
+use crate::array_expr::function::ToCallable;
 
 /// Function composed of a keyword K, and some arguments A.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -59,11 +59,4 @@ where
             args: input.parse()?,
         })
     }
-}
-
-impl<K, A> LookaheadParse for KwFn<K, A>
-where
-    K: LookaheadParse,
-    A: Parse,
-{
 }

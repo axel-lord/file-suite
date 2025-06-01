@@ -10,7 +10,7 @@ use syn::parse::{Lookahead1, ParseStream};
 use crate::{
     array_expr::function::{Call, DefaultArgs, ToCallable},
     macro_delimited,
-    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
+    util::delimited::MacroDelimExt,
 };
 
 /// A delimited empty group, {}, [], (), which may not exist.
@@ -58,8 +58,6 @@ where
         T::default_args()
     }
 }
-
-impl<T> LookaheadParse for EmptyArgs<T> {}
 
 impl<T> ToTokens for EmptyArgs<T> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {

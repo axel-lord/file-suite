@@ -13,10 +13,7 @@ use ::syn::{
     punctuated::Punctuated,
 };
 
-use crate::{
-    array_expr::{value::Value, value_array::ValueArray},
-    util::lookahead_parse::LookaheadParse,
-};
+use crate::array_expr::{value::Value, value_array::ValueArray};
 
 /// A typed [Value] which may be converted to tokens.
 #[derive(Debug, Clone)]
@@ -93,8 +90,6 @@ impl Parse for TypedValue {
     }
 }
 
-impl LookaheadParse for TypedValue {}
-
 impl ToTokens for TypedValue {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
@@ -153,8 +148,6 @@ where
         Punctuated::parse_terminated(input).map(Self)
     }
 }
-
-impl<P> LookaheadParse for TypedValues<P> where P: LookaheadParse {}
 
 impl<P> ToTokens for TypedValues<P>
 where

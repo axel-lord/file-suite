@@ -14,7 +14,7 @@ use crate::{
         typed_value::TypedValue,
         value_array::ValueArray,
     },
-    util::{group_help::EmptyDelimited, lookahead_parse::LookaheadParse},
+    util::group_help::EmptyDelimited,
 };
 
 /// Use an alias.
@@ -70,8 +70,6 @@ impl Parse for UseAlias {
         })
     }
 }
-
-impl LookaheadParse for UseAlias {}
 
 impl ToTokens for UseAlias {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {

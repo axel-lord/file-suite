@@ -8,23 +8,11 @@ use ::syn::{
     punctuated::Punctuated,
 };
 
-use crate::{
-    array_expr::{
-        function::{Call, Function, FunctionCallable, ToCallable},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::lookahead_parse::LookaheadParse,
+use crate::array_expr::{
+    function::{Call, Function, FunctionCallable, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
-
-// /// A function chain.
-// #[derive(Debug, Clone, Default)]
-// pub struct FunctionChain {
-//     /// Leading.
-//     dot: Option<Token![.]>,
-//     /// Functions of chain.
-//     functions: Punctuated<Function, Token![.]>,
-// }
 
 /// A function chain.
 #[derive(Debug, Clone, Default)]
@@ -138,8 +126,6 @@ impl Lookahead for FunctionChain {
             || <Function as Lookahead>::lookahead_peek(lookahead)
     }
 }
-
-impl LookaheadParse for FunctionChain {}
 
 impl ToTokens for FunctionChain {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {

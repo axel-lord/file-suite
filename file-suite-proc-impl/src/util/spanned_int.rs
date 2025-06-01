@@ -10,8 +10,6 @@ use ::syn::{
     parse::{Lookahead1, Parse, ParseStream},
 };
 
-use crate::util::lookahead_parse::LookaheadParse;
-
 #[doc(hidden)]
 mod sealed {
     #[doc(hidden)]
@@ -87,8 +85,6 @@ where
         value.to_tokens(span, tokens);
     }
 }
-
-impl<N> LookaheadParse for SpannedInt<N> where N: SpannedIntPrimitive {}
 
 /// Implement trait for integer primitives and nonzero values.
 macro_rules! impl_spanned_int_primitive {

@@ -4,11 +4,7 @@ use ::file_suite_proc_lib::{Lookahead, ensure_empty};
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, parse::Parse};
 
-use crate::{
-    array_expr::function::ToCallable,
-    macro_delimited,
-    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
-};
+use crate::{array_expr::function::ToCallable, macro_delimited, util::delimited::MacroDelimExt};
 
 /// A delimited group, {}, [], (), which contains a single value.
 #[derive(Debug, Clone)]
@@ -66,5 +62,3 @@ where
         Ok(Self { delim, inner })
     }
 }
-
-impl<T> LookaheadParse for Delimited<T> where T: Parse {}

@@ -45,7 +45,7 @@ macro_rules! function_enum {
     };
 
     $crate::to_tokens_enum!($nm { $( $vnm ),* });
-    $crate::lookahead_parse_enum!($nm { $( $vnm($vty) ),* });
+    ::file_suite_proc_lib::lookahead_parse_enum!($nm {$($vnm: $vty),*});
 };
 }
 pub(crate) use function_enum;

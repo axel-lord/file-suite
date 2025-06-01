@@ -4,10 +4,7 @@ use ::file_suite_proc_lib::{Lookahead, ToArg, lookahead::ParseBufferExt};
 use ::quote::ToTokens;
 use ::syn::{Token, parse::Parse};
 
-use crate::{
-    array_expr::{from_values::FromValues, storage::Storage, typed_value::TypedValue},
-    util::lookahead_parse::LookaheadParse,
-};
+use crate::array_expr::{from_values::FromValues, storage::Storage, typed_value::TypedValue};
 
 /// An argument that may be either a variable access or a value.
 #[derive(Debug, Clone)]
@@ -104,8 +101,6 @@ where
         }
     }
 }
-
-impl<V> LookaheadParse for ParsedArg<V> where V: LookaheadParse {}
 
 impl<V> ToTokens for ParsedArg<V>
 where

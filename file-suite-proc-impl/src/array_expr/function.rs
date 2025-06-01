@@ -31,6 +31,8 @@ pub mod builtin {
     pub mod ty;
 }
 
+use ::file_suite_proc_lib::lookahead_keywords;
+
 use crate::{
     array_expr::{
         function::{
@@ -63,7 +65,6 @@ use crate::{
         },
         value::TyKind,
     },
-    lookahead_parse_keywords,
     util::group_help::{Delimited, OptionalDelimited},
 };
 
@@ -91,35 +92,38 @@ mod use_alias;
 /// Type used in call chains, result of [ToCallable] on [Function].
 pub type FunctionCallable = <Function as ToCallable>::Call;
 
-lookahead_parse_keywords![
-    alias,
-    case,
-    chunks,
-    clear,
-    count,
-    split,
-    join,
-    ty,
-    enumerate,
-    rev,
-    trim,
-    shift,
-    fork,
-    repeat,
-    stairs,
-    paste,
-    global,
-    local,
-    chain,
-    block,
-    join_by,
-    split_by,
-    take,
-    skip,
-    intersperse,
-    get,
-    nth,
-];
+lookahead_keywords!(
+    #[doc(hidden)]
+    kw {
+        alias,
+        case,
+        chunks,
+        clear,
+        count,
+        split,
+        join,
+        ty,
+        enumerate,
+        rev,
+        trim,
+        shift,
+        fork,
+        repeat,
+        stairs,
+        paste,
+        global,
+        local,
+        chain,
+        block,
+        join_by,
+        split_by,
+        take,
+        skip,
+        intersperse,
+        get,
+        nth,
+    }
+);
 
 function_enum!(
     /// Enum collecting [Call] implementors.

@@ -9,7 +9,7 @@ use syn::parse::Parse;
 use crate::{
     array_expr::{ArrayExpr, Node, typed_value::TypedValue, value::Value},
     macro_delimited,
-    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse},
+    util::delimited::MacroDelimExt,
 };
 
 /// Input value of an array expression.
@@ -116,8 +116,6 @@ impl Parse for NodeInput {
         }
     }
 }
-
-impl LookaheadParse for NodeInput {}
 
 impl ToTokens for NodeInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {

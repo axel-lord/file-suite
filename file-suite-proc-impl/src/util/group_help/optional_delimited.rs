@@ -6,9 +6,7 @@ use ::syn::{MacroDelimiter, parse::Parse};
 
 use crate::{
     array_expr::function::ToCallable,
-    util::{
-        delimited::MacroDelimExt, group_help::DelimitedOption, lookahead_parse::LookaheadParse,
-    },
+    util::{delimited::MacroDelimExt, group_help::DelimitedOption},
 };
 
 /// A delimited group, {}, [], (), which may be empty, and may not exist. As such whilst it
@@ -70,5 +68,3 @@ where
         }
     }
 }
-
-impl<T> LookaheadParse for OptionalDelimited<T> where T: Parse {}

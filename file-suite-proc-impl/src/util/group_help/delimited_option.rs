@@ -7,7 +7,7 @@ use ::syn::{MacroDelimiter, parse::Parse};
 use crate::{
     array_expr::function::ToCallable,
     macro_delimited,
-    util::{delimited::MacroDelimExt, lookahead_parse::LookaheadParse, parse_wrap::ParseWrap},
+    util::{delimited::MacroDelimExt, parse_wrap::ParseWrap},
 };
 
 /// A delimited group, {}, [], (), which may be empty.
@@ -48,10 +48,7 @@ impl<T> From<DelimitedOption<T>> for Option<T> {
     }
 }
 
-impl<T> DelimitedOption<ParseWrap<T>>
-where
-    T: LookaheadParse,
-{
+impl<T> DelimitedOption<ParseWrap<T>> {
     /// Get a reference to the value wrapped by ParseWrap, if any.
     pub fn unwrap_parsed(&self) -> Option<&T> {
         self.inner.as_ref().map(|content| &content.inner)
@@ -96,5 +93,3 @@ where
         Ok(Self { delim, inner })
     }
 }
-
-impl<T> LookaheadParse for DelimitedOption<T> where T: Parse {}

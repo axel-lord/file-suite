@@ -32,7 +32,6 @@ macro_rules! kw_kind {
         }
 
         const _: () = {
-        impl $crate::util::lookahead_parse::LookaheadParse for $wrap_ident {}
 
         impl $crate::array_expr::from_values::FromValues for $kind_ident {
             fn from_values(values: &[$crate::array_expr::value::Value]) -> $crate::Result<Self> {

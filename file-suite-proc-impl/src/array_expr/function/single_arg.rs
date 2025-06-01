@@ -2,18 +2,15 @@
 
 use ::std::{fmt::Debug, marker::PhantomData};
 
-use ::file_suite_proc_lib::{FromArg, ToArg};
+use ::file_suite_proc_lib::{FromArg, Lookahead, ToArg};
 use ::quote::ToTokens;
 use ::syn::parse::Parse;
 
-use crate::{
-    array_expr::{
-        from_values::FromValues,
-        function::{Call, DefaultArgs, ParsedArg, ToCallable},
-        storage::Storage,
-        value_array::ValueArray,
-    },
-    util::lookahead_parse::LookaheadParse,
+use crate::array_expr::{
+    from_values::FromValues,
+    function::{Call, DefaultArgs, ParsedArg, ToCallable},
+    storage::Storage,
+    value_array::ValueArray,
 };
 
 /// Single argument parse implementor.
@@ -73,7 +70,7 @@ where
 impl<C> Parse for SingleArg<C>
 where
     C: FromArg,
-    C::Factory: LookaheadParse,
+    C::Factory: Lookahead + Parse,
 {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
