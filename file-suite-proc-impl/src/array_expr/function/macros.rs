@@ -44,7 +44,7 @@ macro_rules! function_enum {
         }
     };
 
-    $crate::to_tokens_enum!($nm { $( $vnm ),* });
+    ::file_suite_proc_lib::to_tokens_enum!($nm { $( $vnm ),* });
     ::file_suite_proc_lib::lookahead_parse_enum!($nm {$($vnm: $vty),*});
 };
 }

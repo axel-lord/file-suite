@@ -1,13 +1,13 @@
-//! [to_tokens_enum] impl.
+//! Declarative macros for implementing [ToTokens][::quote::ToTokens].
 
 /// Implement [::quote::ToTokens] for an enum of single field tuple variants.
 #[macro_export]
 macro_rules! to_tokens_enum {
-    ($nm:ident { $( $vnm:ident ),* $(,)?}) => {
-        impl ::quote::ToTokens for $nm {
+    ($name:ident { $( $variant_name:ident ),* $(,)?}) => {
+        impl ::quote::ToTokens for $name {
             fn to_tokens(&self, tokens: &mut ::proc_macro2::TokenStream) {
                 match self {$(
-                    Self::$vnm(value) => value.to_tokens(tokens),
+                    Self::$variant_name(value) => value.to_tokens(tokens),
                 )*}
             }
         }
@@ -17,12 +17,12 @@ macro_rules! to_tokens_enum {
 /// Implement [::quote::ToTokens] for a struct.
 #[macro_export]
 macro_rules! to_tokens_struct {
-    ($nm:ident { $( $vnm:ident),* $(,)?}) => {
-        impl ::quote::ToTokens for $nm {
+    ($name:ident { $( $field_name:ident),* $(,)?}) => {
+        impl ::quote::ToTokens for $name {
             fn to_tokens(&self, tokens: &mut ::proc_macro2::TokenStream) {
-                let Self { $($vnm),* } = self;
+                let Self { $($field_name),* } = self;
                 $(
-                $vnm.to_tokens(tokens);
+                $field_name.to_tokens(tokens);
                 )*
             }
         }

@@ -3,7 +3,6 @@
 pub use self::lookahead::TokenLookahead;
 
 mod lookahead;
-mod to_tokens_macros;
 
 pub mod delimited;
 pub mod fold_tokens;
