@@ -1,6 +1,9 @@
 //! Utilities for lookahead parsing.
 
-use ::syn::parse::{Lookahead1, Parse, ParseBuffer, ParseStream};
+use ::syn::{
+    parse::{Lookahead1, Parse, ParseBuffer, ParseStream},
+    punctuated::Punctuated,
+};
 
 /// Trait for types which should be parsed based on the next token in a lookahead.
 pub trait Lookahead {
@@ -59,6 +62,35 @@ pub trait ParseBufferExt {
     fn forward_parse<'s, T>(&'s self, lookahead: &mut Lookahead1<'s>) -> ::syn::Result<Option<T>>
     where
         T: Lookahead + Parse;
+
+    /// Use [Lookahead::lookahead_peek] to decide if a [Punctuated] should be parsed
+    /// and parse it if so.
+    ///
+    /// # Errors
+    /// If [Lookahead::lookahead_peek] returns true and then the parsing fails
+    /// said error will be forwarded.
+    fn lookahead_parse_terminated<T, P>(
+        &self,
+        lookahead: &Lookahead1,
+    ) -> ::syn::Result<Option<Punctuated<T, P>>>
+    where
+        T: Lookahead + Parse,
+        P: Parse;
+
+    /// Use [Lookahead::lookahead_peek] to decide if a [Punctuated] should be parsed
+    /// and parse it if so using the parsing function for values.
+    ///
+    /// # Errors
+    /// If [Lookahead::lookahead_peek] returns true and then the parsing fails
+    /// said error will be forwarded.
+    fn lookahead_parse_terminated_with<'a, T, P>(
+        &'a self,
+        lookahead: &Lookahead1,
+        parser: fn(ParseStream<'a>) -> ::syn::Result<T>,
+    ) -> ::syn::Result<Option<Punctuated<T, P>>>
+    where
+        T: Lookahead,
+        P: Parse;
 }
 
 impl ParseBufferExt for ParseBuffer<'_> {
@@ -89,6 +121,37 @@ impl ParseBufferExt for ParseBuffer<'_> {
                 *lookahead = self.lookahead1();
                 result
             }
+        }
+    }
+
+    fn lookahead_parse_terminated<T, P>(
+        &self,
+        lookahead: &Lookahead1,
+    ) -> syn::Result<Option<Punctuated<T, P>>>
+    where
+        T: Lookahead + Parse,
+        P: Parse,
+    {
+        if T::lookahead_peek(lookahead) {
+            Punctuated::parse_terminated(self).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn lookahead_parse_terminated_with<'a, T, P>(
+        &'a self,
+        lookahead: &Lookahead1,
+        parser: fn(ParseStream<'a>) -> syn::Result<T>,
+    ) -> syn::Result<Option<Punctuated<T, P>>>
+    where
+        T: Lookahead,
+        P: Parse,
+    {
+        if T::lookahead_peek(lookahead) {
+            Punctuated::parse_terminated_with(self, parser).map(Some)
+        } else {
+            Ok(None)
         }
     }
 }
@@ -130,6 +193,55 @@ macro_rules! lookahead_keywords {
             }
         }
         )*};
+    };
+}
+
+/// Implement [Lookahead] and [Parse] for an enum with variants implementing [Lookahead] and [Parse].
+#[macro_export]
+macro_rules! lookahead_parse_enum {
+    ($name:path {$($variant_name:ident: $variant_ty:ty),* $(,)?}) => {
+        impl $crate::__private::Parse for $name {
+            fn parse(input: $crate::__private::ParseStream) -> $crate::__private::syn::Result<Self> {
+                let lookahead = input.lookahead1();
+                if let Some(value) = $crate::Lookahead::lookahead_parse(input, &lookahead)? {
+                    Ok(value)
+                } else {
+                    Err(lookahead.error())
+                }
+            }
+        }
+
+        impl $crate::Lookahead for $name {
+            fn lookahead_peek(lookahead: &$crate::__private::Lookahead1) -> bool {
+                $(
+                if <$variant_ty as $crate::Lookahead>::lookahead_peek(lookahead) {
+                    return true;
+                }
+                )*
+                false
+            }
+
+            fn input_peek(input: $crate::__private::ParseStream) -> bool {
+                $(
+                if <$variant_ty as $crate::Lookahead>::input_peek(input) {
+                    return true;
+                }
+                )*
+                false
+            }
+
+            fn lookahead_parse(
+                input: $crate::__private::ParseStream,
+                lookahead: &$crate::__private::Lookahead1
+            ) -> $crate::__private::syn::Result<Option<Self>> {
+                $(
+                if let Some(value) = <$variant_ty as $crate::Lookahead>::lookahead_parse(input, lookahead)? {
+                    return Ok(Some(Self::$variant_name(value)));
+                }
+                )*
+                Ok(None)
+            }
+        }
     };
 }
 

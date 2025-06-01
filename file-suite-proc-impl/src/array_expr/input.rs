@@ -1,8 +1,10 @@
 //! [Input] impl.
 
+use ::file_suite_proc_lib::{Lookahead, lookahead::ParseBufferExt};
 use ::proc_macro2::TokenStream;
 use ::quote::ToTokens;
 use ::syn::{MacroDelimiter, Token};
+use syn::parse::Parse;
 
 use crate::{
     array_expr::{ArrayExpr, Node, typed_value::TypedValue, value::Value},
@@ -66,11 +68,21 @@ impl NodeInput {
     }
 }
 
-impl LookaheadParse for NodeInput {
+impl Lookahead for NodeInput {
+    fn lookahead_peek(lookahead: &syn::parse::Lookahead1) -> bool {
+        MacroDelimiter::lookahead_peek(lookahead)
+            || lookahead.peek(Token![=])
+            || lookahead.peek(Token![?])
+            || TypedValue::lookahead_peek(lookahead)
+    }
+
     fn lookahead_parse(
         input: syn::parse::ParseStream,
         lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
+    ) -> syn::Result<Option<Self>>
+    where
+        Self: Parse,
+    {
         Ok(Some(if MacroDelimiter::lookahead_peek(lookahead) {
             let content;
             let delim = macro_delimited!(content in input);
@@ -80,12 +92,12 @@ impl LookaheadParse for NodeInput {
         } else if lookahead.peek(Token![=]) {
             Self::Access {
                 eq_token: input.parse()?,
-                key: input.call(LookaheadParse::parse)?,
+                key: input.parse()?,
             }
         } else if lookahead.peek(Token![?]) {
             Self::WeakAccess {
                 question_token: input.parse()?,
-                key: input.call(LookaheadParse::parse)?,
+                key: input.parse()?,
             }
         } else if let Some(value) = TypedValue::lookahead_parse(input, lookahead)? {
             Self::Value(value)
@@ -94,6 +106,18 @@ impl LookaheadParse for NodeInput {
         }))
     }
 }
+
+impl Parse for NodeInput {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        match input.lookahead_parse(&lookahead)? {
+            Some(value) => Ok(value),
+            None => Err(lookahead.error()),
+        }
+    }
+}
+
+impl LookaheadParse for NodeInput {}
 
 impl ToTokens for NodeInput {
     fn to_tokens(&self, tokens: &mut TokenStream) {

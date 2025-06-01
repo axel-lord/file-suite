@@ -1,5 +1,6 @@
 //! Expressions working with arrays of strings at compile-time.
 
+use ::file_suite_proc_lib::Lookahead;
 use ::proc_macro2::{Span, TokenStream};
 use ::quote::ToTokens;
 use ::syn::{
@@ -8,15 +9,12 @@ use ::syn::{
     punctuated::Punctuated,
 };
 
-use crate::{
-    array_expr::{
-        function::{Call, Function, FunctionChain, ToCallable},
-        input::{Input, NodeInput},
-        storage::Storage,
-        value::Value,
-        value_array::ValueArray,
-    },
-    util::lookahead_parse::LookaheadParse,
+use crate::array_expr::{
+    function::{Call, Function, FunctionChain, ToCallable},
+    input::{Input, NodeInput},
+    storage::Storage,
+    value::Value,
+    value_array::ValueArray,
 };
 
 pub(crate) use paste::ArrayExprPaste;

@@ -1,6 +1,6 @@
 //! [FunctionChain] impl.
 
-use ::file_suite_proc_lib::ToArg;
+use ::file_suite_proc_lib::{Lookahead, ToArg};
 use ::quote::ToTokens;
 use ::syn::{
     Token,
@@ -59,7 +59,7 @@ impl FunctionChain {
 
         if let dot @ Some(..) = lookahead_parse(input, &lookahead)? {
             leading_dot = dot;
-            functions.push_value(input.call(LookaheadParse::parse)?);
+            functions.push_value(input.parse()?);
         } else if let Some(first) = lookahead_parse(input, &lookahead)? {
             functions.push_value(first);
         } else {
@@ -92,7 +92,7 @@ impl FunctionChain {
             }
 
             self.functions.push_punct(input.parse()?);
-            self.functions.push_value(input.call(Function::parse)?);
+            self.functions.push_value(input.parse()?);
         }
     }
 
@@ -131,33 +131,15 @@ impl Parse for FunctionChain {
     }
 }
 
-impl LookaheadParse for FunctionChain {
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
-        let mut first = if let leading_dot @ Some(..) = lookahead_parse(input, lookahead)? {
-            let mut functions = Punctuated::new();
-            functions.push_value(input.call(Function::parse)?);
-            FunctionChain {
-                leading_dot,
-                functions,
-            }
-        } else if let Some(func) = lookahead_parse(input, lookahead)? {
-            let mut functions = Punctuated::new();
-            functions.push_value(func);
-            FunctionChain {
-                leading_dot: None,
-                functions,
-            }
-        } else if lookahead.peek(End) {
-            return Ok(Some(Self::default()));
-        } else {
-            return Ok(None);
-        };
-
-        first.parse_additional(input, |lookahead| lookahead.peek(End))?;
-
-        Ok(Some(first))
+impl Lookahead for FunctionChain {
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+        lookahead.peek(End)
+            || lookahead.peek(Token![=])
+            || <Function as Lookahead>::lookahead_peek(lookahead)
     }
 }
+
+impl LookaheadParse for FunctionChain {}
 
 impl ToTokens for FunctionChain {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {

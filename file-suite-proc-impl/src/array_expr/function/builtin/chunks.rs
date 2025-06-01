@@ -17,7 +17,7 @@ use crate::{
         storage::Storage,
         value_array::ValueArray,
     },
-    util::{lookahead_parse::LookaheadParse, spanned_int::SpannedInt},
+    util::spanned_int::SpannedInt,
 };
 
 /// Specification for how many values are in each chunk (except the last which may be
@@ -67,7 +67,7 @@ impl ToTokens for ChunksArgs {
 
 impl Parse for ChunksArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let chunk_size = input.call(LookaheadParse::parse)?;
+        let chunk_size = input.parse()?;
         let comma_token = input.parse()?;
         let chain = FunctionChain::parse_terminated(input, |lookahead| {
             lookahead.peek(End) || lookahead.peek(Token![,])

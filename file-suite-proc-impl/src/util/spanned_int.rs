@@ -2,12 +2,12 @@
 
 use ::std::num::NonZero;
 
-use ::file_suite_proc_lib::ToArg;
+use ::file_suite_proc_lib::{Lookahead, ToArg};
 use ::proc_macro2::{Span, TokenStream};
 use ::quote::{ToTokens, quote_spanned};
 use ::syn::{
     LitInt,
-    parse::{Lookahead1, ParseStream},
+    parse::{Lookahead1, Parse, ParseStream},
 };
 
 use crate::util::lookahead_parse::LookaheadParse;
@@ -45,6 +45,28 @@ where
     pub span: Span,
 }
 
+impl<N> Lookahead for SpannedInt<N>
+where
+    N: SpannedIntPrimitive,
+{
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+        lookahead.peek(LitInt)
+    }
+}
+
+impl<N> Parse for SpannedInt<N>
+where
+    N: SpannedIntPrimitive,
+{
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let lit_int = input.parse::<LitInt>()?;
+        let span = lit_int.span();
+        let value = N::from_lit(lit_int)?;
+
+        Ok(Self { span, value })
+    }
+}
+
 impl<N> ToArg for SpannedInt<N>
 where
     N: SpannedIntPrimitive,
@@ -66,23 +88,7 @@ where
     }
 }
 
-impl<N> LookaheadParse for SpannedInt<N>
-where
-    N: SpannedIntPrimitive,
-{
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> syn::Result<Option<Self>> {
-        lookahead
-            .peek(LitInt)
-            .then(|| {
-                let lit_int = input.parse::<LitInt>()?;
-                let span = lit_int.span();
-                let value = N::from_lit(lit_int)?;
-
-                Ok(Self { span, value })
-            })
-            .transpose()
-    }
-}
+impl<N> LookaheadParse for SpannedInt<N> where N: SpannedIntPrimitive {}
 
 /// Implement trait for integer primitives and nonzero values.
 macro_rules! impl_spanned_int_primitive {

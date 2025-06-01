@@ -1,7 +1,8 @@
 //! Utilities for arguments which may be gotten from variables.
 
-use ::file_suite_proc_lib::ToArg;
+use ::file_suite_proc_lib::{Lookahead, ToArg, lookahead::ParseBufferExt};
 use ::quote::ToTokens;
+use ::syn::{Token, parse::Parse};
 
 use crate::{
     array_expr::{from_values::FromValues, storage::Storage, typed_value::TypedValue},
@@ -63,26 +64,48 @@ where
     }
 }
 
-impl<V> LookaheadParse for ParsedArg<V>
+impl<V> Lookahead for ParsedArg<V>
 where
-    V: LookaheadParse,
+    V: Lookahead + Parse,
 {
+    fn lookahead_peek(lookahead: &syn::parse::Lookahead1) -> bool {
+        lookahead.peek(Token![=]) || V::lookahead_peek(lookahead)
+    }
+
     fn lookahead_parse(
         input: syn::parse::ParseStream,
         lookahead: &syn::parse::Lookahead1,
-    ) -> syn::Result<Option<Self>> {
+    ) -> syn::Result<Option<Self>>
+    where
+        Self: syn::parse::Parse,
+    {
         if let Some(eq_token) = lookahead_parse(input, lookahead)? {
             Ok(Some(Self::Variable {
                 eq_token,
                 var: input.call(TypedValue::parse)?,
             }))
-        } else if let Some(value) = lookahead_parse(input, lookahead)? {
+        } else if let Some(value) = input.lookahead_parse(lookahead)? {
             Ok(Some(Self::Value(value)))
         } else {
             Ok(None)
         }
     }
 }
+
+impl<V> Parse for ParsedArg<V>
+where
+    V: Lookahead + Parse,
+{
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        match input.lookahead_parse(&lookahead)? {
+            Some(value) => Ok(value),
+            None => Err(lookahead.error()),
+        }
+    }
+}
+
+impl<V> LookaheadParse for ParsedArg<V> where V: LookaheadParse {}
 
 impl<V> ToTokens for ParsedArg<V>
 where

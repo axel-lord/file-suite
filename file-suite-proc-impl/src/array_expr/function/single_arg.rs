@@ -77,7 +77,7 @@ where
 {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            arg: input.call(LookaheadParse::parse)?,
+            arg: input.parse()?,
             _p: PhantomData,
         })
     }

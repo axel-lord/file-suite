@@ -18,10 +18,8 @@ use crate::{
         value_array::ValueArray,
     },
     util::{
-        delimited::MacroDelimExt,
-        group_help::Delimited,
-        lookahead_parse::{LookaheadParse, lookahead_parse_terminated},
-        neverlike::NoPhantomData,
+        delimited::MacroDelimExt, group_help::Delimited,
+        lookahead_parse::lookahead_parse_terminated, neverlike::NoPhantomData,
     },
 };
 
@@ -162,7 +160,7 @@ impl<T> Parse for SetArgs<T> {
             Self::SetArray { expr: None }
         } else if MacroDelimiter::lookahead_peek(&lookahead) {
             Self::SetArray {
-                expr: Some(input.call(LookaheadParse::parse)?),
+                expr: Some(input.parse()?),
             }
         } else if let Some(keys) = lookahead_parse_terminated(input, &lookahead)? {
             Self::SetInput { keys }

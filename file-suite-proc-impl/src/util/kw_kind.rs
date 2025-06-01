@@ -32,15 +32,7 @@ macro_rules! kw_kind {
         }
 
         const _: () = {
-        impl $crate::util::lookahead_parse::LookaheadParse for $wrap_ident {
-            fn lookahead_parse(
-                input: ::syn::parse::ParseStream,
-                lookahead: &::syn::parse::Lookahead1
-            ) -> ::syn::Result<Option<Self>> {
-                ::file_suite_proc_lib::lookahead::ParseBufferExt::lookahead_parse(input, lookahead)
-            }
-        }
-
+        impl $crate::util::lookahead_parse::LookaheadParse for $wrap_ident {}
 
         impl $crate::array_expr::from_values::FromValues for $kind_ident {
             fn from_values(values: &[$crate::array_expr::value::Value]) -> $crate::Result<Self> {

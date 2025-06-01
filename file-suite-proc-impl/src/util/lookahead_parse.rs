@@ -1,7 +1,8 @@
 //! Utilities for parsing using a [Lookahead1].
 
+use ::file_suite_proc_lib::{Lookahead, lookahead::ParseBufferExt};
 use ::syn::{
-    parse::{End, Lookahead1, ParseStream},
+    parse::{End, Lookahead1, Parse, ParseStream},
     punctuated::Punctuated,
 };
 
@@ -26,7 +27,7 @@ pub fn optional_parse<T>(input: ParseStream) -> ::syn::Result<Option<T>>
 where
     T: LookaheadParse,
 {
-    T::optional_parse(input)
+    input.optional_parse()
 }
 
 /// Use a [LookaheadParse] impl to parse an optional T if match, else parse nothing.
@@ -93,38 +94,8 @@ pub fn lookahead_parse_terminated<T: LookaheadParse, P: LookaheadParse>(
 /// Trait for conditional parsing useing a [Lookahead1].
 pub trait LookaheadParse
 where
-    Self: Sized,
+    Self: Sized + Parse + Lookahead,
 {
-    /// Parse an instance if lookahead peek matches.
-    ///
-    /// # Errors
-    /// If a valid value peeked by lookahead cannot be parsed.
-    fn lookahead_parse(input: ParseStream, lookahead: &Lookahead1) -> ::syn::Result<Option<Self>>;
-
-    /// Parse an instance using [LookaheadParse::lookahead_parse] implementation.
-    ///
-    /// # Errors
-    /// If an expected value cannot be parsed.
-    /// Or if no expected value was encountered.
-    #[inline]
-    fn parse(input: ParseStream) -> ::syn::Result<Self> {
-        let lookahead = input.lookahead1();
-        if let Some(value) = Self::lookahead_parse(input, &lookahead)? {
-            Ok(value)
-        } else {
-            Err(lookahead.error())
-        }
-    }
-
-    /// Parse an instance if lookahead peek matches, else parse nothing.
-    ///
-    /// # Errors
-    /// If a valid value peeked by lookahead cannot be parsed.
-    #[inline]
-    fn optional_parse(input: ParseStream) -> ::syn::Result<Option<Self>> {
-        Self::lookahead_parse(input, &input.lookahead1())
-    }
-
     /// Parse an instance if lookahead peek matches and replace lookahead, else leave lookahead as-is.
     ///
     /// # Errors
@@ -146,53 +117,11 @@ where
 #[macro_export]
 macro_rules! lookahead_parse_keywords {
     ($($kw:ident),* $(,)?) => {
-        #[doc(hidden)]
-        mod kw {$(
-            ::syn::custom_keyword!($kw);
-
-            impl $crate::util::lookahead_parse::LookaheadParse for $kw {
-                fn lookahead_parse(
-                    input: ::syn::parse::ParseStream,
-                    lookahead: &::syn::parse::Lookahead1
-                ) -> ::syn::Result<Option<Self>> {
-                    if lookahead.peek($kw) {
-                        Ok(Some(::syn::parse::ParseBuffer::parse::<$kw>(input)?))
-                    } else {
-                        Ok(None)
-                    }
-                }
-            }
-        )*}
+        ::file_suite_proc_lib::lookahead_keywords!(#[doc(hidden)] kw {$($kw),*});
+        $(
+        impl $crate::util::lookahead_parse::LookaheadParse for kw::$kw {}
+        )*
     };
-}
-
-/// Implement [LookaheadParse] for a struct with a leading value implementing [LookaheadParse].
-#[macro_export]
-macro_rules! lookahead_parse_struct {
-    ($name:ident {
-        $lnm:ident: $lty:ty
-    $(
-        , $([$attr:ident])? $fnm:ident: $fty:ty
-    )* $(,)?
-    }) => {
-        impl $crate::util::lookahead_parse::LookaheadParse for $name {
-            fn lookahead_parse(
-                input: ::syn::parse::ParseStream,
-                lookahead: &::syn::parse::Lookahead1,
-            ) -> ::syn::Result<Option<Self>> {
-                if let Some($lnm) = <$lty>::lookahead_parse(input, lookahead)? {
-                    $(
-                    let $fnm = $crate::lookahead_parse_struct!(@arm input, $fty $(, $attr)*);
-                    )*
-                    Ok(Some(Self { $lnm $(, $fnm)* }))
-                } else {
-                    Ok(None)
-                }
-            }
-        }
-    };
-    (@arm $input:expr, $ty:ty) => {{ <$ty>::parse($input)? }};
-    (@arm $input:expr, $ty:ty, optional) => {{ $crate::util::lookahead_parse::LookaheadParse::optional_parse($input)? }};
 }
 
 /// Create an enum of [LookaheadParse] types, that itself implements [LookaheadParse].
@@ -203,57 +132,26 @@ macro_rules! lookahead_parse_enum {
             $fnm:ident($fty:ty)
         ),+ $(,)?}) => {
 
-        impl $crate::util::lookahead_parse::LookaheadParse for $name {
-            fn lookahead_parse(
-                input: ::syn::parse::ParseStream,
-                lookahead: &::syn::parse::Lookahead1
-            ) -> ::syn::Result<Option<Self>> {
-                $( if let Some(value) = <$fty>::lookahead_parse(input, lookahead)? {
-                    Ok(Some(Self::$fnm(value)))
-                } else )* {
-                    Ok(None)
-                }
-            }
-        }
+        ::file_suite_proc_lib::lookahead_parse_enum!($name { $($fnm: $fty),* });
+
+        impl $crate::util::lookahead_parse::LookaheadParse for $name {}
     };
 }
 mod peek_impl {
     //! Implementation for types implementing peek.
     use ::syn::{
         Ident, LitBool, LitChar, LitInt, LitStr,
-        ext::IdentExt,
         token::{Colon, Comma, Dot, Eq},
     };
 
     peek_impl!(LitStr LitInt LitBool LitChar Comma Dot Eq Colon);
 
-    impl LookaheadParse for Ident {
-        fn lookahead_parse(
-            input: syn::parse::ParseStream,
-            lookahead: &syn::parse::Lookahead1,
-        ) -> syn::Result<Option<Self>> {
-            if lookahead.peek(Ident) {
-                Ok(Some(input.call(Ident::parse_any)?))
-            } else {
-                Ok(None)
-            }
-        }
-    }
+    impl LookaheadParse for Ident {}
 
     /// Implement for peek implementor.
     macro_rules! peek_impl {
         ($($ident:ident)*) => {$(
             impl $crate::util::lookahead_parse::LookaheadParse for $ident {
-                fn lookahead_parse(
-                    input: ::syn::parse::ParseStream,
-                    lookahead: &::syn::parse::Lookahead1,
-                ) -> ::syn::Result<Option<Self>> {
-                    if lookahead.peek($ident) {
-                        Ok(Some(input.parse()?))
-                    } else {
-                        Ok(None)
-                    }
-                }
             }
         )*};
     }
