@@ -1,0 +1,15 @@
+[package]
+name = "array-expr"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+proc-macro2 = { workspace = true }
+syn = { workspace = true, features = ["full", "extra-traits"] }
+quote = { workspace = true }
+file-suite-proc-lib = { path = "../file-suite-proc-lib/" }
+fold-tokens = { path = "../fold-tokens/" }
+tokens-rc = { path = "../tokens-rc/" }
+
+[lints]
+workspace = true
