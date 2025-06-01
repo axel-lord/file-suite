@@ -10,7 +10,7 @@ proc-macro = true
 
 [dependencies]
 run-derive = { workspace = true }
-array-expr = { path = "../array-expr/" }
+array-expr = { workspace = true }
 
 [lints]
 workspace = true

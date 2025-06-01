@@ -78,3 +78,7 @@ toml = "0.8.20"
 walkdir = "2.5.0"
 wrap-blocking-attr-impl = { path = "wrap-blocking-attr-impl" }
 rand = "0.9.1"
+array-expr = { path = "array-expr" }
+file-suite-proc-lib = { path = "file-suite-proc-lib" }
+fold-tokens = { path = "fold-tokens" }
+tokens-rc = { path = "tokens-rc" }
