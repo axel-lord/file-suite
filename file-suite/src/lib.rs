@@ -47,14 +47,13 @@ impl Run for CmpSubcmd {
 
 array_expr! {
     generate_keyfile compile_nested path_is_utf8 pipe_size -> global(modules),
-    "," -> ty(tokens).global(sep),
 
     snakeToPascal -> alias { split(snake).case(pascal).join.ty(ident) },
     snakeToKebab -> alias { split(snake).case(lower).join(kebab).ty(str) },
 
     -> .paste {
         /// Modules to allow logging for.
-        pub const MODULES: &[&str] = &[ "file_suite", ++!( =modules -> .ty(str).intersperse(=sep) ) ];
+        pub const MODULES: &[&str] = &[ "file_suite", ++!( =modules -> .ty(str).intersperse(/,) ) ];
 
         /// Get cli and used modules from tool name.
         pub fn get_cli(name: &str) -> (fn() -> &'static dyn Start, &'static [&'static str]) {
@@ -63,11 +62,13 @@ array_expr! {
                 return (|| startable::<Cli>(), MODULES);
             }
             match name {
-                ++!{ =modules -> chunks {
-                    1,
+                ++!{ =modules -> for_each {
                     .local(module)
+                    .block {
+                        =module -> =snakeToKebab.local(asKebab)
+                    }
                     .paste {
-                        ++!(=module -> =snakeToKebab) => (|| startable::<:: ++!(=module) ::Cli>(), &[ ++!{ =module -> ty(str) } ]),
+                        #asKebab => (|| startable::<::#module::Cli>(), &[ ++!{ =module -> ty(str) } ]),
                     }
                 }}
                 _ => (|| startable::<Cli>(), MODULES),
@@ -80,11 +81,13 @@ array_expr! {
         enum CliSubcmd {
             // generate completions for a tool
             Completions(CmpSubcmd),
-            ++! { =modules -> chunks {
-                1,
+            ++! { =modules -> for_each {
                 .local(module)
+                .block {
+                    =module -> =snakeToPascal.local(asPascal)
+                }
                 .paste {
-                    ++!(=module -> =snakeToPascal)(:: ++!(=module) ::Cli),
+                    #asPascal(::#module::Cli),
                 }
             }}
         }
