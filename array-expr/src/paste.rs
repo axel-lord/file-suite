@@ -1,20 +1,69 @@
 //! Find array expressions in any token input.
 
-use ::std::collections::HashSet;
+use ::std::{borrow::Cow, collections::HashSet, iter, ops::ControlFlow};
 
-use ::fold_tokens::{Cursor, FoldTokens, Response};
+use ::fold_tokens::{Cursor, FoldTokens, Response, VisitTokens, fold_tokens, visit_tokens};
 use ::proc_macro2::{Punct, TokenStream};
 use ::quote::ToTokens;
 use ::syn::parse::Parser;
 use ::tokens_rc::TokenTree;
 
-use crate::{ParsedArrayExpr, storage::Storage};
+use crate::{ParsedArrayExpr, storage::Storage, value_array::ValueArray};
 
 /// [VisitTokens] to find variables that are interpolated.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct FindVars {
     /// Found variables.
     vars: HashSet<String>,
+}
+
+impl VisitTokens for FindVars {
+    fn visit_ident(
+        &mut self,
+        ident: &syn::Ident,
+        cursor: &Cursor,
+    ) -> fold_tokens::Result<Response> {
+        'body: {
+            match cursor.get_relative(-1) {
+                Some(TokenTree::Punct(punct)) if punct.as_char() == '#' => (),
+                _ => break 'body,
+            };
+
+            self.vars.insert(ident.to_string());
+        }
+        Ok(Response::Default)
+    }
+
+    fn visit_punct(&mut self, _punct: &Punct, cursor: &Cursor) -> fold_tokens::Result<Response> {
+        let response = if cursor.punct_match("++!") {
+            Response::Skip(4)
+        } else {
+            Response::Default
+        };
+        Ok(response)
+    }
+
+    fn visit_group(
+        &mut self,
+        group: &tokens_rc::OpaqueGroup,
+        cursor: &Cursor,
+    ) -> fold_tokens::Result<Response> {
+        'body: {
+            match group.delimiter() {
+                ::proc_macro2::Delimiter::Parenthesis => match cursor.get_relative(-1) {
+                    Some(TokenTree::Punct(punct)) if punct.as_char() == '#' => {
+                        return Err(::syn::Error::new(
+                            punct.span(),
+                            "nested variable interpolation is not allowed",
+                        ));
+                    }
+                    _ => break 'body,
+                },
+                _ => break 'body,
+            }
+        }
+        Ok(Response::Default)
+    }
 }
 
 /// [FoldTokens] for finding array expressions.
@@ -68,6 +117,43 @@ impl FoldTokens for ArrayExprPaste<'_> {
                         },
                         _ => return Ok(Response::Default),
                     };
+
+                    let mut visitor = FindVars::default();
+                    visit_tokens(&mut visitor, group.stream.clone())?;
+                    let keys = Vec::from_iter(visitor.vars);
+                    let mut iters = keys
+                        .iter()
+                        .map(|key| Ok((key, self.storage.try_get(key)?.clone().into_iter())))
+                        .collect::<Result<Vec<_>, crate::Error>>()?;
+
+                    let stream = group.stream.clone();
+
+                    let mut separators = iter::once(None).chain(iter::repeat(sep));
+
+                    loop {
+                        let control_flow = self.storage.with_local_layer(|storage| {
+                            for (key, iter) in &mut iters {
+                                let Some(value) = iter.next() else {
+                                    return Ok(ControlFlow::Break(()));
+                                };
+                                match storage.insert(Cow::Borrowed(key), false) {
+                                    Ok(values) => *values = ValueArray::from_value(value),
+                                    Err(key) => return Err(crate::Error::from(format!("could not insert interpolated value '{key}' into storage"))),
+                                }
+                            }
+
+                            separators.next().unwrap_or_else(|| unreachable!()).to_tokens(tokens);
+                            storage.with_local_layer(|storage| {
+                                fold_tokens(&mut ArrayExprPaste {storage}, stream.clone())
+                            })?.to_tokens(tokens);
+
+                            Ok(ControlFlow::Continue(()))
+                        })?;
+
+                        if matches!(control_flow, ControlFlow::Break(..)) {
+                            break;
+                        }
+                    }
 
                     return Ok(Response::Skip(sep.map_or_else(|| 3, |_| 4)));
                 }

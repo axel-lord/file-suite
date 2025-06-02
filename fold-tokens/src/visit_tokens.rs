@@ -4,7 +4,7 @@ use ::std::num::NonZero;
 
 use ::proc_macro2::{Literal, Punct};
 use ::syn::Ident;
-use ::tokens_rc::{Group, TokensRc};
+use ::tokens_rc::{Group, OpaqueGroup, TokensRc};
 
 use crate::{Cursor, Response, Result};
 
@@ -49,7 +49,7 @@ pub trait VisitTokens {
     /// The default implementation does not error
     /// however an implementor may whish to do
     /// so in some situations.
-    fn visit_group(&mut self, group: &Group, cursor: &Cursor) -> Result<Response> {
+    fn visit_group(&mut self, group: &OpaqueGroup, cursor: &Cursor) -> Result<Response> {
         _ = (group, cursor);
         Ok(Response::Default)
     }
