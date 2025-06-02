@@ -5,7 +5,7 @@ use ::proc_macro2::{Punct, TokenStream};
 use ::quote::ToTokens;
 use ::syn::parse::Parser;
 
-use crate::{Node, storage::Storage};
+use crate::{ParsedArrayExpr, storage::Storage};
 
 /// [FoldTokens] for finding array expressions.
 #[derive(Debug)]
@@ -32,7 +32,7 @@ impl ::fold_tokens::FoldTokens for ArrayExprPaste<'_> {
             ));
         };
 
-        for node in Node::parse_multiple.parse2(group.stream())? {
+        for node in ParsedArrayExpr::parse_multiple.parse2(group.stream())? {
             for value in self
                 .storage
                 .with_local_layer(|storage| node.to_array_expr().compute_with_storage(storage))?

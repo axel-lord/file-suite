@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(clippy::missing_docs_in_private_items)]
 
 use ::std::fmt::Debug;
 
@@ -6,7 +7,7 @@ use ::clap::{Args, Parser, Subcommand, ValueEnum};
 use ::color_eyre::Report;
 use ::completions_cli::CompletionConfig;
 use ::file_suite_common::{Run, Start, startable};
-use ::file_suite_proc::array_expr_paste;
+use ::file_suite_proc::{array_expr, array_expr_paste};
 
 subcmd!(generate_keyfile, compile_nested, path_is_utf8, pipe_size);
 
@@ -44,42 +45,62 @@ impl Run for CmpSubcmd {
     }
 }
 
+array_expr! {
+    generate_keyfile compile_nested path_is_utf8 pipe_size -> global(modules),
+    "," -> ty(tokens).global(sep),
+
+    snakeToPascal -> alias { split(snake).case(pascal).join.ty(ident) },
+    snakeToKebab -> alias { split(snake).case(lower).join(kebab).ty(str) },
+
+    -> .paste {
+        /// Modules to allow logging for.
+        pub const MODULES: &[&str] = &[ "file_suite", ++!( =modules -> .ty(str).intersperse(=sep) ) ];
+
+        /// Get cli and used modules from tool name.
+        pub fn get_cli(name: &str) -> (fn() -> &'static dyn Start, &'static [&'static str]) {
+            // Quick path for compilation tool.
+            if name == "file-suite" {
+                return (|| startable::<Cli>(), MODULES);
+            }
+            match name {
+                ++!{ =modules -> chunks {
+                    1,
+                    .local(module)
+                    .paste {
+                        ++!(=module -> =snakeToKebab) => (|| startable::<:: ++!(=module) ::Cli>(), &[ ++!{ =module -> ty(str) } ]),
+                    }
+                }}
+                _ => (|| startable::<Cli>(), MODULES),
+            }
+        }
+
+        // Selection of cli tool.
+        #[derive(Debug, Subcommand, Run)]
+        #[run(error = Report)]
+        enum CliSubcmd {
+            // generate completions for a tool
+            Completions(CmpSubcmd),
+            ++! { =modules -> chunks {
+                1,
+                .local(module)
+                .paste {
+                    ++!(=module -> =snakeToPascal)(:: ++!(=module) ::Cli),
+                }
+            }}
+        }
+
+    },
+
+}
+
 /// Define subcommand.
 macro_rules! subcmd {
     ($($mod:ident),* $(,)?) => {
-        #[doc = "Modules to allow logging for."]
-        pub const MODULES: &[&str] = &["file_suite" $(, stringify!($mod))*];
-
         array_expr_paste! {
 
         ++!{
             snake_to_pascal -> alias { split(snake).case(pascal).join.ty(ident) },
             snake_to_kebab -> alias { split(snake).case(lower).join(kebab).ty(str) },
-        }
-
-        #[doc = "Get cli and used modules from tool name."]
-        pub fn get_cli(name: &str) -> (fn() -> &'static dyn Start, &'static [&'static str]) {
-            // Quick path for compilation tool.
-            if name == "file-suite" {
-                return (|| startable::<$crate::Cli>(), MODULES);
-            }
-            match name {
-                $(
-                ++!($mod -> =snake_to_kebab) => (|| startable::<::$mod::Cli>(), &[++!($mod -> .ty(str))]),
-                )*
-                _ => (|| startable::<$crate::Cli>(), MODULES),
-            }
-        }
-
-        #[doc = "Selection of cli tool."]
-        #[derive(Debug, Subcommand, Run)]
-        #[run(error = Report)]
-        enum CliSubcmd {
-            #[doc = "generate completions for a tool."]
-            Completions(CmpSubcmd),
-            $(
-            ++!($mod -> =snake_to_pascal)(::$mod::Cli),
-            )*
         }
 
         #[doc = "Module to generate completions for"]

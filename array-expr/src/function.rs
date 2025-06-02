@@ -13,6 +13,7 @@ pub mod builtin {
     pub mod clear;
     pub mod count;
     pub mod enumerate;
+    pub mod for_each;
     pub mod fork;
     pub mod get;
     pub mod intersperse;
@@ -45,6 +46,7 @@ use crate::{
             clear::ClearCallable,
             count::CountCallable,
             enumerate::EnumerateArgs,
+            for_each::ForEachCallable,
             fork::ForkCallable,
             get::GetCallable,
             intersperse::IntersperseCallable,
@@ -126,6 +128,7 @@ lookahead_keywords!(
         get,
         nth,
         rand,
+        for_each,
     }
 );
 
@@ -177,6 +180,8 @@ function_enum!(
         Block(KwFn<kw::block, OptionalDelimited<BlockArgs>>),
         /// Split array into chunks.
         Chunks(KwFn<kw::chunks, Delimited<ChunksArgs>>),
+        /// Run a chain for each value in chain.
+        ForEach(KwFn<kw::for_each, Delimited<DeferredArgs<ForEachCallable>>>),
         /// Clear array.
         Clear(KwFn<kw::clear, EmptyArgs<ClearCallable>>),
         /// Set a global variable.

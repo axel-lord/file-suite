@@ -4,6 +4,8 @@ use ::std::rc::Rc;
 
 use ::syn::punctuated::Punctuated;
 
+use crate::punct_wrap::{Separated, Terminated};
+
 /// Trait for parsed values which may be converted to arguments.
 pub trait ToArg {
     /// Argument type self converts to.
@@ -45,6 +47,28 @@ where
 
     fn to_arg(&self) -> Self::Arg {
         T::punctuated_to_arg(self)
+    }
+}
+
+impl<T, P> ToArg for Terminated<T, P>
+where
+    T: PunctuatedToArg,
+{
+    type Arg = <T as PunctuatedToArg>::Arg;
+
+    fn to_arg(&self) -> Self::Arg {
+        T::punctuated_to_arg(&self.0)
+    }
+}
+
+impl<T, P> ToArg for Separated<T, P>
+where
+    T: PunctuatedToArg,
+{
+    type Arg = <T as PunctuatedToArg>::Arg;
+
+    fn to_arg(&self) -> Self::Arg {
+        T::punctuated_to_arg(&self.0)
     }
 }
 

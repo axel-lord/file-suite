@@ -11,6 +11,9 @@ pub mod macro_delim;
 pub mod neverlike;
 pub mod spanned_int;
 pub mod to_arg;
+pub mod punct_wrap;
+
+use ::syn::parse::Parser;
 
 pub use crate::{
     from_arg::{ArgTy, FromArg},
@@ -85,4 +88,20 @@ where
     let tokens = ::quote::quote_spanned! {span=> #tokens};
 
     ::syn::parse2(tokens)
+}
+
+/// Parse a string slice with given span for input.
+///
+/// # Errors
+/// If the string slice cannot be parsed to the given type.
+pub fn spanned_parse_str_with<T>(
+    span: ::proc_macro2::Span,
+    input: &str,
+    parser: fn(::syn::parse::ParseStream) -> ::syn::Result<T>,
+) -> ::syn::Result<T> {
+    let tokens = <::proc_macro2::TokenStream as ::std::str::FromStr>::from_str(input)
+        .map_err(|err| ::syn::Error::new(span, err))?;
+    let tokens = ::quote::quote_spanned! {span=> #tokens};
+
+    parser.parse2(tokens)
 }
