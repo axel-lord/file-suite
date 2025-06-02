@@ -6,7 +6,7 @@ use ::std::{
     ops::Deref,
 };
 
-use ::proc_macro2::{Span, TokenStream};
+use ::proc_macro2::{Delimiter, Span, TokenStream};
 use ::quote::ToTokens;
 
 /// Wrapper for [Group] with lazy conversion from [::proc_macro2::Group].
@@ -25,26 +25,37 @@ impl OpaqueGroup {
         group.get_or_init(|| crate::Group::from(backing.take().unwrap_or_else(|| unreachable!())))
     }
 
+    /// Get a reference to either the token-rc group or the proc_macro2 group.
+    fn group_or_backing<T>(
+        &self,
+        token_rc: impl FnOnce(&crate::Group) -> T,
+        proc_macro2: impl FnOnce(&::proc_macro2::Group) -> T,
+    ) -> T {
+        if let Some(group) = self.backing.take() {
+            let value = proc_macro2(&group);
+            self.backing.set(Some(group));
+            value
+        } else {
+            token_rc(self.as_group())
+        }
+    }
+
     /// Get span of opaque group.
     pub fn span(&self) -> Span {
-        if let Some(group) = self.backing.take() {
-            let span = group.span();
-            self.backing.set(Some(group));
-            span
-        } else {
-            self.as_group().span
-        }
+        self.group_or_backing(|group| group.span, |group| group.span())
+    }
+
+    /// Get delimiter of opaque group.
+    pub fn delimiter(&self) -> Delimiter {
+        self.group_or_backing(|group| group.delimiter, |group| group.delimiter())
     }
 
     /// Get tokens contained by group as a [TokenStream].
     pub fn stream(&self) -> TokenStream {
-        if let Some(group) = self.backing.take() {
-            let stream = group.stream();
-            self.backing.set(Some(group));
-            stream
-        } else {
-            self.stream.to_token_stream()
-        }
+        self.group_or_backing(
+            |group| group.stream.to_token_stream(),
+            |group| group.stream(),
+        )
     }
 }
 

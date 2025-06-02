@@ -1,12 +1,21 @@
 //! Find array expressions in any token input.
 
-use ::fold_tokens::{Cursor, Response};
+use ::std::collections::HashSet;
+
+use ::fold_tokens::{Cursor, FoldTokens, Response};
 use ::proc_macro2::{Punct, TokenStream};
 use ::quote::ToTokens;
 use ::syn::parse::Parser;
 use ::tokens_rc::TokenTree;
 
 use crate::{ParsedArrayExpr, storage::Storage};
+
+/// [VisitTokens] to find variables that are interpolated.
+#[derive(Debug)]
+struct FindVars {
+    /// Found variables.
+    vars: HashSet<String>,
+}
 
 /// [FoldTokens] for finding array expressions.
 #[derive(Debug)]
@@ -15,7 +24,7 @@ pub(crate) struct ArrayExprPaste<'s> {
     pub storage: &'s mut Storage,
 }
 
-impl ::fold_tokens::FoldTokens for ArrayExprPaste<'_> {
+impl FoldTokens for ArrayExprPaste<'_> {
     fn fold_punct(
         &mut self,
         punct: &Punct,
@@ -45,8 +54,22 @@ impl ::fold_tokens::FoldTokens for ArrayExprPaste<'_> {
                     }
                     _ => return Ok(Response::Default),
                 },
-                TokenTree::Group(..) => {
-                    return Ok(Response::Default);
+                TokenTree::Group(group) => {
+                    match group.delimiter() {
+                        ::proc_macro2::Delimiter::Parenthesis => (),
+                        _ => return Ok(Response::Default),
+                    }
+
+                    let sep = match cursor.get(2) {
+                        Some(TokenTree::Punct(p)) if p.as_char() == '*' => None,
+                        Some(TokenTree::Punct(p)) => match cursor.get(3) {
+                            Some(TokenTree::Punct(p2)) if p2.as_char() == '*' => Some(p),
+                            _ => return Ok(Response::Default),
+                        },
+                        _ => return Ok(Response::Default),
+                    };
+
+                    return Ok(Response::Skip(sep.map_or_else(|| 3, |_| 4)));
                 }
             };
             let skip = skip;
