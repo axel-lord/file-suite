@@ -96,4 +96,3 @@ impl<T, P> Separated<T, P> {
         p
     }
 }
-

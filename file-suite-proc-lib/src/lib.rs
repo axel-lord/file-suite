@@ -9,9 +9,9 @@ pub mod kw_kind;
 pub mod lookahead;
 pub mod macro_delim;
 pub mod neverlike;
+pub mod punct_wrap;
 pub mod spanned_int;
 pub mod to_arg;
-pub mod punct_wrap;
 
 use ::syn::parse::Parser;
 

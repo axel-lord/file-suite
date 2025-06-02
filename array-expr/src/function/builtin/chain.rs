@@ -39,7 +39,11 @@ impl ToCallable for ChainArgs {
 
     fn to_callable(&self) -> Self::Call {
         ChainCallable {
-            exprs: self.exprs.iter().map(ParsedArrayExpr::to_array_expr).collect(),
+            exprs: self
+                .exprs
+                .iter()
+                .map(ParsedArrayExpr::to_array_expr)
+                .collect(),
         }
     }
 }

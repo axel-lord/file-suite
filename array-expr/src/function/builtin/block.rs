@@ -44,7 +44,11 @@ impl ToCallable for BlockArgs {
 
     fn to_callable(&self) -> Self::Call {
         BlockCallable {
-            exprs: self.exprs.iter().map(ParsedArrayExpr::to_array_expr).collect(),
+            exprs: self
+                .exprs
+                .iter()
+                .map(ParsedArrayExpr::to_array_expr)
+                .collect(),
         }
     }
 }

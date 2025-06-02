@@ -1,20 +1,15 @@
 //! [TypedValue] impl
 
-use ::file_suite_proc_lib::{
-    Lookahead, ToArg,
-    lookahead::ParseBufferExt,
-    to_arg::{PunctuatedToArg, SliceToArg},
-};
+use ::file_suite_proc_lib::{Lookahead, lookahead::ParseBufferExt};
 use ::proc_macro2::{Literal, Span, TokenStream};
 use ::quote::{ToTokens, TokenStreamExt};
 use ::syn::{
     Ident, LitBool, LitInt, LitStr, Token,
     ext::IdentExt,
     parse::{Lookahead1, Parse, ParseStream},
-    punctuated::Punctuated,
 };
 
-use crate::{value::Value, value_array::ValueArray};
+use crate::value::Value;
 
 /// A typed [Value] which may be converted to tokens.
 #[derive(Debug, Clone)]
@@ -31,14 +26,6 @@ pub enum TypedValue {
     Underscore(Token![_]),
     /// Value is a token stream (cannot be parsed, but is created in some contexts).
     Tokens(TokenStream),
-}
-
-impl ToArg for TypedValue {
-    type Arg = String;
-
-    fn to_arg(&self) -> Self::Arg {
-        self.to_value().into()
-    }
 }
 
 impl TypedValue {
@@ -114,21 +101,5 @@ impl ToTokens for TypedValue {
             TypedValue::Tokens(token_stream) => token_stream.to_tokens(tokens),
             TypedValue::Underscore(underscore) => underscore.to_tokens(tokens),
         }
-    }
-}
-
-impl PunctuatedToArg for TypedValue {
-    type Arg = ValueArray;
-
-    fn punctuated_to_arg<P>(punctuated: &Punctuated<Self, P>) -> Self::Arg {
-        punctuated.iter().map(TypedValue::to_value).collect()
-    }
-}
-
-impl SliceToArg for TypedValue {
-    type Arg = ValueArray;
-
-    fn slice_to_arg(slice: &[Self]) -> Self::Arg {
-        slice.iter().map(TypedValue::to_value).collect()
     }
 }

@@ -35,4 +35,3 @@ impl From<::proc_macro2::Group> for Group {
         }
     }
 }
-
