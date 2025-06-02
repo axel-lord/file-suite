@@ -4,7 +4,7 @@ use ::quote::ToTokens;
 use ::syn::{Token, parse::Parse, punctuated::Punctuated};
 
 use crate::{
-    ArrayExpr, Node,
+    ArrayExpr, ParsedArrayExpr,
     function::{Call, DefaultArgs, ToCallable},
     storage::Storage,
     value_array::ValueArray,
@@ -36,7 +36,7 @@ impl DefaultArgs for BlockCallable {
 #[derive(Debug, Clone)]
 pub struct BlockArgs {
     /// Array expressions of block.
-    exprs: Punctuated<Node, Token![,]>,
+    exprs: Punctuated<ParsedArrayExpr, Token![,]>,
 }
 
 impl ToCallable for BlockArgs {
@@ -44,7 +44,11 @@ impl ToCallable for BlockArgs {
 
     fn to_callable(&self) -> Self::Call {
         BlockCallable {
-            exprs: self.exprs.iter().map(Node::to_array_expr).collect(),
+            exprs: self
+                .exprs
+                .iter()
+                .map(ParsedArrayExpr::to_array_expr)
+                .collect(),
         }
     }
 }
@@ -52,7 +56,7 @@ impl ToCallable for BlockArgs {
 impl Parse for BlockArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            exprs: Node::parse_multiple(input)?,
+            exprs: ParsedArrayExpr::parse_multiple(input)?,
         })
     }
 }

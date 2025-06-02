@@ -33,6 +33,15 @@ pub trait Lookahead {
     }
 }
 
+impl<T, P> Lookahead for Punctuated<T, P>
+where
+    T: Lookahead,
+{
+    fn lookahead_peek(lookahead: &Lookahead1) -> bool {
+        T::lookahead_peek(lookahead)
+    }
+}
+
 /// Extension trait for [ParseBuffer] using [Lookahead].
 pub trait ParseBufferExt {
     /// Parse the type T if [Lookahead::lookahead_peek] returns true.

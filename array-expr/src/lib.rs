@@ -11,7 +11,7 @@ use ::syn::{
 
 use crate::{
     function::{Call, Function, FunctionChain, ToCallable},
-    input::{Input, NodeInput},
+    input::{ExprInput, ParsedExprInput},
     storage::Storage,
     value::Value,
     value_array::ValueArray,
@@ -57,7 +57,7 @@ pub fn array_expr_paste(input: TokenStream) -> ::syn::Result<TokenStream> {
 pub fn array_expr(input: TokenStream) -> ::syn::Result<TokenStream> {
     let mut tokens = TokenStream::default();
     let mut storage = Storage::initial();
-    for node in Node::parse_multiple.parse2(input)? {
+    for node in ParsedArrayExpr::parse_multiple.parse2(input)? {
         for value in storage
             .with_local_layer(|storage| node.to_array_expr().compute_with_storage(storage))?
         {
@@ -71,7 +71,7 @@ pub fn array_expr(input: TokenStream) -> ::syn::Result<TokenStream> {
 #[derive(Debug, Clone, Default)]
 pub struct ArrayExpr {
     /// Input values of expression.
-    input: Vec<Input>,
+    input: Vec<ExprInput>,
     /// Function chain transforming input.
     chain: Vec<<Function as ToCallable>::Call>,
 }
@@ -89,12 +89,12 @@ impl ArrayExpr {
 
         for input in input {
             match input {
-                Input::Value(value) => value_vec.push(value.clone()),
-                Input::Expr(array_expr) => {
+                ExprInput::Value(value) => value_vec.push(value.clone()),
+                ExprInput::Expr(array_expr) => {
                     value_vec.extend(array_expr.compute_with_storage(storage)?)
                 }
-                Input::Var(key) => value_vec.extend(storage.try_get(key)?.iter().cloned()),
-                Input::WeakVar(key) => {
+                ExprInput::Var(key) => value_vec.extend(storage.try_get(key)?.iter().cloned()),
+                ExprInput::WeakVar(key) => {
                     value_vec.extend(storage.try_get(key).into_iter().flatten().cloned())
                 }
             }
@@ -124,7 +124,7 @@ impl ArrayExpr {
 
 /// Parsed array expression.
 #[derive(Debug, Default, Clone)]
-pub enum Node {
+pub enum ParsedArrayExpr {
     /// Empty Expression.
     #[default]
     Empty,
@@ -138,7 +138,7 @@ pub enum Node {
     /// Take and transform input.
     Transform {
         /// Input values.
-        input: Vec<NodeInput>,
+        input: Vec<ParsedExprInput>,
         /// '->' token.
         arrow_token: Option<Token![->]>,
         /// Transform chain.
@@ -146,27 +146,27 @@ pub enum Node {
     },
 }
 
-impl Node {
+impl ParsedArrayExpr {
     /// Get [ArrayExpr] from this node.
     pub fn to_array_expr(&self) -> ArrayExpr {
         match self {
-            Node::Empty => ArrayExpr::default(),
-            Node::Stringify {
+            ParsedArrayExpr::Empty => ArrayExpr::default(),
+            ParsedArrayExpr::Stringify {
                 not_token: _,
                 remainder,
             } => {
                 let value = Value::new_tokens(remainder.clone());
                 ArrayExpr {
-                    input: vec![Input::Value(value)],
+                    input: vec![ExprInput::Value(value)],
                     ..Default::default()
                 }
             }
-            Node::Transform {
+            ParsedArrayExpr::Transform {
                 input,
                 arrow_token: _,
                 chain,
             } => {
-                let input = input.iter().map(NodeInput::to_input).collect();
+                let input = input.iter().map(ParsedExprInput::to_input).collect();
                 let chain = chain.to_call_chain();
 
                 ArrayExpr { input, chain }
@@ -209,7 +209,7 @@ impl Node {
 
         let (input_vec, arrow_token) = if lookahead.peek(Token![->]) {
             (Vec::new(), Some(input.parse()?))
-        } else if let Some(first) = NodeInput::lookahead_parse(input, &lookahead)? {
+        } else if let Some(first) = ParsedExprInput::lookahead_parse(input, &lookahead)? {
             let mut input_vec = Vec::from([first]);
             loop {
                 let lookahead = input.lookahead1();
@@ -226,7 +226,7 @@ impl Node {
                     break (input_vec, Some(input.parse()?));
                 }
 
-                if let Some(value) = NodeInput::lookahead_parse(input, &lookahead)? {
+                if let Some(value) = ParsedExprInput::lookahead_parse(input, &lookahead)? {
                     input_vec.push(value);
                     continue;
                 }
@@ -245,24 +245,24 @@ impl Node {
     }
 }
 
-impl Parse for Node {
+impl Parse for ParsedArrayExpr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Self::parse_terminated(input, |lookahead| lookahead.peek(End))
     }
 }
 
-impl ToTokens for Node {
+impl ToTokens for ParsedArrayExpr {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Node::Empty => {}
-            Node::Stringify {
+            ParsedArrayExpr::Empty => {}
+            ParsedArrayExpr::Stringify {
                 not_token,
                 remainder,
             } => {
                 not_token.to_tokens(tokens);
                 remainder.to_tokens(tokens);
             }
-            Node::Transform {
+            ParsedArrayExpr::Transform {
                 input,
                 arrow_token,
                 chain,

@@ -13,7 +13,7 @@ use ::syn::{
 };
 
 use crate::{
-    ArrayExpr, Node,
+    ArrayExpr, ParsedArrayExpr,
     function::{Call, Delimited, ToCallable},
     storage::Storage,
     typed_value::TypedValue,
@@ -113,7 +113,7 @@ pub enum SetArgs<T> {
     /// Use array as variable keys. Setting them to input, which is an array expression.
     SetArray {
         /// Value to set variables to.
-        expr: Option<Delimited<Node>>,
+        expr: Option<Delimited<ParsedArrayExpr>>,
     },
     /// Use input which is a list of values as variable keys. setting them to array.
     SetInput {

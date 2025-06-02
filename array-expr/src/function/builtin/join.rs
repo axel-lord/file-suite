@@ -5,8 +5,9 @@ use ::file_suite_proc_lib::{FromArg, kw_kind};
 use crate::{
     from_values::{FromValues, ensure_single},
     function::{Call, DefaultArgs, ToCallable},
+    input::InputValue,
     storage::Storage,
-    typed_value::TypedValue,
+    value::Value,
     value_array::ValueArray,
 };
 
@@ -18,10 +19,10 @@ pub struct JoinByCallable {
 }
 
 impl FromArg for JoinByCallable {
-    type Factory = TypedValue;
+    type Factory = InputValue;
 
-    fn from_arg(by: String) -> Self {
-        Self { by }
+    fn from_arg(arg: Value) -> Self {
+        Self { by: arg.into() }
     }
 }
 

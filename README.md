@@ -13,7 +13,7 @@ Procedural macros for use in other crates, mostly me playing around.
 Todo:
 - [ ] String format function of some kind.
 - [x] Cheap to copy tokenstream, using rc and including groups.
-- [ ] Quote-like token format function, in addition to the existing array expression paste function.
+- [x] Quote-like token format function, in addition to the existing array expression paste function.
 - [ ] Some method of passing parameters to aliases, perhaps as locals somehow.
 - [x] Tests for at least all chain functions.
 - [x] Allow variables to be used in most places expecting arguments.

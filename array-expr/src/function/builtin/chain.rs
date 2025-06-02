@@ -6,7 +6,7 @@ use proc_macro2::TokenStream;
 use syn::parse::ParseStream;
 
 use crate::{
-    ArrayExpr, Node,
+    ArrayExpr, ParsedArrayExpr,
     function::{Call, DefaultArgs, ToCallable},
     storage::Storage,
     value_array::ValueArray,
@@ -39,7 +39,11 @@ impl ToCallable for ChainArgs {
 
     fn to_callable(&self) -> Self::Call {
         ChainCallable {
-            exprs: self.exprs.iter().map(Node::to_array_expr).collect(),
+            exprs: self
+                .exprs
+                .iter()
+                .map(ParsedArrayExpr::to_array_expr)
+                .collect(),
         }
     }
 }
@@ -48,13 +52,13 @@ impl ToCallable for ChainArgs {
 #[derive(Debug, Clone)]
 pub struct ChainArgs {
     /// Array expressions to chain.
-    exprs: Punctuated<Node, Token![,]>,
+    exprs: Punctuated<ParsedArrayExpr, Token![,]>,
 }
 
 impl Parse for ChainArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            exprs: Node::parse_multiple(input)?,
+            exprs: ParsedArrayExpr::parse_multiple(input)?,
         })
     }
 }
