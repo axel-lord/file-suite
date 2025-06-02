@@ -1,11 +1,8 @@
 //! [Input] impl.
 
 use ::file_suite_proc_lib::{
-    Lookahead, ToArg,
-    lookahead::ParseBufferExt,
-    macro_delim::MacroDelimExt,
-    macro_delimited,
-    to_arg::{PunctuatedToArg, SliceToArg},
+    Lookahead, ToArg, lookahead::ParseBufferExt, macro_delim::MacroDelimExt, macro_delimited,
+    to_arg::ToArgCollection,
 };
 use ::proc_macro2::{Punct, TokenStream};
 use ::quote::ToTokens;
@@ -223,18 +220,6 @@ impl ToArg for InputValue {
     }
 }
 
-impl PunctuatedToArg for InputValue {
-    type Arg = ValueArray;
-
-    fn punctuated_to_arg<P>(punctuated: &syn::punctuated::Punctuated<Self, P>) -> Self::Arg {
-        punctuated.iter().map(ToArg::to_arg).collect()
-    }
-}
-
-impl SliceToArg for InputValue {
-    type Arg = ValueArray;
-
-    fn slice_to_arg(slice: &[Self]) -> Self::Arg {
-        slice.iter().map(ToArg::to_arg).collect()
-    }
+impl ToArgCollection for InputValue {
+    type Collection = ValueArray;
 }

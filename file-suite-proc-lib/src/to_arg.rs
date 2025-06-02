@@ -15,103 +15,89 @@ pub trait ToArg {
     fn to_arg(&self) -> Self::Arg;
 }
 
-/// Trait for parsed values which when puncutated may be converted to arguments.
-pub trait PunctuatedToArg
+/// Used to implement [ToArg] for common collections of
+/// arguments, such as [Punctuated], [Vec] and slices.
+pub trait ToArgCollection
 where
-    Self: Sized,
+    Self: Sized + ToArg,
 {
-    /// Argument type puctuated list of self converts to.
-    type Arg;
-
-    /// Convert to argument.
-    fn punctuated_to_arg<P>(punctuated: &Punctuated<Self, P>) -> Self::Arg;
-}
-
-/// Trait for parsed values which when in a slice may be converted to arguments.
-pub trait SliceToArg
-where
-    Self: Sized,
-{
-    /// Argument type puctuated list of self converts to.
-    type Arg;
-
-    /// Convert to argument.
-    fn slice_to_arg(slice: &[Self]) -> Self::Arg;
+    /// Collection of arguments created by [ToArg] implementation.
+    type Collection: FromIterator<Self::Arg>;
 }
 
 impl<T, P> ToArg for Punctuated<T, P>
 where
-    T: PunctuatedToArg,
+    T: ToArgCollection,
 {
-    type Arg = <T as PunctuatedToArg>::Arg;
+    type Arg = T::Collection;
 
     fn to_arg(&self) -> Self::Arg {
-        T::punctuated_to_arg(self)
+        self.iter().map(ToArg::to_arg).collect()
     }
 }
 
 impl<T, P> ToArg for Terminated<T, P>
 where
-    T: PunctuatedToArg,
+    T: ToArgCollection,
 {
-    type Arg = <T as PunctuatedToArg>::Arg;
+    type Arg = T::Collection;
 
     fn to_arg(&self) -> Self::Arg {
-        T::punctuated_to_arg(&self.0)
+        self.0.iter().map(ToArg::to_arg).collect()
     }
 }
 
 impl<T, P> ToArg for Separated<T, P>
 where
-    T: PunctuatedToArg,
+    T: ToArgCollection,
 {
-    type Arg = <T as PunctuatedToArg>::Arg;
+    type Arg = T::Collection;
 
     fn to_arg(&self) -> Self::Arg {
-        T::punctuated_to_arg(&self.0)
+        self.0.iter().map(ToArg::to_arg).collect()
     }
 }
 
 impl<T> ToArg for Vec<T>
 where
-    T: SliceToArg,
+    T: ToArgCollection,
 {
-    type Arg = <T as SliceToArg>::Arg;
+    type Arg = T::Collection;
 
     fn to_arg(&self) -> Self::Arg {
-        T::slice_to_arg(self)
+        self.iter().map(ToArg::to_arg).collect()
     }
 }
 
 impl<T> ToArg for Rc<[T]>
 where
-    T: SliceToArg,
+    T: ToArgCollection,
 {
-    type Arg = <T as SliceToArg>::Arg;
+    type Arg = T::Collection;
 
     fn to_arg(&self) -> Self::Arg {
-        T::slice_to_arg(self)
+        self.iter().map(ToArg::to_arg).collect()
     }
 }
 
 impl<T> ToArg for [T]
 where
-    T: SliceToArg,
+    T: ToArgCollection,
 {
-    type Arg = <T as SliceToArg>::Arg;
+    type Arg = T::Collection;
 
     fn to_arg(&self) -> Self::Arg {
-        T::slice_to_arg(self)
+        self.iter().map(ToArg::to_arg).collect()
     }
 }
 
 impl<const N: usize, T> ToArg for [T; N]
 where
-    T: SliceToArg,
+    T: ToArgCollection,
 {
-    type Arg = <T as SliceToArg>::Arg;
+    type Arg = T::Collection;
 
     fn to_arg(&self) -> Self::Arg {
-        T::slice_to_arg(self)
+        self.iter().map(ToArg::to_arg).collect()
     }
 }
