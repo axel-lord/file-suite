@@ -1,6 +1,6 @@
 //! Find array expressions in any token input.
 
-use ::std::{borrow::Cow, collections::HashSet, iter, ops::ControlFlow};
+use ::std::{borrow::Cow, iter, ops::ControlFlow};
 
 use ::fold_tokens::{Cursor, FoldTokens, Response, VisitTokens, fold_tokens, visit_tokens};
 use ::proc_macro2::{Punct, TokenStream};
@@ -14,7 +14,7 @@ use crate::{ParsedArrayExpr, storage::Storage, value_array::ValueArray};
 #[derive(Debug, Default)]
 struct FindVars {
     /// Found variables.
-    vars: HashSet<String>,
+    vars: Vec<String>,
 }
 
 impl VisitTokens for FindVars {
@@ -29,7 +29,7 @@ impl VisitTokens for FindVars {
                 _ => break 'body,
             };
 
-            self.vars.insert(ident.to_string());
+            self.vars.push(ident.to_string());
         }
         Ok(Response::Default)
     }
@@ -120,10 +120,17 @@ impl FoldTokens for ArrayExprPaste<'_> {
 
                     let mut visitor = FindVars::default();
                     visit_tokens(&mut visitor, group.stream.clone())?;
-                    let keys = Vec::from_iter(visitor.vars);
-                    let mut iters = keys
-                        .iter()
-                        .map(|key| Ok((key, self.storage.try_get(key)?.clone().into_iter())))
+
+                    visitor.vars.sort();
+                    visitor.vars.dedup();
+
+                    let mut iters = visitor
+                        .vars
+                        .into_iter()
+                        .map(|key| {
+                            let values = self.storage.try_get(&key)?.clone().into_iter();
+                            Ok((key, values))
+                        })
                         .collect::<Result<Vec<_>, crate::Error>>()?;
 
                     let stream = group.stream.clone();
