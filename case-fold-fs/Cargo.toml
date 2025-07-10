@@ -1,0 +1,22 @@
+[package]
+name = "case-fold-fs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fuser = { version = "0.15.1", default-features = false, features = ["abi-7-31", "serde"] }
+rusqlite.workspace = true
+smallvec = { workspace = true, features = ["serde", "write", "union", "const_new", "const_generics"] }
+clap = { workspace = true, features = ["derive"] }
+file-suite-common = { workspace = true }
+thiserror.workspace = true
+color-eyre.workspace = true
+log = { workspace = true }
+rustix = { workspace = true, features = ["fs"] }
+serde = { workspace = true, features = ["derive"] }
+signal-hook = "0.3.18"
+rayon.workspace = true
+libc.workspace = true
+
+[lints]
+workspace = true
