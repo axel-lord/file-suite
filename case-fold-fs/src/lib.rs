@@ -51,7 +51,7 @@ where
 }
 
 /// Get file attributes.
-fn get_attr(fd: BorrowedFd<'_>, path: &Path) -> Result<FileAttr, i32> {
+fn get_attr(fd: BorrowedFd<'_>, path: &Path, ino: i64) -> Result<FileAttr, i32> {
     let statx = statx(fd, path, AtFlags::EMPTY_PATH, StatxFlags::BASIC_STATS).map_err(|err| {
         ::log::error!("could not stat {path:?}\n{err}");
         err.raw_os_error()
@@ -78,7 +78,7 @@ fn get_attr(fd: BorrowedFd<'_>, path: &Path) -> Result<FileAttr, i32> {
     };
 
     Ok(FileAttr {
-        ino: statx.stx_ino,
+        ino: ino.cast_unsigned(),
         size: statx.stx_size,
         blocks: statx.stx_blocks,
         atime: SystemTime::UNIX_EPOCH + Duration::from_secs(log_conv(statx.stx_atime.tv_sec)?),
@@ -300,12 +300,7 @@ impl<'con, 'scope> Fs<'con, 'scope> {
     }
 
     #[inline(never)]
-    fn lookup_path_io(
-        &mut self,
-        name: &[u8],
-        parent: i64,
-        folded_name: &[u8],
-    ) -> Result<LookupResult, i32> {
+    fn lookup_path_io(&mut self, parent: i64, folded_name: &[u8]) -> Result<LookupResult, i32> {
         let dir = match self.stmt.directory.perform(parent) {
             Ok(dir) => dir,
             Err(err) => {
@@ -318,100 +313,18 @@ impl<'con, 'scope> Fs<'con, 'scope> {
             return Err(::libc::ENOENT);
         }
 
-        let dir_path = Path::new(OsStr::from_bytes(&dir.path));
-        let dir_entries = if parent == self.root_ino {
-            ::rustix::io::fcntl_dupfd_cloexec(self.root_dir, 0).map_err(|err| {
-                ::log::error!("could not open root dir\n{err}");
-                err.raw_os_error()
-            })
-        } else {
-            ::rustix::fs::openat(
-                self.root_dir,
-                dir_path,
-                OFlags::DIRECTORY | OFlags::RDONLY | OFlags::CLOEXEC,
-                Mode::empty(),
-            )
-            .map_err(|err| {
-                ::log::error!(
-                    "could not open {dir_path:?}\n{err}\n({parent}, {name:?})",
-                    name = OsStr::from_bytes(name)
-                );
-                err.raw_os_error()
-            })
-        }
-        .and_then(|fd| {
-            Dir::new(fd).map_err(|err| {
-                ::log::error!("could not read {dir_path:?} as a directory\n{err}");
-                err.raw_os_error()
-            })
-        })?;
-
         let transaction = self.connection.unchecked_transaction().map_err(|err| {
             ::log::error!("could not start transaction\n{err}");
             ::libc::EIO
         })?;
 
-        let mut insert = Action::<action::Insert>::new(&transaction).map_err(|err| {
-            ::log::error!("could not create insert action\n{err}");
-            ::libc::EIO
-        })?;
-
-        let mut has_children = false;
         let mut result = Err(::libc::ENOENT);
-        for entry in dir_entries {
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(err) => {
-                    ::log::error!("could not get entry of {dir_path:?}\n{err}");
-                    continue;
-                }
-            };
-            let name = entry.file_name().to_bytes();
-
-            if matches!(name, b"." | b"..") {
-                continue;
-            }
-
-            has_children = true;
-
-            let mut path = dir.path.clone();
-            path.push(b'/');
-            path.extend_from_slice(name);
-
-            let path = path;
-            let folded = case_fold(name);
-
-            insert
-                .perform(InsertParams {
-                    parent,
-                    path: &path,
-                    folded: &folded,
-                })
-                .map_err(|err| {
-                    ::log::error!("could not insert {path:?} into database\n{err}");
-                    ::libc::EIO
-                })?;
+        for row in Self::populate_dir(parent, self.root_ino, self.root_dir, dir, &transaction)? {
+            let (folded, lookup_result) = row?;
             if folded.as_slice() == folded_name {
-                let ino = self.connection.last_insert_rowid();
-                result = Ok(LookupResult { ino, path });
+                result = Ok(lookup_result);
             }
         }
-
-        let mut set_has_children =
-            Action::<action::SetHasChildren>::new(&transaction).map_err(|err| {
-                ::log::error!("could not create set_has_children action\n{err}");
-                ::libc::EIO
-            })?;
-
-        set_has_children
-            .perform((parent, has_children))
-            .map_err(|err| {
-                ::log::error!("could not set has_children of {dir_path:?}\n{err}");
-                ::libc::EIO
-            })?;
-
-        drop(insert);
-        drop(set_has_children);
 
         transaction.commit().map_err(|err| {
             ::log::error!("could not commit transaction\n{err}");
@@ -429,7 +342,7 @@ impl<'con, 'scope> Fs<'con, 'scope> {
         root_dir: BorrowedFd<'_>,
         dir: DirectoryResult,
         connection: &Connection,
-    ) -> Result<impl Iterator<Item = Result<SmallVec<[u8; 64]>, i32>>, i32> {
+    ) -> Result<impl Iterator<Item = Result<(SmallVec<[u8; 64]>, LookupResult), i32>>, i32> {
         let dir_path = Path::new(OsStr::from_bytes(&dir.path));
 
         let mut insert = Action::<action::Insert>::new(connection).map_err(|err| {
@@ -495,7 +408,9 @@ impl<'con, 'scope> Fs<'con, 'scope> {
             }
 
             let mut path = dir.path.clone();
-            path.push(b'/');
+            if !path.is_empty() {
+                path.push(b'/');
+            }
             path.extend_from_slice(name);
 
             let path = path;
@@ -509,8 +424,9 @@ impl<'con, 'scope> Fs<'con, 'scope> {
                 ::log::error!("could not insert {path:?} into database\n{err}");
                 return Some(Err(::libc::EIO));
             }
+            let ino = connection.last_insert_rowid();
 
-            Some(Ok(folded))
+            Some(Ok((folded, LookupResult { ino, path })))
         }))
     }
 
@@ -530,7 +446,7 @@ impl<'con, 'scope> Fs<'con, 'scope> {
             return Err(::libc::EIO);
         }
 
-        self.lookup_path_io(name, parent, &folded)
+        self.lookup_path_io(parent, &folded)
     }
 }
 
@@ -552,19 +468,12 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
         self.spawn(move || {
             let path = Path::new(OsStr::from_bytes(&path));
 
-            let attr = match get_attr(shared.root_dir.as_fd(), path) {
+            let attr = match get_attr(shared.root_dir.as_fd(), path, ino) {
                 Ok(attr) => attr,
                 Err(err) => return reply.error(err),
             };
 
-            reply.entry(
-                &Duration::MAX,
-                &FileAttr {
-                    ino: ino.cast_unsigned(),
-                    ..attr
-                },
-                0,
-            );
+            reply.entry(&Duration::MAX, &attr, 0);
         });
     }
 
@@ -587,11 +496,10 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
         self.spawn(move || {
             let path = Path::new(OsStr::from_bytes(&path));
 
-            let mut attr = match get_attr(shared.root_dir.as_fd(), path) {
+            let attr = match get_attr(shared.root_dir.as_fd(), path, ino.cast_signed()) {
                 Ok(attr) => attr,
                 Err(err) => return reply.error(err),
             };
-            attr.ino = ino;
 
             reply.attr(&Duration::MAX, &attr);
         });
@@ -605,6 +513,7 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
         offset: i64,
         reply: fuser::ReplyDirectory,
     ) {
+        reply.error(::libc::ENOSYS);
     }
 
     fn statfs(&mut self, _req: &fuser::Request<'_>, _ino: u64, reply: fuser::ReplyStatfs) {
