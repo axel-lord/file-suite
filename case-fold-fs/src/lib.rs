@@ -18,8 +18,12 @@ pub mod action;
 
 use ::clap::Parser;
 use ::color_eyre::eyre::eyre;
+use ::derive_more::IsVariant;
 use ::fuser::{FileAttr, FileType};
-use ::rusqlite::{Connection, named_params};
+use ::rusqlite::{
+    Connection, DatabaseName, Transaction, fallible_streaming_iterator::FallibleStreamingIterator,
+    types::FromSqlError,
+};
 use ::rustix::fs::{AtFlags, Dir, Mode, OFlags, StatxFlags, makedev, statx};
 use ::signal_hook::{
     consts::{SIGHUP, SIGINT, SIGQUIT, SIGTERM},
@@ -30,7 +34,7 @@ use ::smallvec::SmallVec;
 use crate::action::{
     Action,
     param::{InsertParams, LookupParams},
-    result::{DirectoryResult, LookupResult},
+    result::LookupResult,
 };
 
 /// Convert a value, logging and converting errors to eio.
@@ -104,13 +108,26 @@ pub struct Cli {
     source: PathBuf,
     /// Mount point, will be same as source if not given.
     mountpoint: Option<PathBuf>,
+
+    /// Dump internal database to specified file.
+    #[arg(long)]
+    dump: Option<PathBuf>,
+
+    /// Do not destroy database contents on deletion.
+    #[arg(long)]
+    leak: bool,
 }
 
 impl ::file_suite_common::Run for Cli {
     type Error = ::color_eyre::Report;
 
     fn run(self) -> Result<(), Self::Error> {
-        let Self { source, mountpoint } = self;
+        let Self {
+            source,
+            mountpoint,
+            dump,
+            leak,
+        } = self;
         let signal_kinds = &[SIGHUP, SIGTERM, SIGINT, SIGQUIT];
         let mut signals = Signals::new(signal_kinds).map_err(|err| eyre!(err))?;
         let signals_handle = signals.handle();
@@ -127,7 +144,7 @@ impl ::file_suite_common::Run for Cli {
         ::rayon::scope(|r| -> ::color_eyre::Result<()> {
             let connection = ::rusqlite::Connection::open_in_memory().map_err(|err| eyre!(err))?;
             let mut session = ::fuser::Session::new(
-                Fs::new(root_dir.as_fd(), &connection, r)?,
+                Fs::new(root_dir.as_fd(), &connection, r)?.leak(leak),
                 mountpoint.unwrap_or_else(|| source.clone()),
                 &[],
             )
@@ -176,6 +193,10 @@ impl ::file_suite_common::Run for Cli {
                 );
             }
 
+            if let Some(dump) = dump {
+                ::std::fs::write(dump, &*connection.serialize(DatabaseName::Main)?)?;
+            }
+
             Ok(())
         })
     }
@@ -198,7 +219,6 @@ fn case_fold(bytes: &[u8]) -> SmallVec<[u8; 64]> {
 #[derive(Debug)]
 struct DbStmts<'conn> {
     lookup: Action<'conn, action::Lookup>,
-    directory: Action<'conn, action::Directory>,
     path_by_ino: Action<'conn, action::PathByInode>,
     count_ino: Action<'conn, action::CountInodes>,
 }
@@ -209,7 +229,6 @@ impl<'conn> DbStmts<'conn> {
             lookup: Action::new(connection)?,
             count_ino: Action::new(connection)?,
             path_by_ino: Action::new(connection)?,
-            directory: Action::new(connection)?,
         })
     }
 }
@@ -245,6 +264,51 @@ macro_rules! conv_or_reply {
     };
 }
 
+/// Error type.
+#[derive(Debug, ::thiserror::Error, IsVariant)]
+enum Error {
+    #[error("raw error {0}")]
+    Raw(i32),
+    #[error(transparent)]
+    Errno(#[from] ::rustix::io::Errno),
+    #[error(transparent)]
+    Sqlite(#[from] ::rusqlite::Error),
+}
+
+impl From<i32> for Error {
+    fn from(value: i32) -> Self {
+        Self::Raw(value)
+    }
+}
+
+impl From<FromSqlError> for Error {
+    fn from(value: FromSqlError) -> Self {
+        Self::Sqlite(value.into())
+    }
+}
+
+impl Error {
+    /// Run a function if the value is not a raw i32.
+    fn inspect_not_raw(self, f: impl for<'a> FnOnce(&'a Self)) -> Self {
+        f(&self);
+        self
+    }
+
+    /// Convert into a raw error, sqlite errors become [::libc::EIO].
+    fn into_raw(self) -> i32 {
+        match self {
+            Error::Raw(raw) => raw,
+            Error::Errno(errno) => errno.raw_os_error(),
+            Error::Sqlite(_) => ::libc::EIO,
+        }
+    }
+
+    /// Get an eio error
+    fn eio() -> Self {
+        Self::Raw(::libc::EIO)
+    }
+}
+
 /// Filesystem.
 #[derive(Debug)]
 struct Fs<'con, 'scope> {
@@ -253,6 +317,7 @@ struct Fs<'con, 'scope> {
     root_dir: BorrowedFd<'con>,
     shared: Arc<Shared>,
     root_ino: i64,
+    leak: bool,
     scope: &'con ::rayon::Scope<'scope>,
 }
 
@@ -262,108 +327,142 @@ impl<'con, 'scope> Fs<'con, 'scope> {
         connection: &'con Connection,
         scope: &'con ::rayon::Scope<'scope>,
     ) -> ::color_eyre::Result<Self> {
-        let create_table = r#"
-            CREATE TABLE files (
-                ino INTEGER PRIMARY KEY,
-                parent INTEGER NOT NULL,
-                name BLOB NOT NULL,
-                folded BLOB NOT NULL,
-                has_children INTEGER,
-                UNIQUE (parent, folded),
-                FOREIGN KEY (parent)
-                    REFERENCES files (ino)
-                        ON DELETE CASCADE
-                        ON UPDATE CASCADE
-            )
-        "#;
-        connection.execute(create_table, [])?;
+        connection.execute(
+            r#"
+                CREATE TABLE files (
+                    ino INTEGER PRIMARY KEY,
+                    parent INTEGER NOT NULL,
+                    name BLOB NOT NULL,
+                    folded BLOB NOT NULL,
+                    UNIQUE (parent, folded),
+                    FOREIGN KEY (parent)
+                        REFERENCES files (ino)
+                            ON DELETE CASCADE
+                            ON UPDATE CASCADE
+                )
+            "#,
+            [],
+        )?;
+        connection.execute(
+            r#"
+                CREATE TABLE opendir (
+                    fh INTEGER PRIMARY KEY,
+                    ino INTEGER NOT NULL,
+                    FOREIGN KEY (ino)
+                        REFERENCES files (ino)
+                            ON DELETE CASCADE
+                            ON UPDATE CASCADE
+                )
+            "#,
+            [],
+        )?;
+        connection.execute(
+            r#"
+                CREATE TABLE readdir (
+                    fh INTEGER NOT NULL,
+                    ino INTEGER NOT NULL,
+                    name BLOB NOT NULL,
+                    UNIQUE (fh, ino)
+                        ON CONFLICT REPLACE,
+                    FOREIGN KEY (fh)
+                        REFERENCES opendir (fh)
+                            ON DELETE CASCADE
+                            ON UPDATE CASCADE,
+                    FOREIGN KEY (ino)
+                        REFERENCES files (ino)
+                            ON DELETE CASCADE
+                            ON UPDATE CASCADE
+                )
+            "#,
+            [],
+        )?;
         connection.execute(
             r#"INSERT INTO files (ino, parent, name, folded) VALUES (0, 0, "-", "-")"#,
             [],
         )?;
         connection.execute(
-            r#"INSERT INTO files (ino, parent, name, folded) VALUES (:ino, 0, "", "")"#,
-            named_params! {":ino": ::fuser::FUSE_ROOT_ID},
+            r#"INSERT INTO files (ino, parent, name, folded) VALUES (?1, 0, "", "")"#,
+            (&::fuser::FUSE_ROOT_ID,),
         )?;
+
         Ok(Self {
             connection,
             shared: Arc::new(Shared::new(root_dir)?),
             root_ino: connection.last_insert_rowid(),
             stmt: DbStmts::new(connection)?,
+            leak: false,
             root_dir,
             scope,
         })
+    }
+
+    fn leak(mut self, should: bool) -> Self {
+        self.leak = should;
+        self
     }
 
     fn spawn(&self, f: impl FnOnce() + Send + 'scope) {
         self.scope.spawn(move |_| f());
     }
 
-    #[inline(never)]
-    fn lookup_path_io(&mut self, parent: i64, folded_name: &[u8]) -> Result<LookupResult, i32> {
-        let dir = match self.stmt.directory.perform(parent) {
-            Ok(dir) => dir,
-            Err(err) => {
-                ::log::error!("could not get parent directory {parent}\n{err}");
-                return Err(::libc::EIO);
-            }
-        };
-
-        if dir.has_children.is_some() {
-            return Err(::libc::ENOENT);
-        }
-
-        let transaction = self.connection.unchecked_transaction().map_err(|err| {
-            ::log::error!("could not start transaction\n{err}");
-            ::libc::EIO
-        })?;
-
-        let mut result = Err(::libc::ENOENT);
-        for row in Self::populate_dir(parent, self.root_ino, self.root_dir, dir, &transaction)? {
-            let (folded, lookup_result) = row?;
-            if folded.as_slice() == folded_name {
-                result = Ok(lookup_result);
-            }
-        }
-
-        transaction.commit().map_err(|err| {
-            ::log::error!("could not commit transaction\n{err}");
-            ::libc::EIO
-        })?;
-
-        result
+    fn with_transaction<T, E, F>(&self, f: F) -> Result<T, E>
+    where
+        F: for<'a> FnOnce(&'a Transaction<'a>) -> Result<T, E>,
+        E: From<i32>,
+    {
+        self.connection
+            .unchecked_transaction()
+            .map_err(|err| {
+                ::log::error!("could not start transaction\n{err}");
+                E::from(::libc::EIO)
+            })
+            .and_then(|transaction| {
+                let result = f(&transaction)?;
+                transaction.commit().map_err(|err| {
+                    ::log::error!("could not commit transaction\n{err}");
+                    ::libc::EIO
+                })?;
+                Ok(result)
+            })
     }
 
     /// Create an iterator that populates a parent directory with children and yields case folded
     /// file names of the children as it does so.
     fn populate_dir(
+        &self,
         parent: i64,
-        root_ino: i64,
-        root_dir: BorrowedFd<'_>,
-        dir: DirectoryResult,
-        connection: &Connection,
-    ) -> Result<impl Iterator<Item = Result<(SmallVec<[u8; 64]>, LookupResult), i32>>, i32> {
-        let dir_path = Path::new(OsStr::from_bytes(&dir.path));
+        dir: &[u8],
+        transaction: &Transaction<'_>,
+    ) -> Result<(), i32> {
+        let dir_path = Path::new(OsStr::from_bytes(dir));
 
-        let mut insert = Action::<action::Insert>::new(connection).map_err(|err| {
+        let mut insert = Action::<action::Insert>::new(&transaction).map_err(|err| {
             ::log::error!("could not create insert action\n{err}");
             ::libc::EIO
         })?;
 
-        let mut set_has_children =
-            Action::<action::SetHasChildren>::new(connection).map_err(|err| {
-                ::log::error!("could not create set_has_children action\n{err}");
+        insert
+            .perform(InsertParams {
+                parent,
+                path: b"",
+                folded: b".",
+            })
+            .map_err(|err| {
+                ::log::error!(
+                    "could not insert child marker for {path:?}\n{err}",
+                    path = Path::new(OsStr::from_bytes(dir))
+                );
                 ::libc::EIO
             })?;
 
-        let entries = if parent == root_ino {
-            ::rustix::io::fcntl_dupfd_cloexec(root_dir, 0).map_err(|err| {
+        let entries = if parent == self.root_ino {
+            ::rustix::io::fcntl_dupfd_cloexec(self.root_dir, 0).map_err(|err| {
                 ::log::error!("could not open root dir\n{err}");
                 err.raw_os_error()
             })
         } else {
             ::rustix::fs::openat(
-                root_dir,
+                self.root_dir,
                 dir_path,
                 OFlags::DIRECTORY | OFlags::RDONLY | OFlags::CLOEXEC,
                 Mode::empty(),
@@ -380,34 +479,23 @@ impl<'con, 'scope> Fs<'con, 'scope> {
             })
         })?;
 
-        let mut has_children = false;
-        Ok(entries.filter_map(move |entry| {
-            let entry = entry
-                .map_err(|err| {
+        for entry in entries {
+            let entry = match entry {
+                Err(err) => {
                     ::log::error!(
                         "could not get entry of {path:?}\n{err}",
-                        path = Path::new(OsStr::from_bytes(&dir.path))
-                    )
-                })
-                .ok()?;
-            let name = entry.file_name().to_bytes();
-
-            if matches!(name, b"." | b"..") {
-                return None;
-            }
-
-            if !has_children {
-                if let Err(err) = set_has_children.perform((parent, true)) {
-                    ::log::error!(
-                        "could not set has_children of {path:?}\n{err}",
-                        path = Path::new(OsStr::from_bytes(&dir.path))
+                        path = Path::new(OsStr::from_bytes(dir))
                     );
-                    return Some(Err(::libc::EIO));
+                    continue;
                 }
-                has_children = true;
+                Ok(entry) => entry,
+            };
+            let name = entry.file_name().to_bytes();
+            if matches!(name, b"." | b"..") {
+                continue;
             }
 
-            let mut path = dir.path.clone();
+            let mut path = SmallVec::<[u8; 64]>::from_slice(dir);
             if !path.is_empty() {
                 path.push(b'/');
             }
@@ -416,37 +504,75 @@ impl<'con, 'scope> Fs<'con, 'scope> {
             let path = path;
             let folded = case_fold(name);
 
-            if let Err(err) = insert.perform(InsertParams {
-                parent,
-                path: &path,
-                folded: &folded,
-            }) {
-                ::log::error!("could not insert {path:?} into database\n{err}");
-                return Some(Err(::libc::EIO));
-            }
-            let ino = connection.last_insert_rowid();
+            insert
+                .perform(InsertParams {
+                    parent,
+                    path: &path,
+                    folded: &folded,
+                })
+                .map_err(|err| {
+                    ::log::error!("could not insert {path:?} into database\n{err}");
+                    ::libc::EIO
+                })?;
+        }
+        Ok(())
+    }
 
-            Some(Ok((folded, LookupResult { ino, path })))
-        }))
+    #[inline(never)]
+    fn lookup_path_io(&mut self, parent: i64, folded: &[u8]) -> Result<LookupResult, i32> {
+        match self.lookup_path_db(parent, b".").inspect_err(|_| {
+            ::log::error!("could not check for directory child marker");
+        })? {
+            Some(_) => return Err(::libc::ENOENT),
+            None => {}
+        }
+
+        let dir = match self.stmt.path_by_ino.perform(parent) {
+            Ok(dir) => dir,
+            Err(err) => {
+                ::log::error!("could not get parent directory {parent}\n{err}");
+                return Err(::libc::EIO);
+            }
+        };
+
+        self.with_transaction(|transaction| self.populate_dir(parent, &dir, transaction))?;
+
+        self.lookup_path_db(parent, folded)
+            .transpose()
+            .ok_or(::libc::ENOENT)
+            .flatten()
+    }
+
+    fn lookup_path_db(&mut self, parent: i64, folded: &[u8]) -> Result<Option<LookupResult>, i32> {
+        match self.stmt.lookup.perform(LookupParams { parent, folded }) {
+            Ok(result) => Ok(Some(result)),
+            Err(::rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(err) => {
+                ::log::error!(
+                    "database error on lookup of {folded} for {parent}\n{err}",
+                    folded = OsStr::from_bytes(folded).display()
+                );
+                Err(::libc::EIO)
+            }
+        }
+    }
+
+    fn has_child_marker(&mut self, parent: i64) -> Result<bool, i32> {
+        self.lookup_path_db(parent, b".")
+            .map(|result| result.is_some())
     }
 
     fn lookup_path(&mut self, name: &[u8], parent: i64) -> Result<LookupResult, i32> {
-        let folded = case_fold(name);
-
-        let err = match self.stmt.lookup.perform(LookupParams {
-            parent,
-            folded: &folded,
-        }) {
-            Ok(val) => return Ok(val),
-            Err(err) => err,
-        };
-
-        if !matches!(err, ::rusqlite::Error::QueryReturnedNoRows) {
-            ::log::error!("database error unrelated to not finding anything\n{err}");
-            return Err(::libc::EIO);
+        if matches!(name, b"." | b"..") {
+            return Err(::libc::ENOENT);
         }
 
-        self.lookup_path_io(parent, &folded)
+        let folded = case_fold(name);
+
+        match self.lookup_path_db(parent, &folded)? {
+            Some(result) => Ok(result),
+            None => self.lookup_path_io(parent, &folded),
+        }
     }
 }
 
@@ -505,15 +631,172 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
         });
     }
 
+    fn opendir(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        _flags: i32,
+        reply: fuser::ReplyOpen,
+    ) {
+        if let Err(err) = self
+            .connection
+            .execute(r"INSERT INTO opendir (ino) VALUES (?1) ", (&ino,))
+        {
+            ::log::error!("could not add opendir entry to databas for {ino}\n{err}");
+            return reply.error(::libc::EIO);
+        };
+        let fh = self.connection.last_insert_rowid();
+        reply.opened(fh.cast_unsigned(), 0);
+    }
+
+    fn releasedir(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        fh: u64,
+        _flags: i32,
+        reply: fuser::ReplyEmpty,
+    ) {
+        if self.leak {
+            return reply.ok();
+        }
+        let result = self.with_transaction::<_, Error, _>(|transaction| {
+            transaction.execute(r"DELETE FROM opendir WHERE fh = ?1", (&fh.cast_signed(),))?;
+            transaction.execute(r"DELETE FROM readdir WHERE fh = ?1", (&fh.cast_signed(),))?;
+            Ok(())
+        });
+        if let Err(err) = result {
+            reply.error(
+                err.inspect_not_raw(|err| {
+                    ::log::error!("could not close directory {ino}/{fh} ino/fh\n{err}")
+                })
+                .into_raw(),
+            );
+        } else {
+            reply.ok();
+        }
+    }
+
     fn readdir(
         &mut self,
         _req: &fuser::Request<'_>,
         ino: u64,
         fh: u64,
         offset: i64,
-        reply: fuser::ReplyDirectory,
+        mut reply: fuser::ReplyDirectory,
     ) {
-        reply.error(::libc::ENOSYS);
+        if offset == 0 {
+            let should_populate = self
+                .has_child_marker(ino.cast_signed())
+                .map_err(Error::Raw)
+                .and_then(|value| {
+                    Ok((!value)
+                        .then(|| self.stmt.path_by_ino.perform(ino.cast_signed()))
+                        .transpose()?)
+                });
+
+            let should_populate = match should_populate {
+                Ok(value) => value,
+                Err(err) => {
+                    return reply.error(
+                        err.inspect_not_raw(|err| {
+                            ::log::error!(
+                                "could not check if dir population should be performed\n{err}"
+                            )
+                        })
+                        .into_raw(),
+                    );
+                }
+            };
+
+            let result = self.with_transaction::<_, Error, _>(|transaction| {
+                if let Some(dir) = should_populate {
+                    self.populate_dir(ino.cast_signed(), &dir, transaction)?;
+                }
+                transaction.execute(
+                    r#"
+                        INSERT INTO readdir (ino, fh, name)
+                        SELECT ino, ?1, name
+                            FROM files
+                            WHERE parent = ?2 AND folded != ?3;
+                    "#,
+                    (&fh.cast_signed(), &ino.cast_signed(), b"."),
+                )?;
+
+                Ok(())
+            });
+
+            if let Err(err) = result {
+                ::log::error!("could not create readdir entries for {ino}\n{err}");
+                return reply.error(::libc::EIO);
+            }
+        }
+
+        let mut stmt = match self.connection.prepare(
+            r#"
+                SELECT ino, name
+                    FROM readdir
+                    WHERE fh = ?1 AND ino > ?2
+                    ORDER BY ino
+            "#,
+        ) {
+            Ok(stmt) => stmt,
+            Err(err) => {
+                ::log::error!("could not prepare readdir statement for {ino}\n{err}");
+                return reply.error(::libc::EIO);
+            }
+        };
+
+        let mut query = match stmt.query((&fh, &offset)) {
+            Ok(query) => query,
+            Err(err) => {
+                ::log::error!("could not get query for readdir statement for {ino}\n{err}");
+                return reply.error(::libc::EIO);
+            }
+        };
+
+        while let Some(row) = match query.next() {
+            Ok(row) => row,
+            Err(err) => {
+                ::log::error!("could not read row of {ino}\n{err}");
+                return reply.error(::libc::EIO);
+            }
+        } {
+            let ino = match row.get::<_, i64>("ino") {
+                Ok(ino) => ino,
+                Err(err) => {
+                    ::log::error!("\n{err}");
+                    return reply.error(::libc::EIO);
+                }
+            };
+
+            let name = match row
+                .get_ref("name")
+                .and_then(|r| Ok(r.as_bytes()?))
+                .map(OsStr::from_bytes)
+                .map(Path::new)
+            {
+                Ok(name) => name,
+                Err(err) => {
+                    ::log::error!("\n{err}");
+                    return reply.error(::libc::EIO);
+                }
+            };
+
+            let name = match name.file_name() {
+                Some(name) => name,
+                None => {
+                    ::log::error!("could not get file name for {name:?}");
+                    return reply.error(::libc::EIO);
+                }
+            };
+
+            if reply.add(ino.cast_unsigned(), ino, FileType::RegularFile, name) {
+                break;
+            }
+        }
+
+        reply.ok();
     }
 
     fn statfs(&mut self, _req: &fuser::Request<'_>, _ino: u64, reply: fuser::ReplyStatfs) {

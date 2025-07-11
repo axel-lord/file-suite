@@ -7,7 +7,7 @@ use ::smallvec::SmallVec;
 
 use crate::action::{
     param::{InsertParams, LookupParams},
-    result::{DirectoryResult, LookupResult},
+    result::LookupResult,
 };
 
 /// Trait for types which may perform an action.
@@ -65,24 +65,6 @@ pub mod result {
 
     use ::smallvec::SmallVec;
 
-    /// A directory row.
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct DirectoryResult {
-        /// If it is known if this parent has any children and if so
-        /// what is known.
-        ///
-        /// # Returns
-        /// `Some(true)` if the parent has children.
-        ///
-        /// `Some(false)` if the parent has no children.
-        ///
-        /// `None` if it is unknown.
-        pub has_children: Option<bool>,
-
-        /// Relative path from root to parent.
-        pub path: SmallVec<[u8; 64]>,
-    }
-
     /// Result of a lookup.
     #[derive(Debug)]
     pub struct LookupResult {
@@ -136,22 +118,6 @@ action! {
 }
 
 action! {
-    /// Get directory info of inode.
-    [r"SELECT name, has_children FROM files WHERE ino = :ino"]
-    Directory(stmt, param: i64) -> Result<DirectoryResult, ::rusqlite::Error> {
-        stmt.query_row(named_params! {":ino": param}, |row| {
-            Ok(DirectoryResult {
-                path: row.get_ref("name")?.as_bytes().map(SmallVec::from_slice)?,
-                has_children: row
-                    .get_ref("has_children")?
-                    .as_i64_or_null()?
-                    .map(|val| val != 0),
-            })
-        })
-    }
-}
-
-action! {
     /// Get relative path of inode.
     [r"SELECT name FROM files WHERE ino = ?1"]
     PathByInode(stmt, param: i64) -> Result<SmallVec<[u8; 64]>, ::rusqlite::Error> {
@@ -184,14 +150,6 @@ action! {
             folded,
         } = params;
         stmt.execute(named_params! {":parent": parent, ":name": path, ":folded": folded})
-    }
-}
-
-action! {
-    /// Set the value of has_children for a row.
-    [r#"UPDATE files SET has_children = :has_children WHERE ino = :ino"#]
-    SetHasChildren(stmt, params: (i64, bool)) -> Result<(), ::rusqlite::Error> {
-        stmt.execute(named_params! {":has_children": i64::from(params.1), ":ino": params.0}).map(|_| ())
     }
 }
 
