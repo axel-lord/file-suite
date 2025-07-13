@@ -1,8 +1,6 @@
 //! Database actions.
 
-use ::std::{fmt::Debug, marker::PhantomData};
-
-use ::rusqlite::{CachedStatement, Connection, Statement, named_params};
+use ::rusqlite::named_params;
 use ::smallvec::SmallVec;
 
 use crate::{
@@ -12,73 +10,6 @@ use crate::{
     },
     macros::action,
 };
-
-/// Trait for types which may perform an action.
-pub trait Perform {
-    /// Error type returned on failure.
-    type Err;
-
-    /// Parameters which should be passed as input.
-    type Param<'t>;
-
-    /// Returned value on success.
-    type Output;
-
-    /// Get sql expression to create statement using.
-    fn sql() -> &'static str;
-
-    /// Perform action.
-    fn perform(
-        stmt: &mut Statement<'_>,
-        params: Self::Param<'_>,
-    ) -> Result<Self::Output, Self::Err>;
-
-    /// Perform an action once, creating the statement on every call.
-    fn perform_once<E>(connection: &Connection, params: Self::Param<'_>) -> Result<Self::Output, E>
-    where
-        E: From<Self::Err> + From<::rusqlite::Error>,
-    {
-        let mut stmt = connection.prepare(Self::sql())?;
-        Ok(Self::perform(&mut stmt, params)?)
-    }
-}
-
-/// A database action which may be performed.
-pub struct Action<'conn, T> {
-    stmt: CachedStatement<'conn>,
-    _p: PhantomData<fn() -> T>,
-}
-
-impl<'conn, T> Debug for Action<'conn, T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Action")
-            .field("stmt", &*self.stmt)
-            .field("T", &format_args!("{}", ::std::any::type_name::<T>()))
-            .finish()
-    }
-}
-
-impl<'conn, T> Action<'conn, T>
-where
-    T: Perform,
-{
-    /// Construct a new action bound to a database connection.
-    ///
-    /// # Errors
-    /// If the sql cannot be prepared.
-    pub fn new(connection: &'conn Connection) -> Result<Self, ::rusqlite::Error> {
-        Ok(Self {
-            stmt: connection.prepare_cached(T::sql())?,
-            _p: PhantomData,
-        })
-    }
-
-    /// Perform the action using specified parameters.
-    #[inline]
-    pub fn perform(&mut self, params: T::Param<'_>) -> Result<T::Output, T::Err> {
-        T::perform(&mut self.stmt, params)
-    }
-}
 
 pub mod result {
     //! Types of values returned by actions.
@@ -124,7 +55,7 @@ pub mod param {
 action! {
     /// Count amount of inodes in database.
     [r"SELECT COUNT(ino) FROM files"]
-    CountInodes(stmt, _param: ()) -> Result<u64, i32> {
+    CountInodes(stmt) -> Result<u64, i32> {
         stmt.query_row([], |row| Ok(row.get_ref(0)?.as_i64()?))
             .map_err(|err| {
                 ::log::error!("could not cound inodes\n{err}");
@@ -142,8 +73,8 @@ action! {
 action! {
     /// Get relative path of inode.
     [r"SELECT name FROM files WHERE ino = ?1"]
-    PathByInode(stmt, param: i64) -> Result<SmallVec<[u8; 64]>, ::rusqlite::Error> {
-        stmt.query_row((&param,), |row| {
+    PathByInode(stmt, ino: i64) -> Result<SmallVec<[u8; 64]>, ::rusqlite::Error> {
+        stmt.query_row((&ino,), |row| {
             Ok(SmallVec::from_slice(row.get_ref("name")?.as_bytes()?))
         })
     }
@@ -152,7 +83,7 @@ action! {
 action! {
     /// Lookup an entry by parent and name.
     [r"SELECT ino, name FROM files WHERE parent = ?1 AND folded = ?2"]
-    for<'p> Lookup(stmt, param: LookupParams<'p>) -> Result<LookupResult, ::rusqlite::Error> {
+    Lookup(stmt, param: LookupParams<'_>) -> Result<LookupResult, ::rusqlite::Error> {
         stmt.query_row((&param.parent, param.folded), |row| {
             Ok(LookupResult {
                 ino: row.get_ref("ino")?.as_i64()?,
@@ -165,7 +96,7 @@ action! {
 action! {
     /// Insert a row into the database.
     [r"INSERT INTO files (parent, name, folded, type) VALUES (:parent, :name, :folded, :type)"]
-    for<'b> Insert(stmt, params: InsertParams<'b>) -> Result<usize, ::rusqlite::Error> {
+    Insert(stmt, params: InsertParams<'_>) -> Result<usize, ::rusqlite::Error> {
         let InsertParams {
             parent,
             path,
@@ -179,15 +110,56 @@ action! {
 action! {
     /// Increase rc of an inode
     [r"UPDATE files SET rc = rc + 1 WHERE ino = ?1 RETURNING rc"]
-    IncrementRc(stmt, param: i64) -> Result<i64, ::rusqlite::Error> {
-        stmt.query_row((&param,), |row| Ok(row.get_ref(0)?.as_i64()?))
+    IncrementRc(stmt, ino: i64) -> Result<i64, ::rusqlite::Error> {
+        stmt.query_row((&ino,), |row| Ok(row.get_ref(0)?.as_i64()?))
     }
 }
 
 action! {
     /// Insert a directory into opendir table.
     [r"INSERT INTO opendir (ino) VALUES (?1) RETURNING fh"]
-    InsertIntoOpendir(stmt, param: i64) -> Result<i64, ::rusqlite::Error> {
-        stmt.query_row((&param,), |row| Ok(row.get_ref(0)?.as_i64()?))
+    InsertIntoOpendir(stmt, ino: i64) -> Result<i64, ::rusqlite::Error> {
+        stmt.query_row((&ino,), |row| Ok(row.get_ref(0)?.as_i64()?))
+    }
+}
+
+action! {
+    /// Delete rows from opendir and readdir
+    [r"DELETE FROM opendir WHERE fh = ?1", r"DELETE FROM readdir WHERE fh = ?1"]
+    DeleteFromOpendirReaddir(stmts, fh: i64) -> Result<(), ::rusqlite::Error> {
+        for stmt in stmts {
+            stmt.execute((&fh,))?;
+        }
+        Ok(())
+    }
+}
+
+action! {
+    /// Move rows of an open directory to readdir table.
+    [
+        r#"
+            INSERT INTO readdir (ino, fh, name, type)
+            SELECT ino, ?1, name, type
+                FROM files
+                WHERE parent = ?2 AND folded != ?3;
+        "#
+    ]
+    InsertToReaddir(stmt, fh: i64, parent: i64) -> Result<usize, ::rusqlite::Error> {
+        stmt.execute((&fh, &parent, b"."))
+    }
+}
+
+action! {
+    /// Select readdir rows by fh
+    [
+        r#"
+            SELECT ino, name, type
+                FROM readdir
+                WHERE fh = ?1 AND ino > ?2
+                ORDER BY ino
+        "#
+    ]
+    SelectReaddir<'stmt>(stmt, fh: i64, offset: i64) -> Result<::rusqlite::Rows<'stmt>, ::rusqlite::Error> {
+        stmt.query((&fh, &offset))
     }
 }

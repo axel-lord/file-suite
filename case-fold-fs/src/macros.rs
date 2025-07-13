@@ -1,3 +1,10 @@
+macro_rules! replace_expr {
+    ($_t:expr, $sub:expr) => {
+        $sub
+    };
+}
+pub(crate) use replace_expr;
+
 macro_rules! conv_or_reply {
     ($reply:ident, $expr:expr, $ty:ty) => {
         match <$ty>::try_from($expr) {
@@ -33,44 +40,77 @@ pub(crate) use conv_or_reply;
 macro_rules! action {
     {
         #[doc = $doc:expr]
-        [$sql:expr]
+        [$sql:expr $(, $sql_add:expr)+ $(,)?]
         $nm:ident(
-            $stmt_ident:ident,
-            $params_ident:ident: $param:ty
+            $stmt_ident:ident
+            $(, $params_ident:ident: $param:ty )* $(,)?
         ) -> Result<$output:ty, $err:ty> $stmt:stmt
     } => {
-        $crate::action::action! {
-            #[doc = $doc]
-            [$sql]
-            for<'_t> $nm($stmt_ident, $params_ident: $param) -> Result<$output, $err> $stmt
+        #[doc = $doc]
+        pub struct $nm<'conn> {
+            $stmt_ident: [::rusqlite::CachedStatement<'conn>; 1usize $(+ $crate::macros::replace_expr!($sql_add, 1usize))*],
+        }
+
+        impl<'conn> ::core::fmt::Debug for $nm<'conn> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                f.debug_struct(stringify!($ident))
+                    .field(stringify!($stmt_ident), &self.$stmt_ident.each_ref().map(|stmt| &**stmt))
+                    .finish()
+            }
+        }
+
+        impl<'conn> $nm<'conn> {
+            /// Create a new instance bound to passed connection.
+            pub fn new(connection: &'conn ::rusqlite::Connection) -> Result<Self, ::rusqlite::Error> {
+
+                Ok(Self {
+                    $stmt_ident: [connection.prepare_cached($sql)? $(, connection.prepare_cached($sql_add)?)*],
+                })
+            }
+
+
+            /// Perform sql statement using given parameters.
+            pub fn perform(&mut self, $( $params_ident: $param ),*) -> Result<$output, $err> {
+                let Self {$stmt_ident} = self;
+                $stmt
+            }
         }
     };
     {
         #[doc = $doc:expr]
         [$sql:expr]
-        for<$lt:lifetime>
-        $nm:ident(
-            $stmt_ident:ident,
-            $params_ident:ident: $param:ty
+         $nm:ident $(<$lt:lifetime>)? (
+            $stmt_ident:ident
+            $(, $params_ident:ident: $param:ty )* $(,)?
         ) -> Result<$output:ty, $err:ty> $stmt:stmt
     } => {
         #[doc = $doc]
-        #[derive(Debug)]
-        pub enum $nm {}
+        pub struct $nm<'conn> {
+            $stmt_ident: ::rusqlite::CachedStatement<'conn>,
+        }
 
-        impl $crate::action::Perform for $nm {
-            type Err = $err;
-            type Param<$lt> = $param;
-            type Output = $output;
+        impl<'conn> ::core::fmt::Debug for $nm<'conn> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                f.debug_struct(stringify!($ident))
+                    .field(stringify!($stmt_ident), &*self.stmt)
+                    .finish()
+            }
+        }
 
-            fn sql() -> &'static str {
-                $sql
+        impl<'conn> $nm<'conn> {
+            /// Create a new instance bound to passed connection.
+            pub fn new(connection: &'conn ::rusqlite::Connection) -> Result<Self, ::rusqlite::Error> {
+                Ok(Self {
+                    $stmt_ident: connection.prepare_cached($sql)?,
+                })
             }
 
-            fn perform(
-                $stmt_ident: &mut Statement<'_>,
-                $params_ident: Self::Param<'_>,
-            ) -> Result<Self::Output, Self::Err> {
+
+            /// Perform sql statement using given parameters.
+            pub fn perform $( < $lt > )*(& $($lt)* mut self, $( $params_ident: $param ),*) -> Result<$output, $err>
+            $( where 'conn: $lt )*
+            {
+                let Self {$stmt_ident} = self;
                 $stmt
             }
         }
@@ -90,17 +130,17 @@ pub(crate) use action;
 /// }
 /// ```
 macro_rules! db_stmts {
-    {$vis:vis $ident:ident { $( $field:ident: $perform:ty ),+ $(,)? }} => {
+    {$vis:vis $ident:ident<$lt:lifetime> { $( $field:ident: $perform:ty ),+ $(,)? }} => {
         #[derive(Debug)]
-        $vis struct $ident<'conn>{
-            $( pub $field: $crate::action::Action<'conn, $perform>,)*
+        $vis struct $ident<$lt>{
+            $( pub $field: $perform,)*
         }
 
-        impl<'conn> $ident<'conn> {
+        impl<$lt> $ident<$lt> {
             #[doc = "Create a new instance from a connection."]
-            pub fn new(connection: &'conn ::rusqlite::Connection) -> ::color_eyre::Result<Self> {
+            pub fn new(connection: &$lt ::rusqlite::Connection) -> ::color_eyre::Result<Self> {
                 Ok(Self {
-                    $( $field: $crate::action::Action::new(connection)? ,)*
+                    $( $field: <$perform>::new(connection)? ,)*
                 })
             }
         }

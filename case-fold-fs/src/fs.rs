@@ -16,7 +16,7 @@ use ::smallvec::SmallVec;
 use crate::{
     Correction, Error,
     action::{
-        self, Action,
+        self, DeleteFromOpendirReaddir, InsertToReaddir,
         param::{InsertParams, LookupParams},
         result::LookupResult,
     },
@@ -25,12 +25,13 @@ use crate::{
 };
 
 db_stmts! {
-    DbStmts {
-        lookup: action::Lookup,
-        path_by_ino: action::PathByInode,
-        count_ino: action::CountInodes,
-        increment_rc: action::IncrementRc,
-        insert_into_opendir: action::InsertIntoOpendir,
+    DbStmts<'conn> {
+        lookup: action::Lookup<'conn>,
+        path_by_ino: action::PathByInode<'conn>,
+        count_ino: action::CountInodes<'conn>,
+        increment_rc: action::IncrementRc<'conn>,
+        insert_into_opendir: action::InsertIntoOpendir<'conn>,
+        select_readdir: action::SelectReaddir<'conn>,
     }
 }
 
@@ -193,7 +194,7 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
     ) -> Result<(), i32> {
         let dir_path = Path::new(OsStr::from_bytes(dir));
 
-        let mut insert = Action::<action::Insert>::new(&transaction).map_err(|err| {
+        let mut insert = action::Insert::new(&transaction).map_err(|err| {
             ::log::error!("could not create insert action\n{err}");
             ::libc::EIO
         })?;
@@ -435,8 +436,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
             return reply.ok();
         }
         let result = self.with_transaction::<_, Error, _>(|transaction| {
-            transaction.execute(r"DELETE FROM opendir WHERE fh = ?1", (&fh.cast_signed(),))?;
-            transaction.execute(r"DELETE FROM readdir WHERE fh = ?1", (&fh.cast_signed(),))?;
+            DeleteFromOpendirReaddir::new(transaction)?.perform(fh.cast_signed())?;
             Ok(())
         });
         if let Err(err) = result {
@@ -487,15 +487,8 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
                 if let Some(dir) = should_populate {
                     self.populate_dir(ino.cast_signed(), &dir, transaction)?;
                 }
-                transaction.execute(
-                    r#"
-                        INSERT INTO readdir (ino, fh, name, type)
-                        SELECT ino, ?1, name, type
-                            FROM files
-                            WHERE parent = ?2 AND folded != ?3;
-                    "#,
-                    (&fh.cast_signed(), &ino.cast_signed(), b"."),
-                )?;
+
+                InsertToReaddir::new(transaction)?.perform(fh.cast_signed(), ino.cast_signed())?;
 
                 Ok(())
             });
@@ -506,22 +499,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
             }
         }
 
-        let mut stmt = match self.connection.prepare(
-            r#"
-                SELECT ino, name, type
-                    FROM readdir
-                    WHERE fh = ?1 AND ino > ?2
-                    ORDER BY ino
-            "#,
-        ) {
-            Ok(stmt) => stmt,
-            Err(err) => {
-                ::log::error!("could not prepare readdir statement for {ino}\n{err}");
-                return reply.error(::libc::EIO);
-            }
-        };
-
-        let mut query = match stmt.query((&fh, &offset)) {
+        let mut query = match self.stmt.select_readdir.perform(fh.cast_signed(), offset) {
             Ok(query) => query,
             Err(err) => {
                 ::log::error!("could not get query for readdir statement for {ino}\n{err}");
@@ -587,7 +565,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
     }
 
     fn statfs(&mut self, _req: &fuser::Request<'_>, _ino: u64, reply: fuser::ReplyStatfs) {
-        let files = match self.stmt.count_ino.perform(()) {
+        let files = match self.stmt.count_ino.perform() {
             Ok(count) => count,
             Err(err) => return reply.error(err),
         };
