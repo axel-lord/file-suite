@@ -2,16 +2,12 @@
 
 use ::std::{
     ffi::OsStr,
-    os::{
-        fd::{AsFd, BorrowedFd, OwnedFd},
-        unix::ffi::OsStrExt,
-    },
+    os::{fd::BorrowedFd, unix::ffi::OsStrExt},
     path::Path,
-    sync::{Arc, mpsc},
+    sync::mpsc,
     time::Duration,
 };
 
-use ::color_eyre::eyre::eyre;
 use ::fuser::FileType;
 use ::rusqlite::{Connection, Transaction};
 use ::rustix::fs::{Dir, Mode, OFlags};
@@ -25,59 +21,37 @@ use crate::{
         result::LookupResult,
     },
     case_fold, get_attr,
-    macros::conv_or_reply,
+    macros::{conv_or_reply, db_stmts},
 };
 
-#[derive(Debug)]
-struct DbStmts<'conn> {
-    lookup: Action<'conn, action::Lookup>,
-    path_by_ino: Action<'conn, action::PathByInode>,
-    count_ino: Action<'conn, action::CountInodes>,
-}
-
-impl<'conn> DbStmts<'conn> {
-    pub fn new(connection: &'conn Connection) -> ::color_eyre::Result<Self> {
-        Ok(Self {
-            lookup: Action::new(connection)?,
-            count_ino: Action::new(connection)?,
-            path_by_ino: Action::new(connection)?,
-        })
-    }
-}
-
-/// Static resources that may be shared.
-#[derive(Debug)]
-struct Shared {
-    root_dir: OwnedFd,
-}
-
-impl Shared {
-    pub fn new(root_dir: BorrowedFd<'_>) -> ::color_eyre::Result<Self> {
-        Ok(Self {
-            root_dir: root_dir.try_clone_to_owned().map_err(|err| eyre!(err))?,
-        })
+db_stmts! {
+    DbStmts {
+        lookup: action::Lookup,
+        path_by_ino: action::PathByInode,
+        count_ino: action::CountInodes,
+        increment_rc: action::IncrementRc,
+        insert_into_opendir: action::InsertIntoOpendir,
     }
 }
 
 /// Filesystem.
 #[derive(Debug)]
-pub struct Fs<'con, 'scope> {
-    connection: &'con Connection,
-    stmt: DbStmts<'con>,
-    root_dir: BorrowedFd<'con>,
-    shared: Arc<Shared>,
+pub struct Fs<'conn, 'scope> {
+    connection: &'conn Connection,
+    stmt: DbStmts<'conn>,
+    root_dir: BorrowedFd<'scope>,
     root_ino: i64,
     leak: bool,
     correction: &'scope mpsc::Sender<Correction>,
-    scope: &'con ::rayon::Scope<'scope>,
+    scope: &'conn ::rayon::Scope<'scope>,
 }
 
-impl<'con, 'scope> Fs<'con, 'scope> {
+impl<'conn, 'scope> Fs<'conn, 'scope> {
     /// Create a new instance.
     pub fn new(
-        root_dir: BorrowedFd<'con>,
-        connection: &'con Connection,
-        scope: &'con ::rayon::Scope<'scope>,
+        root_dir: BorrowedFd<'scope>,
+        connection: &'conn Connection,
+        scope: &'conn ::rayon::Scope<'scope>,
         correction: &'scope mpsc::Sender<Correction>,
     ) -> ::color_eyre::Result<Self> {
         connection.execute(
@@ -168,7 +142,6 @@ impl<'con, 'scope> Fs<'con, 'scope> {
 
         Ok(Self {
             connection,
-            shared: Arc::new(Shared::new(root_dir)?),
             root_ino: connection.last_insert_rowid(),
             stmt: DbStmts::new(connection)?,
             leak: false,
@@ -364,7 +337,7 @@ impl<'con, 'scope> Fs<'con, 'scope> {
     }
 }
 
-impl ::fuser::Filesystem for Fs<'_, '_> {
+impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
     fn lookup(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -378,25 +351,18 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
                 Err(err) => return reply.error(err),
             };
 
-        if let Err(err) = self.connection.execute(
-            r#"
-            UPDATE files
-            SET rc = rc + 1
-            WHERE ino = ?1
-            "#,
-            (&ino,),
-        ) {
+        if let Err(err) = self.stmt.increment_rc.perform(ino) {
             ::log::error!("could not increase rc for {ino}\n{err}");
             return reply.error(::libc::EIO);
         };
         ::log::info!("lookup - {ino}");
 
-        let shared = self.shared.clone();
+        let fd = self.root_dir;
         let correction = self.correction;
         self.spawn(move || {
             let path = Path::new(OsStr::from_bytes(&path));
 
-            let attr = match get_attr(shared.root_dir.as_fd(), path, ino) {
+            let attr = match get_attr(fd, path, ino) {
                 Ok(attr) => attr,
                 Err(err) => {
                     Correction::Rc { ino }.send(correction);
@@ -423,11 +389,11 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
             }
         };
 
-        let shared = self.shared.clone();
+        let fd = self.root_dir;
         self.spawn(move || {
             let path = Path::new(OsStr::from_bytes(&path));
 
-            let attr = match get_attr(shared.root_dir.as_fd(), path, ino.cast_signed()) {
+            let attr = match get_attr(fd, path, ino.cast_signed()) {
                 Ok(attr) => attr,
                 Err(err) => return reply.error(err),
             };
@@ -447,14 +413,13 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
         _flags: i32,
         reply: fuser::ReplyOpen,
     ) {
-        if let Err(err) = self
-            .connection
-            .execute(r"INSERT INTO opendir (ino) VALUES (?1) ", (&ino,))
-        {
-            ::log::error!("could not add opendir entry to databas for {ino}\n{err}");
-            return reply.error(::libc::EIO);
+        let fh = match self.stmt.insert_into_opendir.perform(ino.cast_signed()) {
+            Ok(fh) => fh,
+            Err(err) => {
+                ::log::error!("could not add opendir entry to databas for {ino}\n{err}");
+                return reply.error(::libc::EIO);
+            }
         };
-        let fh = self.connection.last_insert_rowid();
         reply.opened(fh.cast_unsigned(), 0);
     }
 
@@ -627,9 +592,9 @@ impl ::fuser::Filesystem for Fs<'_, '_> {
             Err(err) => return reply.error(err),
         };
 
-        let shared = self.shared.clone();
+        let fd = self.root_dir;
         self.spawn(move || {
-            let statfs = match ::rustix::fs::fstatfs(shared.root_dir.as_fd()) {
+            let statfs = match ::rustix::fs::fstatfs(fd) {
                 Ok(statfs) => statfs,
                 Err(err) => {
                     return reply.error(err.raw_os_error());

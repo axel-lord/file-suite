@@ -1,13 +1,16 @@
 //! Database actions.
 
-use ::std::marker::PhantomData;
+use ::std::{fmt::Debug, marker::PhantomData};
 
-use ::rusqlite::{Connection, Statement, named_params};
+use ::rusqlite::{CachedStatement, Connection, Statement, named_params};
 use ::smallvec::SmallVec;
 
-use crate::action::{
-    param::{InsertParams, LookupParams},
-    result::LookupResult,
+use crate::{
+    action::{
+        param::{InsertParams, LookupParams},
+        result::LookupResult,
+    },
+    macros::action,
 };
 
 /// Trait for types which may perform an action.
@@ -21,21 +24,38 @@ pub trait Perform {
     /// Returned value on success.
     type Output;
 
-    /// Sql expression of operation.
-    const SQL: &str;
+    /// Get sql expression to create statement using.
+    fn sql() -> &'static str;
 
     /// Perform action.
     fn perform(
         stmt: &mut Statement<'_>,
         params: Self::Param<'_>,
     ) -> Result<Self::Output, Self::Err>;
+
+    /// Perform an action once, creating the statement on every call.
+    fn perform_once<E>(connection: &Connection, params: Self::Param<'_>) -> Result<Self::Output, E>
+    where
+        E: From<Self::Err> + From<::rusqlite::Error>,
+    {
+        let mut stmt = connection.prepare(Self::sql())?;
+        Ok(Self::perform(&mut stmt, params)?)
+    }
 }
 
 /// A database action which may be performed.
-#[derive(Debug)]
 pub struct Action<'conn, T> {
-    stmt: Statement<'conn>,
+    stmt: CachedStatement<'conn>,
     _p: PhantomData<fn() -> T>,
+}
+
+impl<'conn, T> Debug for Action<'conn, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Action")
+            .field("stmt", &*self.stmt)
+            .field("T", &format_args!("{}", ::std::any::type_name::<T>()))
+            .finish()
+    }
 }
 
 impl<'conn, T> Action<'conn, T>
@@ -48,7 +68,7 @@ where
     /// If the sql cannot be prepared.
     pub fn new(connection: &'conn Connection) -> Result<Self, ::rusqlite::Error> {
         Ok(Self {
-            stmt: connection.prepare(T::SQL)?,
+            stmt: connection.prepare_cached(T::sql())?,
             _p: PhantomData,
         })
     }
@@ -156,48 +176,18 @@ action! {
     }
 }
 
-macro_rules! action {
-    (
-        #[doc = $doc:expr]
-        [$sql:expr]
-        $nm:ident(
-            $stmt_ident:ident,
-            $params_ident:ident: $param:ty
-        ) -> Result<$output:ty, $err:ty> $stmt:stmt
-    ) => {
-        $crate::action::action! {
-            #[doc = $doc]
-            [$sql]
-            for<'_t> $nm($stmt_ident, $params_ident: $param) -> Result<$output, $err> $stmt
-        }
-    };
-    (
-        #[doc = $doc:expr]
-        [$sql:expr]
-        for<$lt:lifetime>
-        $nm:ident(
-            $stmt_ident:ident,
-            $params_ident:ident: $param:ty
-        ) -> Result<$output:ty, $err:ty> $stmt:stmt
-    ) => {
-        #[doc = $doc]
-        #[derive(Debug)]
-        pub enum $nm {}
-
-        impl $crate::action::Perform for $nm {
-            type Err = $err;
-            type Param<$lt> = $param;
-            type Output = $output;
-
-            const SQL: &'static str = $sql;
-
-            fn perform(
-                $stmt_ident: &mut Statement<'_>,
-                $params_ident: Self::Param<'_>,
-            ) -> Result<Self::Output, Self::Err> {
-                $stmt
-            }
-        }
-    };
+action! {
+    /// Increase rc of an inode
+    [r"UPDATE files SET rc = rc + 1 WHERE ino = ?1 RETURNING rc"]
+    IncrementRc(stmt, param: i64) -> Result<i64, ::rusqlite::Error> {
+        stmt.query_row((&param,), |row| Ok(row.get_ref(0)?.as_i64()?))
+    }
 }
-pub(crate) use action;
+
+action! {
+    /// Insert a directory into opendir table.
+    [r"INSERT INTO opendir (ino) VALUES (?1) RETURNING fh"]
+    InsertIntoOpendir(stmt, param: i64) -> Result<i64, ::rusqlite::Error> {
+        stmt.query_row((&param,), |row| Ok(row.get_ref(0)?.as_i64()?))
+    }
+}
