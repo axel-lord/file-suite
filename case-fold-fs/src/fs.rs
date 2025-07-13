@@ -56,14 +56,6 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
         correction: &'scope mpsc::Sender<Correction>,
     ) -> ::color_eyre::Result<Self> {
         connection.execute_batch(include_str!("./db_setup.sql"))?;
-        connection.execute(
-            r#"INSERT INTO files (ino, parent, name, folded, rc, type) VALUES (0, 0, NULL, NULL, 1, ?1)"#,
-            (&crate::FileType::block_device(),),
-        )?;
-        connection.execute(
-            r#"INSERT INTO files (ino, parent, name, folded, rc,  type) VALUES (?1, 0, "", "", 1, ?2)"#,
-            (&::fuser::FUSE_ROOT_ID, &crate::FileType::directory()),
-        )?;
 
         Ok(Self {
             connection,

@@ -49,4 +49,8 @@ BEGIN
 		WHERE ino = new.ino;
 	INSERT INTO fd_cleanup
 		VALUES (new.fd);
-END
+END;
+INSERT INTO files (ino, parent, name, folded, rc, type) 
+	VALUES (0, 0, NULL, NULL, 1, 24576);
+INSERT INTO files (ino, parent, name, folded, rc,  type) 
+	VALUES (1, 0, "", "", 1, 16384);
