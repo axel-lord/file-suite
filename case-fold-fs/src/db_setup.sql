@@ -1,0 +1,52 @@
+CREATE TABLE files (
+	ino INTEGER PRIMARY KEY,
+	parent INTEGER NOT NULL,
+	type INTEGER NOT NULL,
+	name BLOB,
+	folded BLOB,
+	rc INTEGER NOT NULL DEFAULT 0,
+	fd INTEGER,
+	[delete] INTEGER NOT NULL DEFAULT 0,
+	UNIQUE (parent, folded),
+	FOREIGN KEY (parent)
+		REFERENCES files (ino)
+			ON DELETE CASCADE
+			ON UPDATE CASCADE
+);
+CREATE TABLE opendir (
+	fh INTEGER PRIMARY KEY,
+	ino INTEGER NOT NULL,
+	FOREIGN KEY (ino)
+		REFERENCES files (ino)
+			ON DELETE CASCADE
+			ON UPDATE CASCADE
+);
+CREATE TABLE readdir (
+	fh INTEGER NOT NULL,
+	ino INTEGER NOT NULL,
+	name BLOB NOT NULL,
+	type INTEGER NOT NULL,
+	UNIQUE (fh, ino)
+		ON CONFLICT REPLACE,
+	FOREIGN KEY (fh)
+		REFERENCES opendir (fh)
+			ON DELETE CASCADE
+			ON UPDATE CASCADE,
+	FOREIGN KEY (ino)
+		REFERENCES files (ino)
+			ON DELETE CASCADE
+			ON UPDATE CASCADE
+);
+CREATE TABLE fd_cleanup (
+	fd INTEGER
+);
+CREATE TRIGGER delete_file
+	AFTER UPDATE
+	ON files
+	WHEN new.[delete] = 1 AND new.rc = 0
+BEGIN
+	DELETE FROM files
+		WHERE ino = new.ino;
+	INSERT INTO fd_cleanup
+		VALUES (new.fd);
+END
