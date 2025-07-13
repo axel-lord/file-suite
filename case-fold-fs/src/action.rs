@@ -92,6 +92,8 @@ pub mod param {
     pub struct InsertParams<'b> {
         /// Parent of row
         pub parent: i64,
+        /// Type for row
+        pub ty: crate::FileType,
         /// Relative path of row.
         pub path: &'b [u8],
         /// Case folded name of row.
@@ -142,14 +144,15 @@ action! {
 
 action! {
     /// Insert a row into the database.
-    [r"INSERT INTO files (parent, name, folded) VALUES (:parent, :name, :folded)"]
+    [r"INSERT INTO files (parent, name, folded, type) VALUES (:parent, :name, :folded, :type)"]
     for<'b> Insert(stmt, params: InsertParams<'b>) -> Result<usize, ::rusqlite::Error> {
         let InsertParams {
             parent,
             path,
             folded,
+            ty,
         } = params;
-        stmt.execute(named_params! {":parent": parent, ":name": path, ":folded": folded})
+        stmt.execute(named_params! {":parent": parent, ":name": path, ":folded": folded, ":type": ty})
     }
 }
 

@@ -2,3 +2,4 @@ target/
 sample/
 bin-sample/
 Cargo.lock
+dump.db
