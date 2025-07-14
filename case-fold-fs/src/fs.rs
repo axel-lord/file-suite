@@ -32,6 +32,9 @@ db_stmts! {
         increment_rc: action::IncrementRc<'conn>,
         insert_into_opendir: action::InsertIntoOpendir<'conn>,
         select_readdir: action::SelectReaddir<'conn>,
+        forget_ino: action::ForgetInode<'conn>,
+        ty_by_ino: action::TypeByInode<'conn>,
+        path_ty_by_ino: action::PathTypeByInode<'conn>,
     }
 }
 
@@ -180,17 +183,25 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             let folded = case_fold(name);
             let ty = entry.file_type().into();
 
-            insert
-                .perform(InsertParams {
-                    parent,
-                    path: &path,
-                    folded: &folded,
-                    ty,
-                })
-                .map_err(|err| {
-                    ::log::error!("could not insert {path:?} into database\n{err}");
-                    ::libc::EIO
-                })?;
+            if let Err(err) = insert.perform(InsertParams {
+                parent,
+                path: &path,
+                folded: &folded,
+                ty,
+            }) {
+                let path = Path::new(OsStr::from_bytes(&path));
+                match err.sqlite_error_code() {
+                    Some(::rusqlite::ErrorCode::ConstraintViolation) => {
+                        ::log::warn!(
+                            "skipping insert of {path:?} due to constraint violation\n{err}"
+                        );
+                    }
+                    _ => {
+                        ::log::error!("could not insert {path:?} into database\n{err}",);
+                        return Err(::libc::EIO);
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -200,7 +211,7 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             return Ok(());
         }
 
-        let dir = self.stmt.path_by_ino.perform(parent).map_err(|err| {
+        let (dir, _ty) = self.stmt.path_ty_by_ino.perform(parent).map_err(|err| {
             ::log::error!("could not get parent directory {parent}\n{err}");
             ::libc::EIO
         })?;
@@ -262,7 +273,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         name: &OsStr,
         reply: fuser::ReplyEntry,
     ) {
-        let LookupResult { ino, path } =
+        let LookupResult { ino, path, ty: _ } =
             match self.lookup_path(name.as_bytes(), parent.cast_signed()) {
                 Ok(value) => value,
                 Err(err) => return reply.error(err),
@@ -272,23 +283,23 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
             ::log::error!("could not increase rc for {ino}\n{err}");
             return reply.error(::libc::EIO);
         };
-        ::log::info!("lookup - {ino}");
 
-        let fd = self.root_dir;
-        let correction = self.correction;
-        self.spawn(move || {
-            let path = Path::new(OsStr::from_bytes(&path));
+        let attr = match get_attr(self.root_dir, Path::new(OsStr::from_bytes(&path)), ino) {
+            Ok(attr) => attr,
+            Err(err) => {
+                Correction::Rc { ino }.send(self.correction);
+                return reply.error(err);
+            }
+        };
 
-            let attr = match get_attr(fd, path, ino) {
-                Ok(attr) => attr,
-                Err(err) => {
-                    Correction::Rc { ino }.send(correction);
-                    return reply.error(err);
-                }
-            };
+        reply.entry(&Duration::MAX, &attr, 0);
+    }
 
-            reply.entry(&Duration::MAX, &attr, 0);
-        });
+    fn forget(&mut self, _req: &fuser::Request<'_>, ino: u64, nlookup: u64) {
+        ::log::info!("forget - {ino}");
+        if let Err(err) = self.stmt.forget_ino.perform(ino.cast_signed(), nlookup) {
+            ::log::error!("could not forget ino {ino} nlookup {nlookup}\n{err}");
+        }
     }
 
     fn getattr(
@@ -330,7 +341,21 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         _flags: i32,
         reply: fuser::ReplyOpen,
     ) {
-        let fh = match self.stmt.insert_into_opendir.perform(ino.cast_signed()) {
+        let ino = ino.cast_signed();
+
+        let ty = match self.stmt.ty_by_ino.perform(ino) {
+            Ok(ty) => ty,
+            Err(err) => {
+                ::log::error!("could not get type of ino {ino}\n{err}");
+                return reply.error(::libc::EIO);
+            }
+        };
+
+        if !ty.is_dir() {
+            return reply.error(::libc::ENOTDIR);
+        }
+
+        let fh = match self.stmt.insert_into_opendir.perform(ino) {
             Ok(fh) => fh,
             Err(err) => {
                 ::log::error!("could not add opendir entry to databas for {ino}\n{err}");

@@ -17,7 +17,7 @@ serde = { workspace = true, features = ["derive"] }
 signal-hook = "0.3.18"
 rayon.workspace = true
 libc.workspace = true
-derive_more = { workspace = true, features = ["from", "into", "is_variant"] }
+derive_more = { workspace = true, features = ["deref", "from", "into", "is_variant"] }
 rand.workspace = true
 tap.workspace = true
 

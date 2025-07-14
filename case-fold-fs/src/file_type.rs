@@ -1,6 +1,6 @@
 //! [::rustix::fs::FileType] wrapper dealing with conversion to [::fuser::FileType].
 
-use ::derive_more::{From, Into};
+use ::derive_more::{Deref, From, Into};
 use ::rusqlite::{
     ToSql,
     types::{FromSql, FromSqlError, ToSqlOutput, Value, ValueRef},
@@ -8,7 +8,7 @@ use ::rusqlite::{
 use ::tap::{Conv, Pipe};
 
 /// Wrapper around file types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, From, Into)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, From, Into, Deref)]
 pub struct FileType {
     inner: ::rustix::fs::FileType,
 }

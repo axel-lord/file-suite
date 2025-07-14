@@ -5,8 +5,6 @@ CREATE TABLE files (
 	name BLOB,
 	folded BLOB,
 	rc INTEGER NOT NULL DEFAULT 0,
-	fd INTEGER,
-	[delete] INTEGER NOT NULL DEFAULT 0,
 	UNIQUE (parent, folded),
 	FOREIGN KEY (parent)
 		REFERENCES files (ino)
@@ -37,18 +35,17 @@ CREATE TABLE readdir (
 			ON DELETE CASCADE
 			ON UPDATE CASCADE
 );
-CREATE TABLE fd_cleanup (
-	fd INTEGER
+CREATE TABLE paths_to_delete (
+	name BLOB NOT NULL
 );
 CREATE TRIGGER delete_file
 	AFTER UPDATE
 	ON files
-	WHEN new.[delete] = 1 AND new.rc = 0
+	WHEN new.rc = 0 AND new.parent = 0
 BEGIN
+	INSERT INTO paths_to_delete (name) VALUES (new.name);
 	DELETE FROM files
-		WHERE ino = new.ino;
-	INSERT INTO fd_cleanup
-		VALUES (new.fd);
+	WHERE ino = new.ino;
 END;
 INSERT INTO files (ino, parent, name, folded, rc, type) 
 	VALUES (0, 0, NULL, NULL, 1, 24576);

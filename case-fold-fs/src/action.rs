@@ -2,6 +2,7 @@
 
 use ::rusqlite::named_params;
 use ::smallvec::SmallVec;
+use ::tap::Pipe;
 
 use crate::{
     action::{
@@ -23,6 +24,8 @@ pub mod result {
         pub ino: i64,
         /// Relative path to child.
         pub path: SmallVec<[u8; 64]>,
+        /// Type of child.
+        pub ty: crate::FileType,
     }
 }
 
@@ -81,13 +84,30 @@ action! {
 }
 
 action! {
+    /// Get inode type.
+    [r"SELECT type FROM files WHERE ino = ?1"]
+    TypeByInode(stmt, ino: i64) -> Result<crate::FileType, ::rusqlite::Error> {
+        stmt.query_row((&ino,), |row| row.get(0))
+    }
+}
+
+action! {
+    /// Get path and type by inode.
+    [r"SELECT name, type FROM files WHERE ino = ?1"]
+    PathTypeByInode(stmt, ino: i64) -> Result<(SmallVec<[u8; 64]>, crate::FileType), ::rusqlite::Error> {
+        stmt.query_row((&ino,), |row| Ok((row.get_ref(0)?.as_bytes()?.pipe(SmallVec::from_slice), row.get(1)?)))
+    }
+}
+
+action! {
     /// Lookup an entry by parent and name.
-    [r"SELECT ino, name FROM files WHERE parent = ?1 AND folded = ?2"]
+    [r"SELECT ino, name, type FROM files WHERE parent = ?1 AND folded = ?2"]
     Lookup(stmt, param: LookupParams<'_>) -> Result<LookupResult, ::rusqlite::Error> {
         stmt.query_row((&param.parent, param.folded), |row| {
             Ok(LookupResult {
-                ino: row.get_ref("ino")?.as_i64()?,
-                path: row.get_ref("name")?.as_bytes().map(SmallVec::from_slice)?,
+                ino: row.get_ref(0)?.as_i64()?,
+                path: row.get_ref(1)?.as_bytes().map(SmallVec::from_slice)?,
+                ty: row.get(2)?,
             })
         })
     }
@@ -161,5 +181,23 @@ action! {
     ]
     SelectReaddir<'stmt>(stmt, fh: i64, offset: i64) -> Result<::rusqlite::Rows<'stmt>, ::rusqlite::Error> {
         stmt.query((&fh, &offset))
+    }
+}
+
+action! {
+    /// Correct rc of a file row
+    [r"UPDATE files SET rc = rc - 1 WHERE ino = ?1"]
+    CorrectRc(stmt, ino: i64) -> Result<(), ::rusqlite::Error> {
+        stmt.execute((&ino,))?;
+        Ok(())
+    }
+}
+
+action! {
+    /// Forget an inode
+    [r"UPDATE files SET rc = rc - ?2 WHERE ino = ?1"]
+    ForgetInode(stmt, ino: i64, nlookup: u64) -> Result<(), ::rusqlite::Error> {
+        stmt.execute((&ino, &nlookup))?;
+        Ok(())
     }
 }

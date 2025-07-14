@@ -11,7 +11,7 @@ use ::signal_hook::{
     iterator::Signals,
 };
 
-use crate::{Correction, Fs};
+use crate::{Correction, Fs, action};
 
 /// Mount a directory as case folded.
 #[derive(Debug, Parser)]
@@ -95,40 +95,16 @@ impl ::file_suite_common::Run for Cli {
                 fn correct(
                     rx: std::sync::mpsc::Receiver<Correction>,
                     db_name: &str,
+                    _leak: bool,
                 ) -> ::color_eyre::Result<()> {
                     let connection = ::rusqlite::Connection::open(&db_name)?;
-                    let mut close_fd_stmt = connection.prepare(
-                        r#"
-                        DELETE FROM fd_cleanup
-                        RETURNING fd
-                        "#,
-                    )?;
+                    let mut correct_rc = action::CorrectRc::new(&connection)?;
                     for correction in rx {
                         match correction {
                             Correction::Rc { ino } => {
-                                connection.execute(
-                                    r#"
-                                        UPDATE files
-                                        SET rc = rc - 1
-                                        WHERE ino = ?1
-                                    "#,
-                                    (&ino,),
-                                )?;
+                                correct_rc.perform(ino)?;
                             }
-                            Correction::Clean => {
-                                let mut query = close_fd_stmt.query([])?;
-                                while let Some(row) = query.next()? {
-                                    let Some(fd) = row.get_ref("fd")?.as_i64_or_null()? else {
-                                        continue;
-                                    };
-                                    let fd = ::rustix::fd::RawFd::try_from(fd)?;
-                                    // SAFETY: all non-null fd columns inserted into the database are
-                                    // created by using ::rustix::fd::IntoRawFd::into_raw_fd
-                                    unsafe {
-                                        ::rustix::io::close(fd);
-                                    }
-                                }
-                            }
+                            Correction::Clean => {}
                             Correction::Stop => break,
                         }
                     }
@@ -137,7 +113,7 @@ impl ::file_suite_common::Run for Cli {
 
                 let correction = thread::Builder::new()
                     .name("case-fold-fs-correction-handler".into())
-                    .spawn_scoped(s, || match correct(rx, &db_name) {
+                    .spawn_scoped(s, || match correct(rx, &db_name, leak) {
                         Ok(_) => ::log::info!("closing correction thread"),
                         Err(err) => ::log::error!("correction error\n{err}"),
                     })
