@@ -2,43 +2,54 @@
 
 use ::std::{
     ffi::OsStr,
-    os::{fd::BorrowedFd, unix::ffi::OsStrExt},
+    os::{
+        fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd},
+        unix::ffi::OsStrExt,
+    },
     path::Path,
     sync::mpsc,
     time::Duration,
 };
 
-use ::fuser::FileType;
+use ::dashmap::DashMap;
+use ::fuser::{FileAttr, FileType};
 use ::rusqlite::{Connection, Transaction};
-use ::rustix::fs::{Dir, Mode, OFlags};
+use ::rustc_hash::FxBuildHasher;
+use ::rustix::fs::{Dir, Mode, OFlags, RenameFlags};
 use ::smallvec::SmallVec;
 
 use crate::{
     Correction, Error,
     action::{
-        self, DeleteFromOpendirReaddir, InsertToReaddir,
+        self, CountInodes, DeleteFromOpendirReaddir, ForgetInode, IncrementRc, InsertIntoOpendir,
+        InsertToReaddir, Lookup, PathByInode, SelectReaddir, TypeByInode,
         param::{InsertParams, LookupParams},
         result::LookupResult,
     },
-    case_fold, get_attr,
+    case_fold, get_attr, log_conv,
     macros::{conv_or_reply, db_stmts},
+    path_from_bytes,
 };
 
 db_stmts! {
     DbStmts<'conn> {
-        lookup: action::Lookup<'conn>,
-        path_by_ino: action::PathByInode<'conn>,
-        count_ino: action::CountInodes<'conn>,
-        increment_rc: action::IncrementRc<'conn>,
-        insert_into_opendir: action::InsertIntoOpendir<'conn>,
-        select_readdir: action::SelectReaddir<'conn>,
-        forget_ino: action::ForgetInode<'conn>,
-        ty_by_ino: action::TypeByInode<'conn>,
-        path_ty_by_ino: action::PathTypeByInode<'conn>,
+        lookup: Lookup<'conn>,
+        path_by_ino: PathByInode<'conn>,
+        count_ino: CountInodes<'conn>,
+        increment_rc: IncrementRc<'conn>,
+        insert_into_opendir: InsertIntoOpendir<'conn>,
+        select_readdir: SelectReaddir<'conn>,
+        forget_ino: ForgetInode<'conn>,
+        ty_by_ino: TypeByInode<'conn>,
     }
 }
 
 /// Filesystem.
+///
+/// References with `'conn` lifetimes may only be
+/// used in the main thread (by [::fuser::Filesystem] implementation)
+/// whilst the `'scope` lifetime allows for sync resources to
+/// be passed while using `spawn`.
 #[derive(Debug)]
 pub struct Fs<'conn, 'scope> {
     connection: &'conn Connection,
@@ -46,8 +57,11 @@ pub struct Fs<'conn, 'scope> {
     root_dir: BorrowedFd<'scope>,
     root_ino: i64,
     leak: bool,
+    #[allow(unused)]
     correction: &'scope mpsc::Sender<Correction>,
     scope: &'conn ::rayon::Scope<'scope>,
+    file_descriptors: &'scope DashMap<u64, OwnedFd, FxBuildHasher>,
+    fh_counter: u64,
 }
 
 impl<'conn, 'scope> Fs<'conn, 'scope> {
@@ -57,6 +71,7 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
         connection: &'conn Connection,
         scope: &'conn ::rayon::Scope<'scope>,
         correction: &'scope mpsc::Sender<Correction>,
+        file_descriptors: &'scope DashMap<u64, OwnedFd, FxBuildHasher>,
     ) -> ::color_eyre::Result<Self> {
         connection.execute_batch(include_str!("./db_setup.sql"))?;
 
@@ -65,8 +80,10 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             root_ino: connection.last_insert_rowid(),
             stmt: DbStmts::new(connection)?,
             leak: false,
+            fh_counter: 0,
             correction,
             root_dir,
+            file_descriptors,
             scope,
         })
     }
@@ -101,6 +118,11 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
                 })?;
                 Ok(result)
             })
+    }
+
+    fn new_fh(&mut self) -> u64 {
+        self.fh_counter += 1;
+        self.fh_counter
     }
 
     /// Create an iterator that populates a parent directory with children and yields case folded
@@ -211,10 +233,12 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             return Ok(());
         }
 
-        let (dir, _ty) = self.stmt.path_ty_by_ino.perform(parent).map_err(|err| {
-            ::log::error!("could not get parent directory {parent}\n{err}");
-            ::libc::EIO
-        })?;
+        let dir = action::PathByInode::new(self.connection)
+            .and_then(|mut action| action.perform(parent))
+            .map_err(|err| {
+                ::log::error!("could not get parent directory {parent}\n{err}");
+                ::libc::EIO
+            })?;
 
         self.with_transaction(|transaction| self.populate_dir(parent, &dir, transaction))
     }
@@ -263,6 +287,81 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             None => self.lookup_path_io(parent, &folded),
         }
     }
+
+    fn increment_rc(&mut self, ino: i64) -> Result<(), i32> {
+        self.stmt.increment_rc.perform(ino).map_err(|err| {
+            ::log::error!("could not increase rc for {ino}\n{err}");
+            ::libc::EIO
+        })?;
+        Ok(())
+    }
+
+    fn path_by_ino(&mut self, ino: i64) -> Result<crate::Buf, i32> {
+        self.stmt.path_by_ino.perform(ino).map_err(|err| {
+            ::log::error!("could not get path by ino {ino}\n{err}");
+            ::libc::EIO
+        })
+    }
+
+    fn lookup(&mut self, parent: i64, name: &[u8]) -> Result<FileAttr, i32> {
+        let LookupResult { ino, path, ty: _ } = self.lookup_path(name, parent)?;
+        let attr = get_attr(self.root_dir, path_from_bytes(&path), ino)?;
+        self.increment_rc(ino)?;
+        Ok(attr)
+    }
+
+    fn unlink(&mut self, parent: i64, name: &[u8]) -> Result<(), i32> {
+        let LookupResult { ino, path, ty } = self.lookup_path(name, parent)?;
+
+        if ty.is_dir() {
+            return Err(::libc::EISDIR);
+        }
+
+        let random = ::rand::random::<u64>();
+        let new_path = {
+            use ::std::io::Write;
+            let mut path = crate::Buf::new();
+            write!(path, ".rm_{ino:X}_{random:X}").map_err(|err| {
+                ::log::error!("write to smallvec failed\n{err}");
+                ::libc::EIO
+            })?;
+            path
+        };
+
+        self.with_transaction(|transaction| {
+            let path = path_from_bytes(&path);
+
+            transaction
+                .execute(
+                    r#"
+                    UPDATE files
+                    SET 
+                        name = ?2,
+                        parent = 0
+                    WHERE ino = ?1
+                    "#,
+                    (&ino, new_path.as_slice()),
+                )
+                .map_err(|err| {
+                    ::log::error!("could not update row for unlink of {path:?}\n{err}");
+                    ::libc::EIO
+                })?;
+
+            let new_path = path_from_bytes(&new_path);
+
+            ::rustix::fs::renameat_with(
+                self.root_dir,
+                path,
+                self.root_dir,
+                new_path,
+                RenameFlags::NOREPLACE,
+            )
+            .map_err(|err| {
+                ::log::error!("could not rename {path:?} to {new_path:?}\n{err}");
+                err.raw_os_error()
+            })
+        })
+    }
 }
 
 impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
@@ -273,32 +372,29 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         name: &OsStr,
         reply: fuser::ReplyEntry,
     ) {
-        let LookupResult { ino, path, ty: _ } =
-            match self.lookup_path(name.as_bytes(), parent.cast_signed()) {
-                Ok(value) => value,
-                Err(err) => return reply.error(err),
-            };
-
-        if let Err(err) = self.stmt.increment_rc.perform(ino) {
-            ::log::error!("could not increase rc for {ino}\n{err}");
-            return reply.error(::libc::EIO);
-        };
-
-        let attr = match get_attr(self.root_dir, Path::new(OsStr::from_bytes(&path)), ino) {
-            Ok(attr) => attr,
-            Err(err) => {
-                Correction::Rc { ino }.send(self.correction);
-                return reply.error(err);
-            }
-        };
-
-        reply.entry(&Duration::MAX, &attr, 0);
+        match self.lookup(parent.cast_signed(), name.as_bytes()) {
+            Ok(attr) => reply.entry(&Duration::MAX, &attr, 0),
+            Err(err) => reply.error(err),
+        }
     }
 
     fn forget(&mut self, _req: &fuser::Request<'_>, ino: u64, nlookup: u64) {
         ::log::info!("forget - {ino}");
         if let Err(err) = self.stmt.forget_ino.perform(ino.cast_signed(), nlookup) {
             ::log::error!("could not forget ino {ino} nlookup {nlookup}\n{err}");
+        }
+    }
+
+    fn unlink(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        reply: fuser::ReplyEmpty,
+    ) {
+        match self.unlink(parent.cast_signed(), name.as_bytes()) {
+            Ok(_) => reply.ok(),
+            Err(err) => reply.error(err),
         }
     }
 
@@ -330,8 +426,167 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         });
     }
 
-    fn open(&mut self, _req: &fuser::Request<'_>, _ino: u64, _flags: i32, reply: fuser::ReplyOpen) {
-        reply.error(::libc::ENOSYS);
+    fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, flags: i32, reply: fuser::ReplyOpen) {
+        let ino = ino.cast_signed();
+        let path = match self.path_by_ino(ino) {
+            Ok(path) => path,
+            Err(err) => return reply.error(err),
+        };
+
+        let fh = self.new_fh();
+        let root_dir = self.root_dir;
+        let file_descriptors = self.file_descriptors;
+        self.spawn(move || {
+            let path = path_from_bytes(&path);
+            let flags = OFlags::from_bits_truncate(flags.cast_unsigned());
+            let fd = match ::rustix::fs::openat(root_dir, path, flags, Mode::empty()) {
+                Ok(fd) => fd,
+                Err(err) => {
+                    ::log::error!("could not open file, ino {ino}, path {path:?}\n{err}");
+                    return reply.error(err.raw_os_error());
+                }
+            };
+            let entry = file_descriptors.entry(fh);
+            match entry {
+                ::dashmap::Entry::Occupied(_) => {
+                    ::log::error!("fh {fh} already in map");
+                    reply.error(::libc::EIO);
+                }
+                ::dashmap::Entry::Vacant(vacant_entry) => {
+                    vacant_entry.insert(fd);
+                    reply.opened(fh, flags.bits());
+                }
+            };
+        });
+    }
+
+    fn write(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        _ino: u64,
+        fh: u64,
+        offset: i64,
+        data: &[u8],
+        _write_flags: u32,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        reply: fuser::ReplyWrite,
+    ) {
+        let data = Vec::from(data);
+        let file_descriptors = self.file_descriptors;
+        self.spawn(move || {
+            let result = file_descriptors
+                .get(&fh)
+                .ok_or_else(|| {
+                    ::log::error!("could not get fh {fh} from map");
+                    ::libc::EIO
+                })
+                .and_then(|fd| {
+                    let offset = log_conv::<_, usize>(offset)?;
+                    let mut start_at = 0usize;
+
+                    loop {
+                        if start_at >= data.len() {
+                            break;
+                        }
+                        match ::rustix::io::pwrite(
+                            fd.as_fd(),
+                            &data[start_at..],
+                            log_conv(start_at + offset)?,
+                        ) {
+                            Ok(n) => {
+                                start_at += n;
+                            }
+                            Err(err) => {
+                                ::log::error!("while writing to {fd}\n{err}", fd = fd.as_raw_fd());
+                                return Err(err.raw_os_error());
+                            }
+                        }
+                    }
+
+                    log_conv(start_at)
+                });
+
+            match result {
+                Ok(value) => reply.written(value),
+                Err(err) => reply.error(err),
+            }
+        });
+    }
+
+    fn read(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        _ino: u64,
+        fh: u64,
+        offset: i64,
+        size: u32,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        reply: fuser::ReplyData,
+    ) {
+        let file_descriptors = self.file_descriptors;
+        self.spawn(move || {
+            let result = file_descriptors
+                .get(&fh)
+                .ok_or_else(|| {
+                    ::log::error!("could not get fh {fh} from map");
+                    ::libc::EIO
+                })
+                .and_then(|fd| {
+                    let offset = log_conv::<_, usize>(offset)?;
+                    let size = log_conv(size)?;
+                    let mut buf = vec![0u8; size];
+                    let mut start_at = 0usize;
+
+                    loop {
+                        match ::rustix::io::pread(
+                            fd.as_fd(),
+                            &mut buf[start_at..],
+                            log_conv(offset + start_at)?,
+                        ) {
+                            Ok(0) => break,
+                            Ok(n) => {
+                                start_at += n;
+                            }
+                            Err(err) => {
+                                ::log::error!(
+                                    "while readding {raw_fd}\n{err}",
+                                    raw_fd = fd.as_raw_fd()
+                                );
+                                return Err(err.raw_os_error());
+                            }
+                        }
+                    }
+
+                    Ok((buf, start_at))
+                });
+
+            match result {
+                Ok((value, end)) => reply.data(&value[..end]),
+                Err(err) => reply.error(err),
+            }
+        });
+    }
+
+    fn release(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        _ino: u64,
+        fh: u64,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        _flush: bool,
+        reply: fuser::ReplyEmpty,
+    ) {
+        let file_descriptors = self.file_descriptors;
+        self.spawn(move || match file_descriptors.remove(&fh) {
+            Some(_) => reply.ok(),
+            None => {
+                ::log::error!("could not get fh {fh} from map");
+                reply.error(::libc::EIO);
+            }
+        });
     }
 
     fn opendir(
@@ -362,6 +617,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
                 return reply.error(::libc::EIO);
             }
         };
+
         reply.opened(fh.cast_unsigned(), 0);
     }
 

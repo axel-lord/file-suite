@@ -15,15 +15,13 @@ use crate::{
 pub mod result {
     //! Types of values returned by actions.
 
-    use ::smallvec::SmallVec;
-
     /// Result of a lookup.
     #[derive(Debug)]
     pub struct LookupResult {
         /// Inode of child.
         pub ino: i64,
         /// Relative path to child.
-        pub path: SmallVec<[u8; 64]>,
+        pub path: crate::Buf,
         /// Type of child.
         pub ty: crate::FileType,
     }
@@ -76,9 +74,9 @@ action! {
 action! {
     /// Get relative path of inode.
     [r"SELECT name FROM files WHERE ino = ?1"]
-    PathByInode(stmt, ino: i64) -> Result<SmallVec<[u8; 64]>, ::rusqlite::Error> {
+    PathByInode(stmt, ino: i64) -> Result<crate::Buf, ::rusqlite::Error> {
         stmt.query_row((&ino,), |row| {
-            Ok(SmallVec::from_slice(row.get_ref("name")?.as_bytes()?))
+            Ok(crate::Buf::from_slice(row.get_ref("name")?.as_bytes()?))
         })
     }
 }
@@ -94,7 +92,7 @@ action! {
 action! {
     /// Get path and type by inode.
     [r"SELECT name, type FROM files WHERE ino = ?1"]
-    PathTypeByInode(stmt, ino: i64) -> Result<(SmallVec<[u8; 64]>, crate::FileType), ::rusqlite::Error> {
+    PathTypeByInode(stmt, ino: i64) -> Result<(crate::Buf, crate::FileType), ::rusqlite::Error> {
         stmt.query_row((&ino,), |row| Ok((row.get_ref(0)?.as_bytes()?.pipe(SmallVec::from_slice), row.get(1)?)))
     }
 }
@@ -199,5 +197,13 @@ action! {
     ForgetInode(stmt, ino: i64, nlookup: u64) -> Result<(), ::rusqlite::Error> {
         stmt.execute((&ino, &nlookup))?;
         Ok(())
+    }
+}
+
+action! {
+    /// Check if a child exists.
+    [r"SELECT 1 FROM files WHERE parent = ?1 AND folded = ?2 LIMIT 1"]
+    ChildExists(stmt, parent: i64, folded: &[u8]) -> Result<bool, ::rusqlite::Error> {
+        Ok(stmt.query_map((&parent, folded), |_| Ok(()))?.next().is_some())
     }
 }

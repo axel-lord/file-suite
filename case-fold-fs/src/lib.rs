@@ -2,8 +2,9 @@
 
 use ::std::{
     any::type_name,
+    ffi::OsStr,
     fmt::Display,
-    os::fd::BorrowedFd,
+    os::{fd::BorrowedFd, unix::ffi::OsStrExt},
     path::Path,
     time::{Duration, SystemTime},
 };
@@ -24,6 +25,9 @@ pub mod file_type;
 mod cli;
 mod fs;
 mod macros;
+
+/// Re-exported type for convenience.
+pub type Buf = SmallVec<[u8; 64]>;
 
 /// Correct mistakes which may happen after splitting of a task
 /// to run in another thread.
@@ -67,6 +71,11 @@ where
     })
 }
 
+/// Get a path from a byte slice.
+fn path_from_bytes(bytes: &[u8]) -> &Path {
+    Path::new(OsStr::from_bytes(bytes))
+}
+
 /// Get file attributes.
 fn get_attr(fd: BorrowedFd<'_>, path: &Path, ino: i64) -> Result<FileAttr, i32> {
     let statx = statx(fd, path, AtFlags::EMPTY_PATH, StatxFlags::BASIC_STATS).map_err(|err| {
@@ -101,7 +110,7 @@ fn get_attr(fd: BorrowedFd<'_>, path: &Path, ino: i64) -> Result<FileAttr, i32> 
     })
 }
 
-fn case_fold(bytes: &[u8]) -> SmallVec<[u8; 64]> {
+fn case_fold(bytes: &[u8]) -> Buf {
     let mut folded = SmallVec::new();
 
     let mut buf = [0u8; 4];

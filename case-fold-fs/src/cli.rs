@@ -1,17 +1,24 @@
 //! [Cli] impl.
 
-use ::std::{os::fd::AsFd, path::PathBuf, thread, time::Duration};
+use ::std::{
+    os::fd::{AsFd, BorrowedFd},
+    path::PathBuf,
+    thread,
+    time::Duration,
+};
 
 use ::clap::Parser;
 use ::color_eyre::eyre::eyre;
+use ::dashmap::DashMap;
 use ::rusqlite::DatabaseName;
-use ::rustix::fs::{Mode, OFlags};
+use ::rustix::fs::{AtFlags, Mode, OFlags};
 use ::signal_hook::{
     consts::{SIGHUP, SIGINT, SIGQUIT, SIGTERM},
     iterator::Signals,
 };
+use ::tap::Pipe;
 
-use crate::{Correction, Fs, action};
+use crate::{Correction, Fs, action, path_from_bytes};
 
 /// Mount a directory as case folded.
 #[derive(Debug, Parser)]
@@ -59,13 +66,14 @@ impl ::file_suite_common::Run for Cli {
             ::rand::random::<i128>()
         );
         let (tx, rx) = ::std::sync::mpsc::channel();
+        let file_descriptors = DashMap::default();
 
         ::log::info!("db name = {db_name}");
 
         ::rayon::scope(|r| -> ::color_eyre::Result<()> {
             let connection = ::rusqlite::Connection::open(&db_name).map_err(|err| eyre!(err))?;
             let mut session = ::fuser::Session::new(
-                Fs::new(root_dir.as_fd(), &connection, r, &tx)?.leak(leak),
+                Fs::new(root_dir.as_fd(), &connection, r, &tx, &file_descriptors)?.leak(leak),
                 mountpoint.unwrap_or_else(|| source.clone()),
                 &[],
             )
@@ -95,16 +103,38 @@ impl ::file_suite_common::Run for Cli {
                 fn correct(
                     rx: std::sync::mpsc::Receiver<Correction>,
                     db_name: &str,
-                    _leak: bool,
+                    leak: bool,
+                    root_dir: BorrowedFd<'_>,
                 ) -> ::color_eyre::Result<()> {
                     let connection = ::rusqlite::Connection::open(&db_name)?;
                     let mut correct_rc = action::CorrectRc::new(&connection)?;
+                    let mut delete_paths = connection.prepare(
+                        r#"
+                        DELETE FROM paths_to_delete
+                        RETURNING name
+                        "#,
+                    )?;
                     for correction in rx {
                         match correction {
                             Correction::Rc { ino } => {
                                 correct_rc.perform(ino)?;
                             }
-                            Correction::Clean => {}
+                            Correction::Clean => {
+                                if leak {
+                                    continue;
+                                }
+                                let mut query = delete_paths.query([])?;
+                                while let Some(row) = query.next()? {
+                                    let path = row.get_ref(0)?.as_bytes()?.pipe(path_from_bytes);
+                                    if let Err(err) =
+                                        ::rustix::fs::unlinkat(root_dir, path, AtFlags::empty())
+                                    {
+                                        ::log::error!(
+                                            "at cleanup, could not remove {path:?}\n{err}"
+                                        )
+                                    }
+                                }
+                            }
                             Correction::Stop => break,
                         }
                     }
@@ -113,7 +143,7 @@ impl ::file_suite_common::Run for Cli {
 
                 let correction = thread::Builder::new()
                     .name("case-fold-fs-correction-handler".into())
-                    .spawn_scoped(s, || match correct(rx, &db_name, leak) {
+                    .spawn_scoped(s, || match correct(rx, &db_name, leak, root_dir.as_fd()) {
                         Ok(_) => ::log::info!("closing correction thread"),
                         Err(err) => ::log::error!("correction error\n{err}"),
                     })

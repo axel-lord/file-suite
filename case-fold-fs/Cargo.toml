@@ -20,6 +20,8 @@ libc.workspace = true
 derive_more = { workspace = true, features = ["deref", "from", "into", "is_variant"] }
 rand.workspace = true
 tap.workspace = true
+rustc-hash.workspace = true
+dashmap = "6.1.0"
 
 [lints]
 workspace = true
