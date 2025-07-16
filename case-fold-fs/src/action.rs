@@ -11,7 +11,7 @@ use crate::{action::result::LookupResult, macros::action};
 /// Trait to provide alternative debug implementations.
 pub trait DbgProxy
 where
-    Self: Debug + Sized,
+    Self: Debug + Sized + Copy,
 {
     /// For macro generated debugging use provided debug implementation instead.
     fn dbg_proxy(self) -> impl Debug {
@@ -188,5 +188,52 @@ action! {
     [r"SELECT 1 FROM files WHERE parent = ?1 AND folded = ?2 LIMIT 1"]
     EntryExists(stmt, parent: i64, folded: &[u8]) -> Result<bool, ::rusqlite::Error> {
         Ok(stmt.query((&parent, folded))?.next()?.is_some())
+    }
+}
+
+action! {
+    /// Select paths that are to be deleted.
+    [r#"SELECT name, type FROM paths_to_delete"#]
+    SelectToBeDeleted(stmt) -> Result<impl Iterator<Item = Result<(SmallVec<[u8; 64]>, crate::FileType), i32>>, ::rusqlite::Error> {
+        Ok(stmt.query_map([], |row| Ok((
+            row.get_ref(0)?
+                .as_bytes()?
+                .pipe(SmallVec::from_slice),
+            row.get::<_, crate::FileType>(1)?
+        )))?.map(|result| result.map_err(|err| {
+            ::log::error!("could not get row from paths_to_delete\n{err}");
+            ::libc::EIO
+        })))
+    }
+}
+
+action! {
+    /// Lower reference counts of files to 0.
+    [
+        r#"
+        UPDATE files
+        SET rc = 0
+        WHERE ino > 1
+        "#
+    ]
+    ResetRc(stmt) -> Result<usize, ::rusqlite::Error> {
+        stmt.execute([])
+    }
+}
+
+action! {
+    /// Unlink a file or directory
+    [
+        r#"
+        UPDATE files
+        SET 
+            name = ?2,
+            parent = 0
+        WHERE ino = ?1
+        "#
+    ]
+    UnlinkFile(stmt, ino: i64, temp_path: &[u8]) -> Result<(), ::rusqlite::Error> {
+        stmt.execute((&ino, temp_path))?;
+        Ok(())
     }
 }

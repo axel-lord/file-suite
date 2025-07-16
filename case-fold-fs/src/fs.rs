@@ -25,8 +25,8 @@ use crate::{
     DbgFn, Error,
     action::{
         self, CountInodes, DeleteFromOpendir, EntryExists, ForgetInode, IncrementRc, Insert,
-        InsertIntoOpendir, InsertIntoReaddir, IsEmpty, Lookup, PathByInode, SelectReaddir,
-        TypeByInode, result::LookupResult,
+        InsertIntoOpendir, InsertIntoReaddir, IsEmpty, Lookup, PathByInode, ResetRc, SelectReaddir,
+        SelectToBeDeleted, TypeByInode, UnlinkFile, result::LookupResult,
     },
     case_fold, get_attr, log_conv,
     macros::{conv_or_reply, db_stmts},
@@ -45,6 +45,8 @@ db_stmts! {
         ty_by_ino: TypeByInode<'conn>,
         is_empty: IsEmpty<'conn>,
         entry_exists: EntryExists<'conn>,
+        reset_rc: ResetRc<'conn>,
+        select_to_be_deleted: SelectToBeDeleted<'conn>,
     }
 }
 
@@ -306,24 +308,9 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
         };
 
         self.with_transaction(|transaction| {
+            UnlinkFile::new_or_errno(transaction)?.perform_or_errno(ino, &new_path)?;
+
             let path = path_from_bytes(&path);
-
-            transaction
-                .execute(
-                    r#"
-                    UPDATE files
-                    SET 
-                        name = ?2,
-                        parent = 0
-                    WHERE ino = ?1
-                    "#,
-                    (&ino, new_path.as_slice()),
-                )
-                .map_err(|err| {
-                    ::log::error!("could not update row for unlink of {path:?}\n{err}");
-                    ::libc::EIO
-                })?;
-
             let new_path = path_from_bytes(&new_path);
 
             ::rustix::fs::renameat_with(
@@ -370,24 +357,9 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
         };
 
         self.with_transaction(|transaction| {
+            UnlinkFile::new_or_errno(transaction)?.perform_or_errno(ino, &new_path)?;
+
             let path = path_from_bytes(&path);
-
-            transaction
-                .execute(
-                    r#"
-                    UPDATE files
-                    SET 
-                        name = ?2,
-                        parent = 0
-                    WHERE ino = ?1
-                    "#,
-                    (&ino, new_path.as_slice()),
-                )
-                .map_err(|err| {
-                    ::log::error!("could not update row for rmdir of {path:?}\n{err}");
-                    ::libc::EIO
-                })?;
-
             let new_path = path_from_bytes(&new_path);
 
             ::rustix::fs::renameat_with(
@@ -947,60 +919,27 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         if self.leak {
             return;
         }
-        ::log::info!("lowering rc");
-        if let Err(err) = self.connection.execute(
-            r#"
-            UPDATE files
-            SET rc = 0
-            WHERE ino > 1
-            "#,
-            [],
-        ) {
-            ::log::error!("could not reset rc columns in database\n{err}");
-        };
-        let mut stmt = self
-            .connection
-            .prepare(r#"SELECT name, type FROM paths_to_delete"#)
-            .map_err(|err| ::log::error!("could not prepare cleanup statement\n{err}"))
-            .ok();
-        if let Some(mut query) = stmt.as_mut().and_then(|stmt| {
-            stmt.query([])
-                .map_err(|err| ::log::error!("could not query paths to be deleted\n{err}"))
-                .ok()
-        }) {
-            while let Some(row) = query
-                .next()
-                .map_err(|err| ::log::error!("failed to query row for path deletion\n{err}"))
-                .ok()
-                .flatten()
-            {
-                let Ok(path) = row
-                    .get_ref(0)
-                    .and_then(|r| Ok(r.as_bytes()?))
-                    .map_err(|err| ::log::error!("could not get path for row\n{err}"))
-                    .map(crate::path_from_bytes)
-                else {
-                    continue;
-                };
-                let Ok(ty) = row.get::<_, crate::FileType>(1).map_err(|err| {
-                    ::log::error!("could not get file type for row {path:?}\n{err}")
-                }) else {
-                    continue;
-                };
+        _ = self.stmt.reset_rc.perform_or_errno();
 
-                match ::rustix::fs::unlinkat(
-                    self.root_dir,
-                    path,
-                    if ty.is_dir() {
-                        AtFlags::REMOVEDIR
-                    } else {
-                        AtFlags::empty()
-                    },
-                ) {
-                    Ok(_) => ::log::info!("unlinked {path:?}"),
-                    Err(err) => ::log::error!("could not unlink {path:?}\n{err}"),
+        if let Ok(to_be_deleted) = self.stmt.select_to_be_deleted.perform_or_errno() {
+            for result in to_be_deleted {
+                let Ok((path, ty)) = result else {
+                    continue;
+                };
+                let path = crate::path_from_bytes(&path);
+                let flags = if ty.is_dir() {
+                    AtFlags::REMOVEDIR
+                } else {
+                    AtFlags::empty()
+                };
+                let result = ::rustix::fs::unlinkat(self.root_dir, path, flags);
+
+                if let Err(err) = result {
+                    ::log::error!("could not unlink {path:?}\n{err}");
+                } else {
+                    ::log::info!("unlinked {path:?}");
                 }
             }
-        };
+        }
     }
 }
