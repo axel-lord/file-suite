@@ -1,3 +1,4 @@
+PRAGMA foreign_keys = ON;
 CREATE TABLE files (
 	ino INTEGER PRIMARY KEY,
 	parent INTEGER NOT NULL,
@@ -36,14 +37,15 @@ CREATE TABLE readdir (
 			ON UPDATE CASCADE
 );
 CREATE TABLE paths_to_delete (
-	name BLOB NOT NULL
+	name BLOB NOT NULL,
+	type INTEGER NOT NULL
 );
 CREATE TRIGGER delete_file
 	AFTER UPDATE
 	ON files
 	WHEN new.rc = 0 AND new.parent = 0
 BEGIN
-	INSERT INTO paths_to_delete (name) VALUES (new.name);
+	INSERT INTO paths_to_delete (name, type) VALUES (new.name, new.type);
 	DELETE FROM files
 	WHERE ino = new.ino;
 END;

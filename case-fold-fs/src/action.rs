@@ -113,15 +113,15 @@ action! {
 
 action! {
     /// Insert a row into the database.
-    [r"INSERT INTO files (parent, name, folded, type) VALUES (:parent, :name, :folded, :type)"]
-    Insert(stmt, params: InsertParams<'_>) -> Result<usize, ::rusqlite::Error> {
+    [r"INSERT INTO files (parent, name, folded, type) VALUES (:parent, :name, :folded, :type) RETURNING ino"]
+    Insert(stmt, params: InsertParams<'_>) -> Result<i64, ::rusqlite::Error> {
         let InsertParams {
             parent,
             path,
             folded,
             ty,
         } = params;
-        stmt.execute(named_params! {":parent": parent, ":name": path, ":folded": folded, ":type": ty})
+        stmt.query_row(named_params! {":parent": parent, ":name": path, ":folded": folded, ":type": ty}, |row| Ok(row.get(0)?))
     }
 }
 
@@ -143,11 +143,9 @@ action! {
 
 action! {
     /// Delete rows from opendir and readdir
-    [r"DELETE FROM opendir WHERE fh = ?1", r"DELETE FROM readdir WHERE fh = ?1"]
-    DeleteFromOpendirReaddir(stmts, fh: i64) -> Result<(), ::rusqlite::Error> {
-        for stmt in stmts {
-            stmt.execute((&fh,))?;
-        }
+    [r"DELETE FROM opendir WHERE fh = ?1"]
+    DeleteFromOpendir(stmt, fh: i64) -> Result<(), ::rusqlite::Error> {
+        stmt.execute((&fh,))?;
         Ok(())
     }
 }
@@ -162,7 +160,7 @@ action! {
                 WHERE parent = ?2 AND folded != ?3;
         "#
     ]
-    InsertToReaddir(stmt, fh: i64, parent: i64) -> Result<usize, ::rusqlite::Error> {
+    InsertIntoReaddir(stmt, fh: i64, parent: i64) -> Result<usize, ::rusqlite::Error> {
         stmt.execute((&fh, &parent, b"."))
     }
 }
@@ -183,15 +181,6 @@ action! {
 }
 
 action! {
-    /// Correct rc of a file row
-    [r"UPDATE files SET rc = rc - 1 WHERE ino = ?1"]
-    CorrectRc(stmt, ino: i64) -> Result<(), ::rusqlite::Error> {
-        stmt.execute((&ino,))?;
-        Ok(())
-    }
-}
-
-action! {
     /// Forget an inode
     [r"UPDATE files SET rc = rc - ?2 WHERE ino = ?1"]
     ForgetInode(stmt, ino: i64, nlookup: u64) -> Result<(), ::rusqlite::Error> {
@@ -201,9 +190,17 @@ action! {
 }
 
 action! {
-    /// Check if a child exists.
+    /// Check if a directory is empty.
+    [r#"SELECT 1 FROM files WHERE parent = ?1 AND folded != ?2 LIMIT 1"#]
+    IsEmpty(stmt, ino: i64) -> Result<bool, ::rusqlite::Error> {
+        Ok(stmt.query((&ino, b"." ))?.next()?.is_none())
+    }
+}
+
+action! {
+    /// Check if an entry exists for parent, folded.
     [r"SELECT 1 FROM files WHERE parent = ?1 AND folded = ?2 LIMIT 1"]
-    ChildExists(stmt, parent: i64, folded: &[u8]) -> Result<bool, ::rusqlite::Error> {
-        Ok(stmt.query_map((&parent, folded), |_| Ok(()))?.next().is_some())
+    EntryExists(stmt, parent: i64, folded: &[u8]) -> Result<bool, ::rusqlite::Error> {
+        Ok(stmt.query((&parent, folded))?.next()?.is_some())
     }
 }

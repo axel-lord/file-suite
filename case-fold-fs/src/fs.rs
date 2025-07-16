@@ -2,27 +2,31 @@
 
 use ::std::{
     ffi::OsStr,
+    ops::Not,
     os::{
         fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd},
         unix::ffi::OsStrExt,
     },
     path::Path,
-    sync::mpsc,
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 use ::dashmap::DashMap;
 use ::fuser::{FileAttr, FileType};
 use ::rusqlite::{Connection, Transaction};
 use ::rustc_hash::FxBuildHasher;
-use ::rustix::fs::{Dir, Mode, OFlags, RenameFlags};
+use ::rustix::{
+    fs::{AtFlags, Dir, Mode, OFlags, RenameFlags},
+    process::{getgid, getuid},
+};
 use ::smallvec::SmallVec;
 
 use crate::{
-    Correction, Error,
+    Error,
     action::{
-        self, CountInodes, DeleteFromOpendirReaddir, ForgetInode, IncrementRc, InsertIntoOpendir,
-        InsertToReaddir, Lookup, PathByInode, SelectReaddir, TypeByInode,
+        self, CountInodes, DeleteFromOpendir, EntryExists, ForgetInode, IncrementRc, Insert,
+        InsertIntoOpendir, InsertIntoReaddir, IsEmpty, Lookup, PathByInode, SelectReaddir,
+        TypeByInode,
         param::{InsertParams, LookupParams},
         result::LookupResult,
     },
@@ -41,6 +45,8 @@ db_stmts! {
         select_readdir: SelectReaddir<'conn>,
         forget_ino: ForgetInode<'conn>,
         ty_by_ino: TypeByInode<'conn>,
+        is_empty: IsEmpty<'conn>,
+        entry_exists: EntryExists<'conn>,
     }
 }
 
@@ -57,8 +63,6 @@ pub struct Fs<'conn, 'scope> {
     root_dir: BorrowedFd<'scope>,
     root_ino: i64,
     leak: bool,
-    #[allow(unused)]
-    correction: &'scope mpsc::Sender<Correction>,
     scope: &'conn ::rayon::Scope<'scope>,
     file_descriptors: &'scope DashMap<u64, OwnedFd, FxBuildHasher>,
     fh_counter: u64,
@@ -70,7 +74,6 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
         root_dir: BorrowedFd<'scope>,
         connection: &'conn Connection,
         scope: &'conn ::rayon::Scope<'scope>,
-        correction: &'scope mpsc::Sender<Correction>,
         file_descriptors: &'scope DashMap<u64, OwnedFd, FxBuildHasher>,
     ) -> ::color_eyre::Result<Self> {
         connection.execute_batch(include_str!("./db_setup.sql"))?;
@@ -81,7 +84,6 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             stmt: DbStmts::new(connection)?,
             leak: false,
             fh_counter: 0,
-            correction,
             root_dir,
             file_descriptors,
             scope,
@@ -135,7 +137,7 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
     ) -> Result<(), i32> {
         let dir_path = Path::new(OsStr::from_bytes(dir));
 
-        let mut insert = action::Insert::new(&transaction).map_err(|err| {
+        let mut insert = Insert::new(&transaction).map_err(|err| {
             ::log::error!("could not create insert action\n{err}");
             ::libc::EIO
         })?;
@@ -233,12 +235,16 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             return Ok(());
         }
 
-        let dir = action::PathByInode::new(self.connection)
+        let (dir, ty) = action::PathTypeByInode::new(self.connection)
             .and_then(|mut action| action.perform(parent))
             .map_err(|err| {
                 ::log::error!("could not get parent directory {parent}\n{err}");
                 ::libc::EIO
             })?;
+
+        if !ty.is_dir() {
+            return Err(::libc::ENOTDIR);
+        }
 
         self.with_transaction(|transaction| self.populate_dir(parent, &dir, transaction))
     }
@@ -362,6 +368,140 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             })
         })
     }
+
+    fn rmdir(&mut self, parent: i64, name: &[u8]) -> Result<(), i32> {
+        let LookupResult { ino, path, ty } = self.lookup_path(name, parent)?;
+
+        if !ty.is_dir() {
+            return Err(::libc::ENOTDIR);
+        }
+
+        self.ensure_populated(ino)?;
+
+        let is_empty = self.stmt.is_empty.perform(ino).map_err(|err| {
+            ::log::error!("could not check if a directory was empty\n{err}");
+            ::libc::EIO
+        })?;
+
+        if !is_empty {
+            return Err(::libc::ENOTEMPTY);
+        }
+
+        let random = ::rand::random::<u64>();
+        let new_path = {
+            use ::std::io::Write;
+            let mut path = crate::Buf::new();
+            write!(path, ".rm_{ino:X}_{random:X}").map_err(|err| {
+                ::log::error!("write to smallvec failed\n{err}");
+                ::libc::EIO
+            })?;
+            path
+        };
+
+        self.with_transaction(|transaction| {
+            let path = path_from_bytes(&path);
+
+            transaction
+                .execute(
+                    r#"
+                    UPDATE files
+                    SET 
+                        name = ?2,
+                        parent = 0
+                    WHERE ino = ?1
+                    "#,
+                    (&ino, new_path.as_slice()),
+                )
+                .map_err(|err| {
+                    ::log::error!("could not update row for rmdir of {path:?}\n{err}");
+                    ::libc::EIO
+                })?;
+
+            let new_path = path_from_bytes(&new_path);
+
+            ::rustix::fs::renameat_with(
+                self.root_dir,
+                path,
+                self.root_dir,
+                new_path,
+                RenameFlags::NOREPLACE,
+            )
+            .map_err(|err| {
+                ::log::error!("could not rename {path:?} to {new_path:?}\n{err}");
+                err.raw_os_error()
+            })
+        })
+    }
+
+    fn mknod(
+        &mut self,
+        parent: i64,
+        name: &[u8],
+        ty: crate::FileType,
+        mode: Mode,
+        rdev: u32,
+    ) -> Result<FileAttr, i32> {
+        self.ensure_populated(parent)?;
+
+        let folded = case_fold(name);
+
+        if self
+            .stmt
+            .entry_exists
+            .perform(parent, &folded)
+            .map_err(|err| {
+                ::log::error!(
+                    "could not check for existance of entry, parent {parent}, name {name}\n{err}",
+                    name = OsStr::from_bytes(name).display()
+                );
+                ::libc::EIO
+            })?
+        {
+            return Err(::libc::EEXIST);
+        }
+
+        let mut path = self.path_by_ino(parent)?;
+        if !path.is_empty() {
+            path.extend_from_slice(b"/");
+        }
+        path.extend_from_slice(name);
+
+        self.with_transaction(|transaction| {
+            let ino = Insert::new_or_errno(transaction)?.perform_or_errno(InsertParams {
+                parent,
+                ty,
+                path: &path,
+                folded: &folded,
+            })?;
+
+            let path = crate::path_from_bytes(&path);
+
+            ::rustix::fs::mknodat(self.root_dir, path, *ty, mode, rdev.into()).map_err(|err| {
+                ::log::error!("could not call mknod for {path:?}\n{err}");
+                err.raw_os_error()
+            })?;
+
+            Ok(FileAttr {
+                ino: ino.cast_unsigned(),
+                size: 0,
+                blocks: 0,
+                atime: SystemTime::now(),
+                mtime: SystemTime::now(),
+                ctime: SystemTime::now(),
+                crtime: SystemTime::UNIX_EPOCH,
+                kind: ty
+                    .to_fuser()
+                    .unwrap_or_else(|| ::fuser::FileType::RegularFile),
+                perm: mode.bits() as u16,
+                nlink: 1,
+                uid: getuid().as_raw(),
+                gid: getgid().as_raw(),
+                rdev,
+                blksize: 0,
+                flags: 0,
+            })
+        })
+    }
 }
 
 impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
@@ -382,6 +522,28 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         ::log::info!("forget - {ino}");
         if let Err(err) = self.stmt.forget_ino.perform(ino.cast_signed(), nlookup) {
             ::log::error!("could not forget ino {ino} nlookup {nlookup}\n{err}");
+        }
+    }
+
+    fn mknod(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        mode: u32,
+        umask: u32,
+        rdev: u32,
+        reply: fuser::ReplyEntry,
+    ) {
+        match self.mknod(
+            parent.cast_signed(),
+            name.as_bytes(),
+            crate::FileType::from(::rustix::fs::FileType::from_raw_mode(mode)),
+            Mode::from_raw_mode(mode) & Mode::not(Mode::from_raw_mode(umask)),
+            rdev,
+        ) {
+            Ok(attr) => reply.entry(&Duration::MAX, &attr, 0),
+            Err(err) => reply.error(err),
         }
     }
 
@@ -424,6 +586,19 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
 
             reply.attr(&Duration::MAX, &attr);
         });
+    }
+
+    fn rmdir(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        reply: fuser::ReplyEmpty,
+    ) {
+        match self.rmdir(parent.cast_signed(), name.as_bytes()) {
+            Ok(_) => reply.ok(),
+            Err(err) => reply.error(err),
+        }
     }
 
     fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, flags: i32, reply: fuser::ReplyOpen) {
@@ -633,7 +808,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
             return reply.ok();
         }
         let result = self.with_transaction::<_, Error, _>(|transaction| {
-            DeleteFromOpendirReaddir::new(transaction)?.perform(fh.cast_signed())?;
+            DeleteFromOpendir::new(transaction)?.perform(fh.cast_signed())?;
             Ok(())
         });
         if let Err(err) = result {
@@ -685,7 +860,8 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
                     self.populate_dir(ino.cast_signed(), &dir, transaction)?;
                 }
 
-                InsertToReaddir::new(transaction)?.perform(fh.cast_signed(), ino.cast_signed())?;
+                InsertIntoReaddir::new(transaction)?
+                    .perform(fh.cast_signed(), ino.cast_signed())?;
 
                 Ok(())
             });
@@ -792,5 +968,66 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
                 frsize,
             );
         });
+    }
+
+    fn destroy(&mut self) {
+        if self.leak {
+            return;
+        }
+        ::log::info!("lowering rc");
+        if let Err(err) = self.connection.execute(
+            r#"
+            UPDATE files
+            SET rc = 0
+            WHERE ino > 1
+            "#,
+            [],
+        ) {
+            ::log::error!("could not reset rc columns in database\n{err}");
+        };
+        let mut stmt = self
+            .connection
+            .prepare(r#"SELECT name, type FROM paths_to_delete"#)
+            .map_err(|err| ::log::error!("could not prepare cleanup statement\n{err}"))
+            .ok();
+        if let Some(mut query) = stmt.as_mut().and_then(|stmt| {
+            stmt.query([])
+                .map_err(|err| ::log::error!("could not query paths to be deleted\n{err}"))
+                .ok()
+        }) {
+            while let Some(row) = query
+                .next()
+                .map_err(|err| ::log::error!("failed to query row for path deletion\n{err}"))
+                .ok()
+                .flatten()
+            {
+                let Ok(path) = row
+                    .get_ref(0)
+                    .and_then(|r| Ok(r.as_bytes()?))
+                    .map_err(|err| ::log::error!("could not get path for row\n{err}"))
+                    .map(crate::path_from_bytes)
+                else {
+                    continue;
+                };
+                let Ok(ty) = row.get::<_, crate::FileType>(1).map_err(|err| {
+                    ::log::error!("could not get file type for row {path:?}\n{err}")
+                }) else {
+                    continue;
+                };
+
+                match ::rustix::fs::unlinkat(
+                    self.root_dir,
+                    path,
+                    if ty.is_dir() {
+                        AtFlags::REMOVEDIR
+                    } else {
+                        AtFlags::empty()
+                    },
+                ) {
+                    Ok(_) => ::log::info!("unlinked {path:?}"),
+                    Err(err) => ::log::error!("could not unlink {path:?}\n{err}"),
+                }
+            }
+        };
     }
 }

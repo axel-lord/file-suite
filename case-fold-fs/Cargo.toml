@@ -12,7 +12,7 @@ file-suite-common = { workspace = true }
 thiserror.workspace = true
 color-eyre.workspace = true
 log = { workspace = true }
-rustix = { workspace = true, features = ["fs"] }
+rustix = { workspace = true, features = ["fs", "process"] }
 serde = { workspace = true, features = ["derive"] }
 signal-hook = "0.3.18"
 rayon.workspace = true

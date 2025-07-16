@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 macro_rules! replace_expr {
     ($_t:expr, $sub:expr) => {
         $sub
@@ -40,44 +42,6 @@ pub(crate) use conv_or_reply;
 macro_rules! action {
     {
         #[doc = $doc:expr]
-        [$sql:expr $(, $sql_add:expr)+ $(,)?]
-        $nm:ident(
-            $stmt_ident:ident
-            $(, $params_ident:ident: $param:ty )* $(,)?
-        ) -> Result<$output:ty, $err:ty> $stmt:stmt
-    } => {
-        #[doc = $doc]
-        pub struct $nm<'conn> {
-            $stmt_ident: [::rusqlite::CachedStatement<'conn>; 1usize $(+ $crate::macros::replace_expr!($sql_add, 1usize))*],
-        }
-
-        impl<'conn> ::core::fmt::Debug for $nm<'conn> {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                f.debug_struct(stringify!($ident))
-                    .field(stringify!($stmt_ident), &self.$stmt_ident.each_ref().map(|stmt| &**stmt))
-                    .finish()
-            }
-        }
-
-        impl<'conn> $nm<'conn> {
-            /// Create a new instance bound to passed connection.
-            pub fn new(connection: &'conn ::rusqlite::Connection) -> Result<Self, ::rusqlite::Error> {
-
-                Ok(Self {
-                    $stmt_ident: [connection.prepare_cached($sql)? $(, connection.prepare_cached($sql_add)?)*],
-                })
-            }
-
-
-            /// Perform sql statement using given parameters.
-            pub fn perform(&mut self, $( $params_ident: $param ),*) -> Result<$output, $err> {
-                let Self {$stmt_ident} = self;
-                $stmt
-            }
-        }
-    };
-    {
-        #[doc = $doc:expr]
         [$sql:expr]
          $nm:ident $(<$lt:lifetime>)? (
             $stmt_ident:ident
@@ -105,6 +69,13 @@ macro_rules! action {
                 })
             }
 
+            /// Create a new instance bound to passed connection.
+            pub fn new_or_errno(connection: &'conn ::rusqlite::Connection) -> Result<Self, i32> {
+                Self::new(connection).map_err(|err| {
+                    ::log::error!("could not crate {} action\n{err}", stringify!($nm));
+                    ::libc::EIO
+                })
+            }
 
             /// Perform sql statement using given parameters.
             pub fn perform $( < $lt > )*(& $($lt)* mut self, $( $params_ident: $param ),*) -> Result<$output, $err>
@@ -112,6 +83,16 @@ macro_rules! action {
             {
                 let Self {$stmt_ident} = self;
                 $stmt
+            }
+
+            /// Perform sql statement using given parameters.
+            pub fn perform_or_errno $( < $lt > )*(& $($lt)* mut self, $( $params_ident: $param ),*) -> Result<$output, i32>
+            $( where 'conn: $lt )*
+            {
+                self.perform($($params_ident),*).map_err(|err| {
+                    ::log::error!("could not perform {} action\n{err}", stringify!($nm));
+                    ::libc::EIO
+                })
             }
         }
     };

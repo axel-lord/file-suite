@@ -3,7 +3,7 @@
 use ::std::{
     any::type_name,
     ffi::OsStr,
-    fmt::Display,
+    fmt::{Debug, Display},
     os::{fd::BorrowedFd, unix::ffi::OsStrExt},
     path::Path,
     time::{Duration, SystemTime},
@@ -28,31 +28,6 @@ mod macros;
 
 /// Re-exported type for convenience.
 pub type Buf = SmallVec<[u8; 64]>;
-
-/// Correct mistakes which may happen after splitting of a task
-/// to run in another thread.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Correction {
-    /// Lower the rc column by 1
-    Rc {
-        /// Ino of row to lower rc for.
-        ino: i64,
-    },
-    /// Perform cleanup not possible by database itself
-    /// such as closing file descriptors
-    Clean,
-    /// Close correction thread
-    Stop,
-}
-
-impl Correction {
-    /// Send a correction.
-    pub fn send(self, sender: &::std::sync::mpsc::Sender<Self>) {
-        if let Err(err) = sender.send(self) {
-            ::log::error!("failed to send correction {:#?}\n{err}", err.0);
-        }
-    }
-}
 
 /// Convert a value, logging and converting errors to eio.
 fn log_conv<T, V>(value: T) -> Result<V, i32>
@@ -169,5 +144,19 @@ impl Error {
     /// Get an eio error
     pub fn eio() -> Self {
         Self::Raw(::libc::EIO)
+    }
+}
+
+/// Proxy for debug printing by closure
+pub struct DbgFn<F>(pub F)
+where
+    F: Fn(&mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result;
+
+impl<F> Debug for DbgFn<F>
+where
+    F: Fn(&mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        (&self.0)(f)
     }
 }
