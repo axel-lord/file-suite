@@ -1,16 +1,12 @@
 //! Database actions.
 
+use ::std::{os::unix::ffi::OsStrExt, path::Path};
+
 use ::rusqlite::named_params;
 use ::smallvec::SmallVec;
 use ::tap::Pipe;
 
-use crate::{
-    action::{
-        param::{InsertParams, LookupParams},
-        result::LookupResult,
-    },
-    macros::action,
-};
+use crate::{action::result::LookupResult, macros::action};
 
 pub mod result {
     //! Types of values returned by actions.
@@ -24,32 +20,6 @@ pub mod result {
         pub path: crate::Buf,
         /// Type of child.
         pub ty: crate::FileType,
-    }
-}
-
-pub mod param {
-    //! Types used as parameters by actions.
-
-    /// Parameters for lookup.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct LookupParams<'b> {
-        /// Parent inode.
-        pub parent: i64,
-        /// Folded name of value to find
-        pub folded: &'b [u8],
-    }
-
-    /// Parameters for insert.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct InsertParams<'b> {
-        /// Parent of row
-        pub parent: i64,
-        /// Type for row
-        pub ty: crate::FileType,
-        /// Relative path of row.
-        pub path: &'b [u8],
-        /// Case folded name of row.
-        pub folded: &'b [u8],
     }
 }
 
@@ -99,28 +69,23 @@ action! {
 
 action! {
     /// Lookup an entry by parent and name.
-    [r"SELECT ino, name, type FROM files WHERE parent = ?1 AND folded = ?2"]
-    Lookup(stmt, param: LookupParams<'_>) -> Result<LookupResult, ::rusqlite::Error> {
-        stmt.query_row((&param.parent, param.folded), |row| {
+    [r"SELECT ino, name, type FROM files WHERE parent = ?1 AND folded = ?2 LIMIT 1"]
+    Lookup(stmt, parent: i64, folded: &[u8]) -> Result<Option<LookupResult>, ::rusqlite::Error> {
+        stmt.query_map((&parent, folded), |row| {
             Ok(LookupResult {
                 ino: row.get_ref(0)?.as_i64()?,
                 path: row.get_ref(1)?.as_bytes().map(SmallVec::from_slice)?,
                 ty: row.get(2)?,
             })
-        })
+        })?.next().transpose()
     }
 }
 
 action! {
     /// Insert a row into the database.
     [r"INSERT INTO files (parent, name, folded, type) VALUES (:parent, :name, :folded, :type) RETURNING ino"]
-    Insert(stmt, params: InsertParams<'_>) -> Result<i64, ::rusqlite::Error> {
-        let InsertParams {
-            parent,
-            path,
-            folded,
-            ty,
-        } = params;
+    Insert(stmt, parent: i64, ty: crate::FileType, path: &Path, folded: &[u8]) -> Result<i64, ::rusqlite::Error> {
+        let path = path.as_os_str().as_bytes();
         stmt.query_row(named_params! {":parent": parent, ":name": path, ":folded": folded, ":type": ty}, |row| Ok(row.get(0)?))
     }
 }

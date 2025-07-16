@@ -22,13 +22,11 @@ use ::rustix::{
 use ::smallvec::SmallVec;
 
 use crate::{
-    Error,
+    DbgFn, Error,
     action::{
         self, CountInodes, DeleteFromOpendir, EntryExists, ForgetInode, IncrementRc, Insert,
         InsertIntoOpendir, InsertIntoReaddir, IsEmpty, Lookup, PathByInode, SelectReaddir,
-        TypeByInode,
-        param::{InsertParams, LookupParams},
-        result::LookupResult,
+        TypeByInode, result::LookupResult,
     },
     case_fold, get_attr, log_conv,
     macros::{conv_or_reply, db_stmts},
@@ -137,25 +135,14 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
     ) -> Result<(), i32> {
         let dir_path = Path::new(OsStr::from_bytes(dir));
 
-        let mut insert = Insert::new(&transaction).map_err(|err| {
-            ::log::error!("could not create insert action\n{err}");
-            ::libc::EIO
-        })?;
+        let mut insert = Insert::new_or_errno(transaction)?;
 
-        insert
-            .perform(InsertParams {
-                parent,
-                path: b"",
-                folded: b".",
-                ty: crate::FileType::from(::rustix::fs::FileType::CharacterDevice),
-            })
-            .map_err(|err| {
-                ::log::error!(
-                    "could not insert child marker for {path:?}\n{err}",
-                    path = Path::new(OsStr::from_bytes(dir))
-                );
-                ::libc::EIO
-            })?;
+        insert.perform_or_errno(
+            parent,
+            crate::FileType::character_device(),
+            Path::new(""),
+            b".",
+        )?;
 
         let entries = if parent == self.root_ino {
             ::rustix::io::fcntl_dupfd_cloexec(self.root_dir, 0).map_err(|err| {
@@ -203,17 +190,11 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             }
             path.extend_from_slice(name);
 
-            let path = path;
+            let path = crate::path_from_bytes(&path);
             let folded = case_fold(name);
             let ty = entry.file_type().into();
 
-            if let Err(err) = insert.perform(InsertParams {
-                parent,
-                path: &path,
-                folded: &folded,
-                ty,
-            }) {
-                let path = Path::new(OsStr::from_bytes(&path));
+            if let Err(err) = insert.perform(parent, ty, path, &folded) {
                 match err.sqlite_error_code() {
                     Some(::rusqlite::ErrorCode::ConstraintViolation) => {
                         ::log::warn!(
@@ -263,17 +244,7 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
     }
 
     fn lookup_path_db(&mut self, parent: i64, folded: &[u8]) -> Result<Option<LookupResult>, i32> {
-        match self.stmt.lookup.perform(LookupParams { parent, folded }) {
-            Ok(result) => Ok(Some(result)),
-            Err(::rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(err) => {
-                ::log::error!(
-                    "database error on lookup of {folded} for {parent}\n{err}",
-                    folded = OsStr::from_bytes(folded).display()
-                );
-                Err(::libc::EIO)
-            }
-        }
+        self.stmt.lookup.perform_or_errno(parent, folded)
     }
 
     fn has_child_marker(&mut self, parent: i64) -> Result<bool, i32> {
@@ -467,14 +438,9 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
         path.extend_from_slice(name);
 
         self.with_transaction(|transaction| {
-            let ino = Insert::new_or_errno(transaction)?.perform_or_errno(InsertParams {
-                parent,
-                ty,
-                path: &path,
-                folded: &folded,
-            })?;
-
             let path = crate::path_from_bytes(&path);
+            let ino =
+                Insert::new_or_errno(transaction)?.perform_or_errno(parent, ty, &path, &folded)?;
 
             ::rustix::fs::mknodat(self.root_dir, path, *ty, mode, rdev.into()).map_err(|err| {
                 ::log::error!("could not call mknod for {path:?}\n{err}");
@@ -521,7 +487,14 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
     fn forget(&mut self, _req: &fuser::Request<'_>, ino: u64, nlookup: u64) {
         ::log::info!("forget - {ino}");
         if let Err(err) = self.stmt.forget_ino.perform(ino.cast_signed(), nlookup) {
-            ::log::error!("could not forget ino {ino} nlookup {nlookup}\n{err}");
+            ::log::error!(
+                "could not forget ino {ino} nlookup {nlookup}\n{err}\n{:#?}",
+                DbgFn(|f| f
+                    .debug_struct("parameters")
+                    .field("ino", &ino)
+                    .field("nlookup", &nlookup)
+                    .finish())
+            );
         }
     }
 

@@ -90,7 +90,14 @@ macro_rules! action {
             $( where 'conn: $lt )*
             {
                 self.perform($($params_ident),*).map_err(|err| {
-                    ::log::error!("could not perform {} action\n{err}", stringify!($nm));
+                    ::log::error!(
+                        "could not perform {} action\n{:#?}\n{err}",
+                        stringify!($nm),
+                        $crate::DbgFn(|f| f
+                            .debug_struct("parameters")
+                            $( .field(stringify!($params_ident), &$params_ident) )*
+                            .finish()),
+                    );
                     ::libc::EIO
                 })
             }
