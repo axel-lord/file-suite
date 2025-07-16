@@ -113,9 +113,10 @@ action! {
 
 action! {
     /// Increase rc of an inode
-    [r"UPDATE files SET rc = rc + 1 WHERE ino = ?1 RETURNING rc"]
-    IncrementRc(stmt, ino: i64) -> Result<i64, ::rusqlite::Error> {
-        stmt.query_row((&ino,), |row| Ok(row.get_ref(0)?.as_i64()?))
+    [r"UPDATE files SET rc = rc + 1 WHERE ino = ?1"]
+    IncrementRc(stmt, ino: i64) -> Result<(), ::rusqlite::Error> {
+        stmt.execute ((&ino,))?;
+        Ok(())
     }
 }
 
@@ -179,7 +180,7 @@ action! {
     /// Check if a directory is empty.
     [r#"SELECT 1 FROM files WHERE parent = ?1 AND folded != ?2 LIMIT 1"#]
     IsEmpty(stmt, ino: i64) -> Result<bool, ::rusqlite::Error> {
-        Ok(stmt.query((&ino, b"." ))?.next()?.is_none())
+        Ok(!stmt.exists((&ino, b"." ))?)
     }
 }
 
@@ -187,7 +188,7 @@ action! {
     /// Check if an entry exists for parent, folded.
     [r"SELECT 1 FROM files WHERE parent = ?1 AND folded = ?2 LIMIT 1"]
     EntryExists(stmt, parent: i64, folded: &[u8]) -> Result<bool, ::rusqlite::Error> {
-        Ok(stmt.query((&parent, folded))?.next()?.is_some())
+        stmt.exists((&parent, folded))
     }
 }
 
@@ -235,5 +236,13 @@ action! {
     UnlinkFile(stmt, ino: i64, temp_path: &[u8]) -> Result<(), ::rusqlite::Error> {
         stmt.execute((&ino, temp_path))?;
         Ok(())
+    }
+}
+
+action! {
+    /// Check if a directory has a child marker entry.
+    [r#"SELECT 1 FROM files WHERE parent = ?1 AND folded = ?2 LIMIT 1"#]
+    HasChildMarker(stmt, parent: i64) -> Result<bool, ::rusqlite::Error> {
+        stmt.exists((&parent, b"."))
     }
 }

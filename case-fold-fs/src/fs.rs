@@ -22,11 +22,11 @@ use ::rustix::{
 use ::smallvec::SmallVec;
 
 use crate::{
-    DbgFn, Error,
+    Error,
     action::{
-        self, CountInodes, DeleteFromOpendir, EntryExists, ForgetInode, IncrementRc, Insert,
-        InsertIntoOpendir, InsertIntoReaddir, IsEmpty, Lookup, PathByInode, ResetRc, SelectReaddir,
-        SelectToBeDeleted, TypeByInode, UnlinkFile, result::LookupResult,
+        self, CountInodes, DeleteFromOpendir, EntryExists, ForgetInode, HasChildMarker,
+        IncrementRc, Insert, InsertIntoOpendir, InsertIntoReaddir, IsEmpty, Lookup, PathByInode,
+        ResetRc, SelectReaddir, SelectToBeDeleted, TypeByInode, UnlinkFile, result::LookupResult,
     },
     case_fold, get_attr, log_conv,
     macros::{conv_or_reply, db_stmts},
@@ -47,6 +47,7 @@ db_stmts! {
         entry_exists: EntryExists<'conn>,
         reset_rc: ResetRc<'conn>,
         select_to_be_deleted: SelectToBeDeleted<'conn>,
+        has_child_marker: HasChildMarker<'conn>,
     }
 }
 
@@ -101,27 +102,6 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
         self.scope.spawn(move |_| f());
     }
 
-    fn with_transaction<T, E, F>(&self, f: F) -> Result<T, E>
-    where
-        F: for<'a> FnOnce(&'a Transaction<'a>) -> Result<T, E>,
-        E: From<i32>,
-    {
-        self.connection
-            .unchecked_transaction()
-            .map_err(|err| {
-                ::log::error!("could not start transaction\n{err}");
-                E::from(::libc::EIO)
-            })
-            .and_then(|transaction| {
-                let result = f(&transaction)?;
-                transaction.commit().map_err(|err| {
-                    ::log::error!("could not commit transaction\n{err}");
-                    ::libc::EIO
-                })?;
-                Ok(result)
-            })
-    }
-
     fn new_fh(&mut self) -> u64 {
         self.fh_counter += 1;
         self.fh_counter
@@ -130,10 +110,11 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
     /// Create an iterator that populates a parent directory with children and yields case folded
     /// file names of the children as it does so.
     fn populate_dir(
-        &self,
+        transaction: &Transaction<'_>,
+        root_ino: i64,
+        root_dir: BorrowedFd<'_>,
         parent: i64,
         dir: &[u8],
-        transaction: &Transaction<'_>,
     ) -> Result<(), i32> {
         let dir_path = Path::new(OsStr::from_bytes(dir));
 
@@ -146,14 +127,14 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             b".",
         )?;
 
-        let entries = if parent == self.root_ino {
-            ::rustix::io::fcntl_dupfd_cloexec(self.root_dir, 0).map_err(|err| {
+        let entries = if parent == root_ino {
+            ::rustix::io::fcntl_dupfd_cloexec(root_dir, 0).map_err(|err| {
                 ::log::error!("could not open root dir\n{err}");
                 err.raw_os_error()
             })
         } else {
             ::rustix::fs::openat(
-                self.root_dir,
+                root_dir,
                 dir_path,
                 OFlags::DIRECTORY | OFlags::RDONLY | OFlags::CLOEXEC,
                 Mode::empty(),
@@ -214,7 +195,10 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
     }
 
     fn ensure_populated(&mut self, parent: i64) -> Result<(), i32> {
-        if self.has_child_marker(parent)? {
+        if {
+            let this = &mut *self;
+            this.stmt.has_child_marker.perform_or_errno(parent)
+        }? {
             return Ok(());
         }
 
@@ -229,29 +213,24 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             return Err(::libc::ENOTDIR);
         }
 
-        self.with_transaction(|transaction| self.populate_dir(parent, &dir, transaction))
+        crate::with_transaction(self.connection, |transaction| {
+            Self::populate_dir(transaction, self.root_ino, self.root_dir, parent, &dir)
+        })
     }
 
     #[inline(never)]
     fn lookup_path_io(&mut self, parent: i64, folded: &[u8]) -> Result<LookupResult, i32> {
         self.ensure_populated(parent)?;
 
-        let lookup_result = self
-            .lookup_path_db(parent, folded)
-            .transpose()
-            .ok_or(::libc::ENOENT)
-            .flatten()?;
+        let lookup_result = {
+            let this = &mut *self;
+            this.stmt.lookup.perform_or_errno(parent, folded)
+        }
+        .transpose()
+        .ok_or(::libc::ENOENT)
+        .flatten()?;
 
         Ok(lookup_result)
-    }
-
-    fn lookup_path_db(&mut self, parent: i64, folded: &[u8]) -> Result<Option<LookupResult>, i32> {
-        self.stmt.lookup.perform_or_errno(parent, folded)
-    }
-
-    fn has_child_marker(&mut self, parent: i64) -> Result<bool, i32> {
-        self.lookup_path_db(parent, b".")
-            .map(|result| result.is_some())
     }
 
     fn lookup_path(&mut self, name: &[u8], parent: i64) -> Result<LookupResult, i32> {
@@ -261,31 +240,23 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
 
         let folded = case_fold(name);
 
-        match self.lookup_path_db(parent, &folded)? {
+        match {
+            let this = &mut *self;
+            let folded: &[u8] = &folded;
+            this.stmt.lookup.perform_or_errno(parent, folded)
+        }? {
             Some(result) => Ok(result),
             None => self.lookup_path_io(parent, &folded),
         }
     }
 
-    fn increment_rc(&mut self, ino: i64) -> Result<(), i32> {
-        self.stmt.increment_rc.perform(ino).map_err(|err| {
-            ::log::error!("could not increase rc for {ino}\n{err}");
-            ::libc::EIO
-        })?;
-        Ok(())
-    }
-
-    fn path_by_ino(&mut self, ino: i64) -> Result<crate::Buf, i32> {
-        self.stmt.path_by_ino.perform(ino).map_err(|err| {
-            ::log::error!("could not get path by ino {ino}\n{err}");
-            ::libc::EIO
-        })
-    }
-
     fn lookup(&mut self, parent: i64, name: &[u8]) -> Result<FileAttr, i32> {
         let LookupResult { ino, path, ty: _ } = self.lookup_path(name, parent)?;
         let attr = get_attr(self.root_dir, path_from_bytes(&path), ino)?;
-        self.increment_rc(ino)?;
+        {
+            let this = &mut *self;
+            this.stmt.increment_rc.perform_or_errno(ino)
+        }?;
         Ok(attr)
     }
 
@@ -307,7 +278,7 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             path
         };
 
-        self.with_transaction(|transaction| {
+        crate::with_transaction(self.connection, |transaction| {
             UnlinkFile::new_or_errno(transaction)?.perform_or_errno(ino, &new_path)?;
 
             let path = path_from_bytes(&path);
@@ -356,7 +327,7 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             path
         };
 
-        self.with_transaction(|transaction| {
+        crate::with_transaction(self.connection, |transaction| {
             UnlinkFile::new_or_errno(transaction)?.perform_or_errno(ino, &new_path)?;
 
             let path = path_from_bytes(&path);
@@ -403,13 +374,16 @@ impl<'conn, 'scope> Fs<'conn, 'scope> {
             return Err(::libc::EEXIST);
         }
 
-        let mut path = self.path_by_ino(parent)?;
+        let mut path = {
+            let this = &mut *self;
+            this.stmt.path_by_ino.perform_or_errno(parent)
+        }?;
         if !path.is_empty() {
             path.extend_from_slice(b"/");
         }
         path.extend_from_slice(name);
 
-        self.with_transaction(|transaction| {
+        crate::with_transaction(self.connection, |transaction| {
             let path = crate::path_from_bytes(&path);
             let ino =
                 Insert::new_or_errno(transaction)?.perform_or_errno(parent, ty, &path, &folded)?;
@@ -458,16 +432,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
 
     fn forget(&mut self, _req: &fuser::Request<'_>, ino: u64, nlookup: u64) {
         ::log::info!("forget - {ino}");
-        if let Err(err) = self.stmt.forget_ino.perform(ino.cast_signed(), nlookup) {
-            ::log::error!(
-                "could not forget ino {ino} nlookup {nlookup}\n{err}\n{:#?}",
-                DbgFn(|f| f
-                    .debug_struct("parameters")
-                    .field("ino", &ino)
-                    .field("nlookup", &nlookup)
-                    .finish())
-            );
-        }
+        _ = self.stmt.forget_ino.perform(ino.cast_signed(), nlookup);
     }
 
     fn mknod(
@@ -548,7 +513,10 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
 
     fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, flags: i32, reply: fuser::ReplyOpen) {
         let ino = ino.cast_signed();
-        let path = match self.path_by_ino(ino) {
+        let path = match {
+            let this = &mut *self;
+            this.stmt.path_by_ino.perform_or_errno(ino)
+        } {
             Ok(path) => path,
             Err(err) => return reply.error(err),
         };
@@ -752,7 +720,7 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         if self.leak {
             return reply.ok();
         }
-        let result = self.with_transaction::<_, Error, _>(|transaction| {
+        let result = crate::with_transaction::<_, Error, _>(self.connection, |transaction| {
             DeleteFromOpendir::new(transaction)?.perform(fh.cast_signed())?;
             Ok(())
         });
@@ -777,14 +745,17 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
         mut reply: fuser::ReplyDirectory,
     ) {
         if offset == 0 {
-            let should_populate = self
-                .has_child_marker(ino.cast_signed())
-                .map_err(Error::Raw)
-                .and_then(|value| {
-                    Ok((!value)
-                        .then(|| self.stmt.path_by_ino.perform(ino.cast_signed()))
-                        .transpose()?)
-                });
+            let should_populate = {
+                let this = &mut *self;
+                let parent = ino.cast_signed();
+                this.stmt.has_child_marker.perform_or_errno(parent)
+            }
+            .map_err(Error::Raw)
+            .and_then(|value| {
+                Ok((!value)
+                    .then(|| self.stmt.path_by_ino.perform(ino.cast_signed()))
+                    .transpose()?)
+            });
 
             let should_populate = match should_populate {
                 Ok(value) => value,
@@ -800,9 +771,15 @@ impl<'conn, 'scope> ::fuser::Filesystem for Fs<'conn, 'scope> {
                 }
             };
 
-            let result = self.with_transaction::<_, Error, _>(|transaction| {
+            let result = crate::with_transaction::<_, Error, _>(self.connection, |transaction| {
                 if let Some(dir) = should_populate {
-                    self.populate_dir(ino.cast_signed(), &dir, transaction)?;
+                    Self::populate_dir(
+                        transaction,
+                        self.root_ino,
+                        self.root_dir,
+                        ino.cast_signed(),
+                        &dir,
+                    )?;
                 }
 
                 InsertIntoReaddir::new(transaction)?

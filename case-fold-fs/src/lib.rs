@@ -11,7 +11,7 @@ use ::std::{
 
 use ::derive_more::IsVariant;
 use ::fuser::FileAttr;
-use ::rusqlite::types::FromSqlError;
+use ::rusqlite::{Connection, Transaction, types::FromSqlError};
 use ::rustix::fs::{AtFlags, Mode, StatxFlags, makedev, statx};
 use ::smallvec::SmallVec;
 use ::tap::{Conv, Pipe};
@@ -28,6 +28,28 @@ mod macros;
 
 /// Re-exported type for convenience.
 pub type Buf = SmallVec<[u8; 64]>;
+
+/// Run a function producing a result in a transaction. Commiting on success.
+fn with_transaction<T, E, F>(connection: &Connection, f: F) -> Result<T, E>
+where
+    F: for<'a> FnOnce(&'a Transaction<'a>) -> Result<T, E>,
+    E: From<i32>,
+{
+    connection
+        .unchecked_transaction()
+        .map_err(|err| {
+            ::log::error!("could not start transaction\n{err}");
+            E::from(::libc::EIO)
+        })
+        .and_then(|transaction| {
+            let result = f(&transaction)?;
+            transaction.commit().map_err(|err| {
+                ::log::error!("could not commit transaction\n{err}");
+                ::libc::EIO
+            })?;
+            Ok(result)
+        })
+}
 
 /// Convert a value, logging and converting errors to eio.
 fn log_conv<T, V>(value: T) -> Result<V, i32>
