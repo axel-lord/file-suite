@@ -1,12 +1,33 @@
 //! Database actions.
 
-use ::std::{os::unix::ffi::OsStrExt, path::Path};
+use ::std::{ffi::OsStr, fmt::Debug, os::unix::ffi::OsStrExt, path::Path};
 
 use ::rusqlite::named_params;
 use ::smallvec::SmallVec;
 use ::tap::Pipe;
 
 use crate::{action::result::LookupResult, macros::action};
+
+/// Trait to provide alternative debug implementations.
+pub trait DbgProxy
+where
+    Self: Debug + Sized,
+{
+    /// For macro generated debugging use provided debug implementation instead.
+    fn dbg_proxy(self) -> impl Debug {
+        self
+    }
+}
+
+impl DbgProxy for u64 {}
+impl DbgProxy for i64 {}
+impl DbgProxy for &Path {}
+impl DbgProxy for crate::FileType {}
+impl DbgProxy for &[u8] {
+    fn dbg_proxy(self) -> impl Debug {
+        OsStr::from_bytes(self)
+    }
+}
 
 pub mod result {
     //! Types of values returned by actions.

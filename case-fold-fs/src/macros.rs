@@ -95,7 +95,7 @@ macro_rules! action {
                         stringify!($nm),
                         $crate::DbgFn(|f| f
                             .debug_struct("parameters")
-                            $( .field(stringify!($params_ident), &$params_ident) )*
+                            $( .field(stringify!($params_ident), &$crate::action::DbgProxy::dbg_proxy($params_ident)) )*
                             .finish()),
                     );
                     ::libc::EIO
