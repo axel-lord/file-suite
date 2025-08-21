@@ -1,0 +1,19 @@
+[package]
+name = "group-by-pattern"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+file-suite-common = { workspace = true }
+hashbrown = { version = "0.15.5", features = ["rayon"] }
+insensitive-buf = { version = "0.1.0", path = "../insensitive-buf" }
+log.workspace = true
+rayon.workspace = true
+regex.workspace = true
+rustc-hash.workspace = true
+tap.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
