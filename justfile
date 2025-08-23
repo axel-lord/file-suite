@@ -1,3 +1,5 @@
+crate := "file-suite"
+
 default:
 	just --list
 
@@ -40,6 +42,9 @@ fmt:
 # Perform an autoinherit.
 autoinherit:
 	cargo autoinherit --prefer-simple-dotted
+
+install: autoinherit fmt
+	cargo +nightly install --path {{crate}}
 
 # Check all features and targets
 check:
