@@ -37,6 +37,10 @@ test-arr-expr:
 fmt:
 	cargo fmt --all
 
+# Perform an autoinherit.
+autoinherit:
+	cargo autoinherit --prefer-simple-dotted
+
 # Check all features and targets
 check:
 	cargo clippy --all --all-features --all-targets --workspace

@@ -2,16 +2,22 @@
 
 use ::std::{
     borrow::Cow,
-    collections::VecDeque,
     ffi::{OsStr, OsString},
     io::{BufRead, Write, stderr, stdout},
     os::unix::ffi::{OsStrExt, OsStringExt},
     process::{Command, ExitStatus, Stdio},
+    str::Utf8Error,
 };
 
 use ::clap::{Parser, ValueHint};
 use ::rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use ::regex::bytes::Captures;
+use ::rustc_hash::FxHashSet;
+use ::smallvec::SmallVec;
+
+use crate::lookup_chunk::LookupChunk;
+
+mod lookup_chunk;
 
 /// Group input by the result of a regex pattern.
 #[derive(Debug, Parser)]
@@ -80,11 +86,73 @@ pub enum Error {
     /// Could not read input.
     #[error("while reading input, {0}")]
     InputIO(#[source] ::std::io::Error),
+    /// Could not parse format for arguments.
+    #[error("could not parse format for argument `{arg}`{msg}")]
+    ParseFmt {
+        /// Argument that could not be parsed.
+        arg: String,
+        /// Parse error.
+        msg: String,
+    },
+    /// A capture lookup used a non utf8 byte sequence.
+    #[error("non utf8 capture group `{}` used, {}", ::parse_fmt::display_bytes(&.1), .0)]
+    NonUtf8CaptureLookup(#[source] Utf8Error, Vec<u8>),
+    /// Parsing of the lookup of a capture group failed.
+    #[error("could not parse lookup `{}`{}", ::parse_fmt::display_bytes(&chunk), msg)]
+    ParseLookup {
+        /// Chunk that was to be parsed.
+        chunk: Vec<u8>,
+        /// Error message.
+        msg: String,
+    },
     /// A command ran failed.
     #[error("one or more command evocations failed")]
     CommandFailed,
+    /// No capture group with given index exists for first match.
+    #[error(
+        "no capture group with index {idx} exists for \
+        used match of pattern /{pattern}/, is the pattern optional?"
+    )]
+    MissingGroupIdx {
+        /// Index of group for which access failed.
+        idx: usize,
+        /// Regex pattern used.
+        pattern: String,
+    },
+    /// No capture group with given index exists for first match.
+    #[error(
+        "no capture group with name {name} exists for \
+        used match of pattern /{pattern}/, is the pattern optional?"
+    )]
+    MissingGroupName {
+        /// Name of group for which access failed.
+        name: String,
+        /// Regex pattern used.
+        pattern: String,
+    },
+    /// No capture group with given index exists for pattern.
+    #[error(
+        "no capture group with index {idx} exists for pattern /{pattern}/, highest group index is {highest}"
+    )]
+    UnknownGroupIdx {
+        /// Index of group.
+        idx: usize,
+        /// Regex pattern used.
+        pattern: String,
+        /// Highest group index.
+        highest: usize,
+    },
+    /// No capture group with given name exists for pattern.
+    #[error("no capture group with name {name} exists for pattern /{pattern}/")]
+    UnknownGroupName {
+        /// Name of group.
+        name: String,
+        /// Regex pattern used.
+        pattern: String,
+    },
 }
 
+#[derive(Debug)]
 struct Group<'s> {
     captures: Option<Captures<'s>>,
     inputs: Vec<&'s OsStr>,
@@ -104,16 +172,64 @@ impl ::file_suite_common::Run for Cli {
             ignore_case,
             command,
         } = self;
+        let [exe, command @ ..] = command.as_slice() else {
+            panic!("command should contain at least 1 element according to Parser impl")
+        };
 
-        let mut command = VecDeque::from(command);
-        let exe = command
-            .pop_front()
-            .expect("command should contain at least 1 element according to Parser impl");
-        let args = &*command.make_contiguous();
+        let args = command
+            .iter()
+            .map(|arg| {
+                ::parse_fmt::parse_fmt(arg.as_bytes())
+                    .collect::<Result<SmallVec<[_; 3]>, _>>()
+                    .map_err(|err| {
+                        use ::std::fmt::Write;
+                        let arg = arg.display().to_string();
+                        let msg = match err.as_slice() {
+                            [] => String::new(),
+                            errors => {
+                                let mut out = String::new();
+                                for err in errors {
+                                    write!(out, "\n{err}").expect("write to string should succeed");
+                                }
+                                out
+                            }
+                        };
+                        Error::ParseFmt { arg, msg }
+                    })
+                    .and_then(|chunks| LookupChunk::from_chunks::<SmallVec<[_; 3]>, _>(chunks))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let regex = ::regex::bytes::RegexBuilder::new(&regex)
+        let pattern = regex;
+        let regex = ::regex::bytes::RegexBuilder::new(&pattern)
             .case_insensitive(ignore_case)
             .build()?;
+
+        let highest = regex.captures_len() - 1;
+        let groups = regex.capture_names().flatten().collect::<FxHashSet<_>>();
+
+        for chunk in args.iter().flatten().copied() {
+            match chunk {
+                LookupChunk::CaptureIdx(idx) | LookupChunk::CaptureIdxOpt(idx) => {
+                    if idx > highest {
+                        return Err(Error::UnknownGroupIdx {
+                            idx,
+                            pattern,
+                            highest,
+                        });
+                    }
+                }
+                LookupChunk::CaptureName(name) | LookupChunk::CaptureNameOpt(name) => {
+                    if !groups.contains(name) {
+                        return Err(Error::UnknownGroupName {
+                            name: name.to_owned(),
+                            pattern,
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
 
         let input = ::std::io::stdin()
             .lock()
@@ -193,9 +309,10 @@ impl ::file_suite_common::Run for Cli {
                     entry.inputs.push(haystack);
                 }
                 Vacant(vacant_entry) => {
+                    ::log::info!("{haystack:?}");
                     vacant_entry.insert(Group {
                         captures,
-                        inputs: vec![haystack],
+                        inputs: Vec::from([haystack]),
                     });
                 }
             }
@@ -205,12 +322,72 @@ impl ::file_suite_common::Run for Cli {
             .into_par_iter()
             .map(|(key, value)| {
                 // do arg formatting here
-                _ = key;
                 let mut command = Command::new(&exe);
-                command.args(args);
-                (command, value.inputs, key)
+
+                let mut buf = Vec::<u8>::new();
+                for arg in &args {
+                    buf.clear();
+                    for chunk in arg {
+                        match *chunk {
+                            LookupChunk::Text(os_str) => buf.extend_from_slice(os_str.as_bytes()),
+                            LookupChunk::CaptureIdx(idx) => {
+                                if value.captures.is_none() && idx == 0 {
+                                    buf.extend_from_slice(key.as_bytes());
+                                } else if let Some(captures) = &value.captures {
+                                    let r#match = captures.get(idx).ok_or_else(|| {
+                                        Error::MissingGroupIdx {
+                                            idx,
+                                            pattern: pattern.clone(),
+                                        }
+                                    })?;
+                                    buf.extend_from_slice(r#match.as_bytes());
+                                } else {
+                                    return Err(Error::MissingGroupIdx {
+                                        idx,
+                                        pattern: pattern.clone(),
+                                    });
+                                }
+                            }
+                            LookupChunk::CaptureName(name) => {
+                                let Some(captures) = &value.captures else {
+                                    return Err(Error::MissingGroupName {
+                                        name: name.to_owned(),
+                                        pattern: pattern.clone(),
+                                    });
+                                };
+                                let r#match =
+                                    captures.name(name).ok_or_else(|| Error::MissingGroupName {
+                                        name: name.to_owned(),
+                                        pattern: pattern.clone(),
+                                    })?;
+                                buf.extend_from_slice(r#match.as_bytes());
+                            }
+                            LookupChunk::CaptureIdxOpt(idx) => {
+                                let bytes = value
+                                    .captures
+                                    .as_ref()
+                                    .and_then(|captures| captures.get(idx))
+                                    .map(|m| m.as_bytes())
+                                    .unwrap_or(&[]);
+                                buf.extend_from_slice(bytes);
+                            }
+                            LookupChunk::CaptureNameOpt(name) => {
+                                let bytes = value
+                                    .captures
+                                    .as_ref()
+                                    .and_then(|captures| captures.name(name))
+                                    .map(|m| m.as_bytes())
+                                    .unwrap_or(&[]);
+                                buf.extend_from_slice(bytes);
+                            }
+                        }
+                    }
+                    command.arg(OsStr::from_bytes(&buf));
+                }
+
+                Ok((command, value.inputs, key))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, Error>>()?;
 
         fn spawn(
             sep: u8,
@@ -218,17 +395,16 @@ impl ::file_suite_common::Run for Cli {
             inputs: Vec<&OsStr>,
             group: &OsStr,
         ) -> Result<ExitStatus, ::std::io::Error> {
-            let mut child = command.stdin(Stdio::piped()).spawn()?;
+            let mut child = command
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
             let mut stdin = child.stdin.take().expect("stdin pipe should exist");
-            let mut inputs = inputs.into_iter();
-
-            if let Some(first) = inputs.next() {
-                stdin.write_all(first.as_bytes())?;
-            }
 
             for input in inputs {
-                stdin.write_all(&[sep])?;
                 stdin.write_all(input.as_bytes())?;
+                stdin.write_all(&[sep])?;
             }
 
             drop(stdin);
@@ -267,7 +443,7 @@ impl ::file_suite_common::Run for Cli {
                 }
                 Ok(status) if !status.success() => {
                     ::log::error!(
-                        "command fro group <{group}> did not succeed, {status}",
+                        "command from group <{group}> did not succeed, {status}",
                         group = group.display()
                     );
                     failure = true;

@@ -6,14 +6,17 @@ edition = "2024"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 file-suite-common = { workspace = true }
-hashbrown = { version = "0.15.5", features = ["rayon"] }
-insensitive-buf = { version = "0.1.0", path = "../insensitive-buf" }
+hashbrown = { workspace = true, features = ["rayon"] }
+insensitive-buf.workspace = true
+parse-fmt.workspace = true
+chumsky.workspace = true
 log.workspace = true
 rayon.workspace = true
 regex.workspace = true
 rustc-hash.workspace = true
 tap.workspace = true
 thiserror.workspace = true
+smallvec = { workspace = true, features = ["const_new", "const_generics", "write", "union"] }
 
 [lints]
 workspace = true
