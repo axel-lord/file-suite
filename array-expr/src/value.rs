@@ -338,7 +338,7 @@ impl Value {
     }
 
     /// Get an implementor of [PartialEq] that respects type.
-    pub const fn ty_eq(&self) -> ValueTyEq {
+    pub const fn ty_eq(&self) -> ValueTyEq<'_> {
         ValueTyEq(self)
     }
 

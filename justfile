@@ -1,3 +1,5 @@
+crate := "file-suite"
+
 default:
 	just --list
 
@@ -36,6 +38,13 @@ test-arr-expr:
 # Format crates.
 fmt:
 	cargo fmt --all
+
+# Perform an autoinherit.
+autoinherit:
+	cargo autoinherit --prefer-simple-dotted
+
+install: autoinherit fmt
+	cargo +nightly install --path {{crate}}
 
 # Check all features and targets
 check:

@@ -11,6 +11,7 @@ completions-cli = { workspace = true }
 file-suite-common = { workspace = true }
 file-suite-proc = { workspace = true }
 generate-keyfile = { workspace = true }
+group-by-pattern.workspace = true
 log.workspace = true
 path-is-utf8 = { workspace = true }
 pipe-size = { workspace = true }

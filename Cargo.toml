@@ -1,5 +1,5 @@
 [workspace]
-members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "run-derive", "file-suite-dyn", "file-suite-proc-lib", "tokens-rc", "fold-tokens", "array-expr"]
+members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "run-derive", "file-suite-dyn", "file-suite-proc-lib", "tokens-rc", "fold-tokens", "array-expr", "group-by-pattern", "parse-fmt"]
 resolver = "2"
 default-members = ["file-suite"]
 
@@ -82,3 +82,8 @@ array-expr = { path = "array-expr" }
 file-suite-proc-lib = { path = "file-suite-proc-lib" }
 fold-tokens = { path = "fold-tokens" }
 tokens-rc = { path = "tokens-rc" }
+chumsky = "0.10.1"
+group-by-pattern = { version = "0.1.0", path = "group-by-pattern" }
+hashbrown = "0.15.5"
+parse-fmt = { path = "parse-fmt" }
+pretty_assertions = "1.4.1"

@@ -44,7 +44,7 @@ impl Run for CmpSubcmd {
 }
 
 array_expr! {
-    generate_keyfile compile_nested path_is_utf8 pipe_size -> global(modules),
+    generate_keyfile compile_nested path_is_utf8 pipe_size group_by_pattern  -> global(modules),
 
     snakeToPascal -> alias { split(snake).case(pascal).join.ty(ident) },
     snakeToKebab -> alias { split(snake).case(lower).join(kebab).ty(str) },
