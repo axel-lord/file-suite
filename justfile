@@ -1,4 +1,5 @@
 crate := "file-suite"
+template := "file-suite-template"
 
 default:
 	just --list
@@ -44,7 +45,13 @@ autoinherit:
 	cargo autoinherit --prefer-simple-dotted
 
 install: autoinherit fmt
-	cargo +nightly install --path {{crate}}
+	cargo +nightly install --path {{crate}} -Z build-std=std,panic_abort -Z build-std-features="optimize_for_size"
+
+new NAME:
+	test ! -e {{NAME}}
+	cargo new --lib {{NAME}}
+	cp -rT {{template}} {{NAME}}
+	fd -tf -e md -e toml -e rs '' {{NAME}} -x sd -F {{template}} {{NAME}}
 
 # Check all features and targets
 check:
