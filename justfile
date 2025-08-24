@@ -49,7 +49,8 @@ install: autoinherit fmt
 
 new NAME:
 	test ! -e {{NAME}}
-	cp -r {{template}} {{NAME}}
+	cargo new --lib {{NAME}}
+	cp -rT {{template}} {{NAME}}
 	fd -tf -e md -e toml -e rs '' {{NAME}} -x sd -F {{template}} {{NAME}}
 
 # Check all features and targets
