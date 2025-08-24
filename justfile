@@ -44,7 +44,7 @@ autoinherit:
 	cargo autoinherit --prefer-simple-dotted
 
 install: autoinherit fmt
-	cargo +nightly install --path {{crate}}
+	cargo +nightly install --path {{crate}} -Z build-std=std,panic_abort -Z build-std-features="optimize_for_size"
 
 # Check all features and targets
 check:
