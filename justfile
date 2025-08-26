@@ -1,4 +1,5 @@
 crate := "file-suite"
+tools := "file-suite/tools.json"
 template := "file-suite-template"
 
 default:
@@ -52,6 +53,7 @@ new NAME:
 	cargo new --lib {{NAME}}
 	cp -rT {{template}} {{NAME}}
 	fd -tf -e md -e toml -e rs '' {{NAME}} -x sd -F {{template}} {{NAME}}
+	env TOOL={{NAME}} yq -ojson -pjson -i '. = [.[], strenv(TOOL)] | unique' {{tools}}
 
 # Check all features and targets
 check:
