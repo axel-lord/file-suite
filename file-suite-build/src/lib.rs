@@ -1,14 +1,18 @@
 #![doc = include_str!("../README.md")]
 
-use ::std::str::FromStr;
+use ::std::{path::Path, str::FromStr};
 
 use ::convert_case::{Case, Casing};
 use ::quote::format_ident;
 use ::serde_json::Value;
 
 /// Convert tools.json to rust code.
-pub fn tool_json_to_rust(json: String) -> String {
-    let tools = ::serde_json::Value::from_str(&json).unwrap();
+pub fn tool_json_to_rust(json_file: &Path) -> String {
+    let json = ::std::fs::read_to_string(json_file)
+        .unwrap_or_else(|err| panic!("could not read {json_file:?} to a utf-8 string, {err}"));
+
+    let tools = ::serde_json::Value::from_str(&json)
+        .unwrap_or_else(|err| panic!("could not parse {json_file:?} as json, {err}"));
     let tools = match tools {
         Value::Array(tools) => tools,
         other => panic!("tool json should be an array of strings, is:\n{other:#?}"),

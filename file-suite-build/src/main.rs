@@ -2,8 +2,11 @@
 
 use ::std::{
     io::{stderr, stdout},
+    path::Path,
     process::ExitCode,
 };
+
+use ::file_suite_build::tool_json_to_rust;
 
 const HELP: &str = r"usage: file-suite-build TOOL [ARGS...]";
 
@@ -13,7 +16,11 @@ fn help(io: &mut dyn ::std::io::Write) {
 
 fn main() -> ExitCode {
     let args = ::std::env::args().collect::<Vec<_>>();
-    let args = args.iter().skip(1).map(|arg| arg.as_str()).collect::<Vec<_>>();
+    let args = args
+        .iter()
+        .skip(1)
+        .map(|arg| arg.as_str())
+        .collect::<Vec<_>>();
     let args = &args[..];
 
     match args {
@@ -22,12 +29,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         ["tool_json_to_rust", json_file] => {
-            let json = ::std::fs::read_to_string(json_file).unwrap_or_else(|err| {
-                panic!("could not read {json_file:?} to a utf-8 string, {err}")
-            });
-            let rust = ::file_suite_build::tool_json_to_rust(json);
-            println!("{rust}");
-
+            println!("{rust}", rust = tool_json_to_rust(Path::new(json_file)));
             ExitCode::SUCCESS
         }
         [] => {
