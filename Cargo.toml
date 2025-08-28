@@ -89,3 +89,4 @@ parse-fmt = { path = "parse-fmt" }
 pretty_assertions = "1.4.1"
 prettyplease = "0.2.37"
 convert_case = "0.8.0"
+file-suite-build = { path = "file-suite-build" }

@@ -6,15 +6,17 @@ edition = "2024"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 color-eyre.workspace = true
-compile-nested = { workspace = true }
-completions-cli = { workspace = true }
-file-suite-common = { workspace = true }
-file-suite-proc = { workspace = true }
-generate-keyfile = { workspace = true }
+compile-nested.workspace = true
+completions-cli.workspace = true
+file-suite-common.workspace = true
+generate-keyfile.workspace = true
 group-by-pattern.workspace = true
 log.workspace = true
-path-is-utf8 = { workspace = true }
-pipe-size = { workspace = true }
+path-is-utf8.workspace = true
+pipe-size.workspace = true 
+
+[build-dependencies]
+file-suite-build.workspace = true
 
 [lints]
 workspace = true

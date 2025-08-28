@@ -27,7 +27,7 @@ pub fn tool_json_to_rust(json_file: &Path) -> String {
     let (tools_pascal, modules, tool_names, module_names) = tools
         .iter()
         .map(|tool| {
-            let kebab = tool.to_case(Case::Kebab);
+            let kebab = tool.as_str();
             let pascal = kebab.from_case(Case::Kebab).to_case(Case::Pascal);
             let snake = kebab.from_case(Case::Kebab).to_case(Case::Snake);
             (
