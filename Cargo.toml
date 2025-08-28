@@ -1,5 +1,5 @@
 [workspace]
-members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "run-derive", "file-suite-dyn", "file-suite-proc-lib", "tokens-rc", "fold-tokens", "array-expr", "group-by-pattern", "parse-fmt", "file-suite-template"]
+members = ["completions-cli", "log-level-cli", "compile-nested", "file-suite-common", "generate-keyfile", "path-is-utf8", "pipe-size", "quick-dupes", "re-tile", "read-structured", "recursive-lowercase", "reflink-at", "wrap-blocking-attr", "wrap-blocking-attr-impl", "file-suite", "file-suite-proc", "run-derive", "file-suite-dyn", "file-suite-proc-lib", "tokens-rc", "fold-tokens", "array-expr", "group-by-pattern", "parse-fmt", "file-suite-template", "file-suite-build"]
 resolver = "2"
 default-members = ["file-suite"]
 
@@ -30,17 +30,17 @@ bytesize = "2.0.1"
 clap = "4.5.36"
 clap_complete = "4.5.47"
 color-eyre = "0.6.3"
-compile-nested = { version = "0.2.0", path = "compile-nested" }
-completions-cli = { version = "0.1.0", path = "completions-cli" }
+compile-nested = { path = "compile-nested" }
+completions-cli = { path = "completions-cli" }
 crossbeam = "0.8.4"
 derive_more = "2.0.1"
 either = "1.15.0"
 env_logger = "0.11.8"
-file-suite-common = { version = "0.1.0", path = "file-suite-common" }
+file-suite-common = { path = "file-suite-common" }
 file-suite-proc = { path = "file-suite-proc" }
 run-derive = { path = "run-derive" }
 futures-core = "0.3.30"
-generate-keyfile = { version = "0.2.0", path = "generate-keyfile" }
+generate-keyfile = { path = "generate-keyfile" }
 getrandom = "0.3.2"
 image = "0.25.6"
 imageproc = "0.25.0"
@@ -51,9 +51,9 @@ log = "0.4.22"
 log-level-cli = { path = "log-level-cli" }
 nix = "0.29.0"
 paste = "1.0.15"
-path-is-utf8 = { version = "0.1.0", path = "path-is-utf8" }
+path-is-utf8 = { path = "path-is-utf8" }
 patharg = "0.4.0"
-pipe-size = { version = "0.1.0", path = "pipe-size" }
+pipe-size = {  path = "pipe-size" }
 proc-macro2 = "1.0.86"
 quote = "1.0.37"
 rayon = "1.10.0"
@@ -83,7 +83,9 @@ file-suite-proc-lib = { path = "file-suite-proc-lib" }
 fold-tokens = { path = "fold-tokens" }
 tokens-rc = { path = "tokens-rc" }
 chumsky = "0.10.1"
-group-by-pattern = { version = "0.1.0", path = "group-by-pattern" }
+group-by-pattern = { path = "group-by-pattern" }
 hashbrown = "0.15.5"
 parse-fmt = { path = "parse-fmt" }
 pretty_assertions = "1.4.1"
+prettyplease = "0.2.37"
+convert_case = "0.8.0"
