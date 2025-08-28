@@ -1,4 +1,5 @@
 crate := "file-suite"
+tools := "file-suite/tools.json"
 template := "file-suite-template"
 
 default:
@@ -53,6 +54,10 @@ new NAME:
 	cp -rT {{template}} {{NAME}}
 	fd -tf -e md -e toml -e rs '' {{NAME}} -x sd -F {{template}} {{NAME}}
 
+new-tool NAME: (new NAME)
+	env TOOL={{NAME}} yq -ojson -pjson -i '. = [.[], strenv(TOOL)] | unique' {{tools}}
+
 # Check all features and targets
 check:
 	cargo clippy --all --all-features --all-targets --workspace
+

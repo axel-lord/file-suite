@@ -1,0 +1,16 @@
+[package]
+name = "file-suite-build"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Axel Lord"]
+
+[dependencies]
+convert_case.workspace = true
+prettyplease.workspace = true
+quote.workspace = true
+serde_json.workspace = true
+syn.workspace = true
+
+[lints]
+workspace = true
