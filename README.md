@@ -7,6 +7,17 @@ Todo:
 - [ ] Make everything available from `file-suite` executable.
 - [ ] Tests
 
+Tools:
+- [x] compile-nested
+- [x] generate-keyfile
+- [x] group-by-pattern
+- [x] path-is-utf8
+- [x] pipe-size
+- [ ] quick-dupes
+- [ ] re-tile
+- [ ] read-structured
+- [ ] recursive-lowercase
+
 ## file-suite-proc-impl
 Procedural macros for use in other crates, mostly me playing around.
 
