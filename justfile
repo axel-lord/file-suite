@@ -45,8 +45,14 @@ fmt:
 autoinherit:
 	cargo autoinherit --prefer-simple-dotted
 
-install: autoinherit fmt
-	cargo +nightly install --path {{crate}} -Z build-std=std,panic_abort -Z build-std-features="optimize_for_size"
+install *EXTRA: autoinherit fmt
+	cargo +nightly install --path {{crate}} -Z build-std=std,panic_abort -Z build-std-features="optimize_for_size" {{EXTRA}}
+
+build *EXTRA: autoinherit fmt
+	cargo +nightly build -p {{crate}} -Z build-std=std,panic_abort -Z build-std-features="optimize_for_size" {{EXTRA}}
+
+build-release *EXTRA: (build "--release" EXTRA)
+	cargo +nightly build -p {{crate}} -Z build-std=std,panic_abort -Z build-std-features="optimize_for_size" {{EXTRA}}
 
 new NAME:
 	test ! -e {{NAME}}
