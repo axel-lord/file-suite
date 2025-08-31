@@ -10,6 +10,7 @@ clap = { workspace = true, features = ["derive"] }
 file-suite-common.workspace = true
 chumsky.workspace = true
 bytemuck = { workspace = true, features = ["derive"] }
+termcolor.workspace = true
 
 [lints]
 workspace = true

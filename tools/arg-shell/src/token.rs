@@ -10,6 +10,8 @@ pub enum Token<'i> {
     LParen,
     /// Unqouted right parentheses, ).
     RParen,
+    /// Pipe symbol, |.
+    Pipe,
     /// String, 'content'.
     String(&'i ByteStr),
     /// Format string, f"content {value}".
@@ -76,6 +78,7 @@ impl<'i> Token<'i> {
         choice((
             just(b'(').map(|_| Self::LParen),
             just(b')').map(|_| Self::RParen),
+            just(b'|').map(|_| Self::Pipe),
             sqstring.map(Self::String),
             dqstring.map(Self::String),
             sqfstring.map(Self::FString),

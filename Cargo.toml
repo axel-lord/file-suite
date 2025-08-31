@@ -119,3 +119,4 @@ tokio-stream = "0.1.16"
 toml = "0.8.20"
 walkdir = "2.5.0"
 wrap-blocking-attr-impl = { path = "macros/wrap-blocking-attr-impl" }
+termcolor = "1.4.1"
