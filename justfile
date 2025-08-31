@@ -61,7 +61,9 @@ new NAME:
 	fd -tf -e md -e toml -e rs '' {{NAME}} -x sd -F {{template}} {{NAME}}
 
 new-tool NAME: (new NAME)
-	env TOOL={{NAME}} yq -ojson -pjson -i '. = [.[], strenv(TOOL)] | unique' {{tools}}
+	env TOOL={{NAME}} yq -ojson -pjson -i '. = [.[], strenv(TOOL)] | unique | sort' {{tools}}
+	mv {{NAME}} tools
+	sd -F "\"{{NAME}}\"" "\"tools/{{NAME}}\"" Cargo.toml
 
 # Check all features and targets
 check:
