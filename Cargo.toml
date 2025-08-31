@@ -53,6 +53,7 @@ missing_const_for_fn = "warn"
 
 [workspace.dependencies]
 ab_glyph = "0.2.29"
+arg-shell = { path = "tools/arg-shell" }
 array-expr = { path = "macros/array-expr" }
 bytemuck = "1.21.0"
 bytesize = "2.0.1"

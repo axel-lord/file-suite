@@ -8,6 +8,8 @@ authors = ["Axel Lord"]
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 file-suite-common.workspace = true
+chumsky.workspace = true
+bytemuck = { workspace = true, features = ["derive"] }
 
 [lints]
 workspace = true
