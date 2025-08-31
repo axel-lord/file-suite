@@ -1,0 +1,13 @@
+# Functions
+- [x] Take (negative value should result in back elements being taken)
+- [x] Chain
+- [x] Skip (negative value should result in back elements being skipped)
+- [x] Intersperse
+- [x] Get (variable, not by index)
+- [x] Nth (with error on failure, and negative indexing)
+- [ ] ~~Every (could be emulated by .chunks(N, .take(1)))~~
+- [x] Block (Chain with same locals as parent)
+- [x] Rand (some manner of random values)
+- [ ] Hex to isize conversion.
+- [ ] Len (of values)
+- [ ] Filter + tests/and/or

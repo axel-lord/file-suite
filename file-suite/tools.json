@@ -1,7 +1,7 @@
 [
-  "generate-keyfile",
   "compile-nested",
+  "generate-keyfile",
+  "group-by-pattern",
   "path-is-utf8",
-  "pipe-size",
-  "group-by-pattern"
+  "pipe-size"
 ]
