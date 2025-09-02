@@ -1,4 +1,4 @@
-use ::chumsky::{IterParser, Parser};
+use ::chumsky::{IterParser, Parser, select, span::SimpleSpan};
 
 use crate::{
     ByteStr,
@@ -66,6 +66,16 @@ pub struct Cmdline<'i>(Vec<Arg<'i>>);
 #[derive(Debug, Clone)]
 pub enum Call<'i> {
     Cmd(Cmdline<'i>),
+    Stdin(SimpleSpan),
+    Stdout(SimpleSpan),
+    Stderr(SimpleSpan),
+}
+
+/// Create a parser to parse a specific keyword.
+fn kw<'i>(kw: &'static str) -> impl TokenParser<'i, SimpleSpan> {
+    select! {
+        WithSpan { value: Token::Ident(kw_str), span } if kw_str == kw => span,
+    }
 }
 
 /// Calls separated by pipes.
@@ -121,7 +131,14 @@ impl<'i> Ast<'i> {
 
             let cmdline = arg.repeated().at_least(1).collect::<Vec<_>>().map(Cmdline);
 
-            let call = cmdline.map(Call::Cmd);
+            let streams = select! {
+                WithSpan { value: Token::Ident(s), span } if s == "stdin" => Call::Stdin(span),
+                WithSpan { value: Token::Ident(s), span } if s == "stdout" => Call::Stdout(span),
+                WithSpan { value: Token::Ident(s), span } if s == "stderr" => Call::Stderr(span),
+            }
+            .padded_by(skip);
+
+            let call = choice((streams, cmdline.map(Call::Cmd)));
 
             call.separated_by(any().filter(|token: &WithSpan<Token>| token.is_pipe()))
                 .collect::<Vec<_>>()
