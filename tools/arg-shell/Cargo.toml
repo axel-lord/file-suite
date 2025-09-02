@@ -7,6 +7,7 @@ authors = ["Axel Lord"]
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
+derive_more = { workspace = true, features = ["is_variant", "unwrap", "deref", "deref_mut", "as_ref", "from", "into"] }
 file-suite-common.workspace = true
 chumsky.workspace = true
 bytemuck = { workspace = true, features = ["derive"] }

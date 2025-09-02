@@ -7,57 +7,122 @@ use ::chumsky::{IterParser, Parser};
 use ::termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 pub use bytestr::ByteStr;
 
-use crate::token::Token;
+use crate::{ast::Ast, token::Token, withspan::WithSpan};
 
+mod ast;
 mod bytestr;
 mod token;
+mod withspan;
+mod alias {
+    use ::chumsky::{Parser, extra};
+
+    use crate::{token::Token, withspan::WithSpan};
+
+    /// Parser alias
+    pub trait TokenParser<'i, T>:
+        Parser<
+            'i,
+            &'i [WithSpan<Token<'i>>],
+            T,
+            extra::Err<::chumsky::error::Rich<'i, WithSpan<Token<'i>>>>,
+        >
+    {
+    }
+    impl<'i, T, V> TokenParser<'i, T> for V where
+        V: Parser<
+                'i,
+                &'i [WithSpan<Token<'i>>],
+                T,
+                extra::Err<::chumsky::error::Rich<'i, WithSpan<Token<'i>>>>,
+            >
+    {
+    }
+
+    /// Parser alias
+    pub trait ByteParser<'i, T>:
+        Parser<'i, &'i [u8], T, extra::Err<::chumsky::error::Rich<'i, u8>>>
+    {
+    }
+    impl<'i, T, V> ByteParser<'i, T> for V where
+        V: Parser<'i, &'i [u8], T, extra::Err<::chumsky::error::Rich<'i, u8>>>
+    {
+    }
+}
 
 /// command line interface for arg-shell.
 #[derive(Debug, ::clap::Parser)]
 pub struct Cli {
     /// String to test impl on.
     teststr: String,
+
+    /// Print tokens.
+    #[arg(long)]
+    print_tokens: bool,
+
+    /// Print ast.
+    #[arg(long)]
+    print_ast: bool,
+
+    /// Print colorized expression.
+    #[arg(long)]
+    colorize: bool,
 }
 
 impl ::file_suite_common::Run for Cli {
     type Error = ::std::convert::Infallible;
 
     fn run(self) -> Result<(), Self::Error> {
+        let Self {
+            teststr,
+            print_tokens,
+            colorize,
+            print_ast,
+        } = self;
         let parser = Token::parser()
-            .map_with(|o, e| (o, e.span()))
+            .map_with(|o, e| WithSpan::from((o, e.span())))
             .repeated()
             .collect::<Vec<_>>();
 
-        let values = parser.parse(self.teststr.as_bytes());
+        let values = parser.parse(teststr.as_bytes());
 
-        println!("{values:#?}");
+        if print_tokens {
+            println!("{values:#?}");
+        }
 
         if let Ok(values) = values.into_result() {
-            let stdout = StandardStream::stdout(ColorChoice::Auto);
-            let mut stdout = stdout.lock();
-            for (token, span) in values {
-                match token {
-                    Token::LParen | Token::RParen => {
-                        stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))
-                    }
-                    Token::Pipe => stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Magenta))),
-                    Token::String(..) => {
-                        stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Yellow)))
-                    }
-                    Token::FString(..) => {
-                        stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))
-                    }
-                    Token::Comment(..) => stdout.set_color(&ColorSpec::new().set_bold(true)),
-                    Token::Ident(..) | Token::Term | Token::Whitespace => {
-                        stdout.set_color(&ColorSpec::new().set_reset(true))
-                    }
-                }
-                .unwrap();
-                stdout
-                    .write_all(&self.teststr.as_bytes()[span.start..span.end])
-                    .unwrap()
+            if print_ast {
+                let ast = Ast::parser().parse(values.as_slice());
+                println!("{ast:#?}");
             }
-            println!();
+            if colorize {
+                let stdout = StandardStream::stdout(ColorChoice::Auto);
+                let mut stdout = stdout.lock();
+                for WithSpan { value: token, span } in values {
+                    match token {
+                        Token::LParen | Token::RParen => {
+                            stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))
+                        }
+                        Token::Pipe => {
+                            stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Magenta)))
+                        }
+                        Token::String(..) => {
+                            stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Yellow)))
+                        }
+                        Token::FString(..) => {
+                            stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))
+                        }
+                        Token::Comment(..) => stdout.set_color(&ColorSpec::new().set_bold(true)),
+                        Token::Ident(..) | Token::Whitespace => {
+                            stdout.set_color(&ColorSpec::new().set_reset(true))
+                        }
+                    }
+                    .unwrap();
+                    stdout
+                        .write_all(&teststr.as_bytes()[span.start..span.end])
+                        .unwrap()
+                }
+                println!();
+            }
         }
 
         Ok(())

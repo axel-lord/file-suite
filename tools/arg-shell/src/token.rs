@@ -1,10 +1,6 @@
-use ::chumsky::{Parser, extra};
+use crate::{ByteStr, alias::ByteParser};
 
-use crate::ByteStr;
-
-type Extra<'i> = extra::Err<::chumsky::error::Rich<'i, u8>>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::derive_more::IsVariant)]
 pub enum Token<'i> {
     /// Unqouted left parentheses, (.
     LParen,
@@ -19,15 +15,27 @@ pub enum Token<'i> {
     /// Comment, # comment
     Comment(&'i ByteStr),
     /// Identifier surrounded by whitespace, ident.
-    Ident(&'i ByteStr),
-    /// Terminating whitespace, linebreaks and colons.
-    Term,
-    /// Tabs and spaces.
+    Ident(&'i str),
+    /// Tabs, line breaks and spaces.
     Whitespace,
 }
 
+pub fn ident<'i>() -> impl ByteParser<'i, &'i str> + Clone + Copy {
+    use ::chumsky::prelude::*;
+    any()
+        .filter(|b: &u8| b.is_ascii_alphanumeric() || matches!(*b, b'_'))
+        .then(
+            any()
+                .filter(|b: &u8| b.is_ascii_alphanumeric() || matches!(*b, b'_' | b'-' | b'.'))
+                .repeated(),
+        )
+        .to_slice()
+        .map(str::from_utf8)
+        .unwrapped()
+}
+
 impl<'i> Token<'i> {
-    pub fn parser() -> impl Parser<'i, &'i [u8], Self, Extra<'i>> {
+    pub fn parser() -> impl ByteParser<'i, Self> {
         use ::chumsky::prelude::*;
 
         let sqstring = just(b'\'')
@@ -39,41 +47,23 @@ impl<'i> Token<'i> {
             .then_ignore(just(b'"'))
             .map(ByteStr::new);
 
-        let sqfstring = just(b"f'")
-            .ignore_then(
-                just(b"\\'")
-                    .ignored()
-                    .or(none_of(b'\'').ignored())
-                    .repeated()
-                    .to_slice(),
-            )
-            .then_ignore(just(b'\''))
-            .map(ByteStr::new);
-        let dqfstring = just(b"f\"")
-            .ignore_then(
-                just(b"\\\"")
-                    .ignored()
-                    .or(none_of(b'"').ignored())
-                    .repeated()
-                    .to_slice(),
-            )
-            .then_ignore(just(b'"'))
-            .map(ByteStr::new);
+        let fstr = |delim: u8| {
+            let start = [b'f', delim];
+            let esc = [b'\\', delim];
+
+            choice((just(esc).ignored(), none_of(delim).ignored()))
+                .repeated()
+                .to_slice()
+                .delimited_by(just(start), just(delim))
+                .map(ByteStr::new)
+        };
+
+        let sqfstring = fstr(b'\'');
+        let dqfstring = fstr(b'"');
 
         let comment =
             just(b'#').ignore_then(none_of(b'\n').repeated().to_slice().map(ByteStr::new));
-        let term = one_of(b"\n;").repeated().at_least(1);
-        let ws = one_of(b"\t ").repeated().at_least(1);
-
-        let ident = any()
-            .filter(|b: &u8| b.is_ascii_alphabetic() || *b == b'_')
-            .then(
-                any()
-                    .filter(|b: &u8| b.is_ascii_alphanumeric() || matches!(*b, b'_' | b'-' | b'.'))
-                    .repeated(),
-            )
-            .to_slice()
-            .map(ByteStr::new);
+        let ws = one_of(b"\t \n\r").repeated().at_least(1);
 
         choice((
             just(b'(').map(|_| Self::LParen),
@@ -84,9 +74,8 @@ impl<'i> Token<'i> {
             sqfstring.map(Self::FString),
             dqfstring.map(Self::FString),
             comment.map(Self::Comment),
-            term.map(|_| Self::Term),
             ws.map(|_| Self::Whitespace),
-            ident.map(Self::Ident),
+            ident().map(Self::Ident),
         ))
     }
 }

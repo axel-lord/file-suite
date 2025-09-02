@@ -5,30 +5,93 @@ use ::std::{
     ops::{Deref, DerefMut},
 };
 
+use ::derive_more::{AsMut, AsRef, Deref, DerefMut, From, Into};
+
+/// A single printable byte.
+#[repr(transparent)]
+#[derive(
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Copy,
+    From,
+    Into,
+    AsRef,
+    AsMut,
+    Deref,
+    DerefMut,
+    ::bytemuck::TransparentWrapper,
+)]
+pub struct Byte(pub u8);
+
+impl Byte {
+    pub fn from_ref(b: &u8) -> &Self {
+        ::bytemuck::TransparentWrapper::wrap_ref(b)
+    }
+
+    pub fn from_mut(b: &mut u8) -> &mut Self {
+        ::bytemuck::TransparentWrapper::wrap_mut(b)
+    }
+
+    pub fn to_ref(&self) -> &u8 {
+        ::bytemuck::TransparentWrapper::peel_ref(self)
+    }
+
+    pub fn to_mut(&mut self) -> &mut u8 {
+        ::bytemuck::TransparentWrapper::peel_mut(self)
+    }
+}
+
+impl Display for Byte {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match str::from_utf8(&[self.0]) {
+            Ok(s) => f.write_str(s),
+            Err(..) => write!(f, "\\x{:02X}", self.0),
+        }
+    }
+}
+
+impl Debug for Byte {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("b'")?;
+        match str::from_utf8(&[self.0]) {
+            Ok(s) => Display::fmt(&s.escape_debug(), f),
+            Err(..) => write!(f, "\\x{:02X}", self.0),
+        }?;
+        f.write_str("'")
+    }
+}
+
 /// A byte string.
 #[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, ::bytemuck::TransparentWrapper)]
-pub struct ByteStr([u8]);
+pub struct ByteStr([Byte]);
 
 impl ByteStr {
     /// Construct a new byte string from a byte slice.
     pub fn new(bytes: &[u8]) -> &Self {
-        ::bytemuck::TransparentWrapper::wrap_ref(bytes)
+        ::bytemuck::TransparentWrapper::wrap_ref(::bytemuck::TransparentWrapper::wrap_slice(bytes))
     }
 
     /// Construct a new mutable byte string from a byte slice.
     pub fn new_mut(bytes: &mut [u8]) -> &Self {
-        ::bytemuck::TransparentWrapper::wrap_mut(bytes)
+        ::bytemuck::TransparentWrapper::wrap_mut(::bytemuck::TransparentWrapper::wrap_slice_mut(
+            bytes,
+        ))
     }
 
     /// Get self as a byte slice.
     pub fn as_bytes(&self) -> &[u8] {
-        ::bytemuck::TransparentWrapper::peel_ref(self)
+        ::bytemuck::TransparentWrapper::peel_slice(::bytemuck::TransparentWrapper::peel_ref(self))
     }
 
     /// Get self as a mutable byte slice.
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        ::bytemuck::TransparentWrapper::peel_mut(self)
+        ::bytemuck::TransparentWrapper::peel_slice_mut(::bytemuck::TransparentWrapper::peel_mut(
+            self,
+        ))
     }
 }
 
@@ -48,9 +111,7 @@ impl Debug for ByteStr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("b\"")?;
         for chunk in self.as_bytes().utf8_chunks() {
-            for chr in chunk.valid().chars() {
-                write!(f, "{}", chr.escape_debug())?;
-            }
+            Display::fmt(&chunk.valid().escape_debug(), f)?;
 
             for b in chunk.invalid() {
                 write!(f, "\\x{b:02X}")?;
@@ -68,7 +129,7 @@ impl Borrow<[u8]> for ByteStr {
 
 impl Hash for ByteStr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+        self.as_bytes().hash(state);
     }
 }
 
@@ -97,15 +158,15 @@ impl AsMut<[u8]> for ByteStr {
 }
 
 impl Deref for ByteStr {
-    type Target = [u8];
+    type Target = [Byte];
 
     fn deref(&self) -> &Self::Target {
-        self.as_bytes()
+        &self.0
     }
 }
 
 impl DerefMut for ByteStr {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.as_bytes_mut()
+        &mut self.0
     }
 }
