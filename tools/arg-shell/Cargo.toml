@@ -7,11 +7,12 @@ authors = ["Axel Lord"]
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-derive_more = { workspace = true, features = ["is_variant", "unwrap", "deref", "deref_mut", "as_ref", "from", "into"] }
+derive_more = { workspace = true, features = ["is_variant", "unwrap", "deref", "deref_mut", "as_ref", "from", "into", "into_iterator", "index", "index_mut",] }
 file-suite-common.workspace = true
 chumsky.workspace = true
 bytemuck = { workspace = true, features = ["derive"] }
 termcolor.workspace = true
+smallvec = { workspace = true, features = ["union", "const_generics", "const_new", "write"] }
 
 [lints]
 workspace = true

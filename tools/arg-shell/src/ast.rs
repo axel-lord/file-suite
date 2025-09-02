@@ -3,6 +3,7 @@ use ::chumsky::{IterParser, Parser};
 use crate::{
     ByteStr,
     alias::{ByteParser, TokenParser},
+    smallvec::SmallVec,
     token::{Token, ident},
     withspan::WithSpan,
 };
@@ -41,14 +42,11 @@ impl<'i> FStringFragment<'i> {
 
 /// A format string.
 #[derive(Debug, Clone)]
-pub struct FString<'i>(Vec<FStringFragment<'i>>);
+pub struct FString<'i>(SmallVec<3, FStringFragment<'i>>);
 
 impl<'i> FString<'i> {
     pub fn parser() -> impl ByteParser<'i, Self> + Clone + Copy {
-        FStringFragment::parser()
-            .repeated()
-            .collect::<Vec<_>>()
-            .map(Self)
+        FStringFragment::parser().repeated().collect().map(Self)
     }
 }
 
