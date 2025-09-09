@@ -5,11 +5,7 @@ use ::std::borrow::Cow;
 use ::chumsky::{Parser, select, span::SimpleSpan};
 
 use crate::{
-    ByteStr,
-    alias::TokenParser,
-    ast::arg::{Arg, FString},
-    smallvec::SmallVec,
-    token::Token,
+    ByteStr, alias::TokenParser, ast::arg::Arg, smallvec::SmallVec, token::Token,
     withspan::WithSpan,
 };
 
@@ -83,29 +79,12 @@ impl<'i> Ast<'i> {
         };
 
         let string = select! {
-            WithSpan { value: Token::String(byte_str), span } => WithSpan::from((byte_str, span)),
+            WithSpan { value: Token::String(byte_str), span } => WithSpan { value: byte_str, span },
         };
 
-        let fstring_parser = FString::parser();
-
         let fstring = select! {
-            WithSpan { value: Token::FString(byte_str), span:_ } => byte_str
-        }
-        .try_map(move |byte_str, span| {
-            fstring_parser
-                .parse(byte_str.as_bytes())
-                .into_result()
-                .map_err(|err| {
-                    use ::std::fmt::Write;
-                    let mut buf = String::new();
-
-                    for err in err {
-                        writeln!(buf, "{err}").expect("write to string should succeed");
-                    }
-
-                    Rich::custom(span, buf.trim_end())
-                })
-        });
+            WithSpan { value: Token::FString(byte_str), span } => WithSpan { value: byte_str, span },
+        };
 
         let rparen = any().filter(|token: &WithSpan<Token>| token.is_r_paren());
         let lparen = any().filter(|token: &WithSpan<Token>| token.is_l_paren());

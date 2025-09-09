@@ -67,7 +67,7 @@ impl ::file_suite_common::Run for Cli {
                 let mut stdout = stdout.lock();
                 for WithSpan { value: token, span } in values {
                     match token {
-                        Token::LParen | Token::RParen | Token::Eq => {
+                        Token::LParen | Token::RParen => {
                             stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))
                         }
                         Token::Pipe => {
@@ -80,7 +80,7 @@ impl ::file_suite_common::Run for Cli {
                             stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))
                         }
                         Token::Comment(..) => stdout.set_color(&ColorSpec::new().set_bold(true)),
-                        Token::Ident(..) | Token::Whitespace | Token::Dash(..) => {
+                        Token::Ident(..) | Token::Whitespace => {
                             stdout.set_color(&ColorSpec::new().set_reset(true))
                         }
                     }

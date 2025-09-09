@@ -2,9 +2,10 @@
 
 use ::std::io::Write;
 
-use ::enum_dispatch::enum_dispatch;
-
 use crate::ByteStr;
+
+pub mod arg;
+pub mod fstring;
 
 /// Result of trying to accept some bytes.
 #[must_use]
@@ -40,28 +41,25 @@ pub enum NextResult {
 pub struct Env {}
 
 /// Trait for executable ast nodes.
-#[enum_dispatch]
 pub trait Exec {
     /// Accept some bytes.
-    fn accept(&mut self, env: &mut Env, row: &ByteStr) -> AcceptResult;
+    fn accept(&mut self, env: &mut Env, row: &ByteStr) -> AcceptResult {
+        _ = (env, row);
+        AcceptResult::Fin
+    }
 
     /// Get some bytes.
-    fn next(&mut self, env: &mut Env, row: &mut impl Write) -> NextResult;
+    fn next(&mut self, env: &mut Env, row: &mut impl Write) -> NextResult {
+        _ = (env, row);
+        NextResult::Fin
+    }
 
     /// Close exector, may write some bytes if last result was incomplete.
     /// an implementor may always return incomplete.
     ///
     /// Returns count of written bytes.
-    fn close(&mut self, env: &mut Env, row: &mut impl Write) -> ::std::io::Result<usize>;
-}
-
-/// Trait for types which may be converted to executables.
-pub trait ToExec {
-    /// Exec implementor.
-    type Exec<'a>: 'a + Exec
-    where
-        Self: 'a;
-
-    /// Get an exec implementor.
-    fn to_exec<'a>(&'a self) -> ::std::io::Result<Self::Exec<'a>>;
+    fn close(&mut self, env: &mut Env, row: &mut impl Write) -> ::std::io::Result<usize> {
+        _ = (env, row);
+        Ok(0)
+    }
 }

@@ -11,10 +11,6 @@ pub enum Token<'i> {
     RParen,
     /// Pipe symbol, |.
     Pipe,
-    /// Equals sign, =.
-    Eq,
-    /// Dash of any length, -.
-    Dash(&'i str),
     /// String, 'content'.
     String(&'i ByteStr),
     /// Format string, f"content {value}".
@@ -30,13 +26,13 @@ pub enum Token<'i> {
 /// Parser parsing an identifier.
 pub fn ident<'i>() -> impl ByteParser<'i, &'i str> + Clone + Copy {
     use ::chumsky::prelude::*;
+    fn filter(b: &u8) -> bool {
+        matches!(*b, b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'_' | b'-' | b'.' | b'=')
+    }
     any()
-        .filter(|b: &u8| b.is_ascii_alphanumeric() || matches!(*b, b'_'))
-        .then(
-            any()
-                .filter(|b: &u8| b.is_ascii_alphanumeric() || matches!(*b, b'_' | b'-' | b'.'))
-                .repeated(),
-        )
+        .filter(filter)
+        .repeated()
+        .at_least(1)
         .to_slice()
         .map(str::from_utf8)
         .unwrapped()
@@ -74,19 +70,10 @@ impl<'i> Token<'i> {
             just(b'#').ignore_then(none_of(b'\n').repeated().to_slice().map(ByteStr::new));
         let ws = one_of(b"\t \n\r").repeated().at_least(1);
 
-        let dash = just(b'-')
-            .repeated()
-            .at_least(1)
-            .to_slice()
-            .map(str::from_utf8)
-            .unwrapped();
-
         choice((
             just(b'(').to(Self::LParen),
             just(b')').to(Self::RParen),
             just(b'|').to(Self::Pipe),
-            just(b'=').to(Self::Eq),
-            dash.map(Self::Dash),
             sqstring.map(Self::String),
             dqstring.map(Self::String),
             sqfstring.map(Self::FString),
