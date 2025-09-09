@@ -1,5 +1,8 @@
+//! Tokens used by parser.
+
 use crate::{ByteStr, alias::ByteParser};
 
+/// Token
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::derive_more::IsVariant)]
 pub enum Token<'i> {
     /// Unqouted left parentheses, (.
@@ -8,6 +11,10 @@ pub enum Token<'i> {
     RParen,
     /// Pipe symbol, |.
     Pipe,
+    /// Equals sign, =.
+    Eq,
+    /// Dash of any length, -.
+    Dash(&'i str),
     /// String, 'content'.
     String(&'i ByteStr),
     /// Format string, f"content {value}".
@@ -20,6 +27,7 @@ pub enum Token<'i> {
     Whitespace,
 }
 
+/// Parser parsing an identifier.
 pub fn ident<'i>() -> impl ByteParser<'i, &'i str> + Clone + Copy {
     use ::chumsky::prelude::*;
     any()
@@ -35,6 +43,7 @@ pub fn ident<'i>() -> impl ByteParser<'i, &'i str> + Clone + Copy {
 }
 
 impl<'i> Token<'i> {
+    /// Get a token parser.
     pub fn parser() -> impl ByteParser<'i, Self> {
         use ::chumsky::prelude::*;
 
@@ -65,16 +74,25 @@ impl<'i> Token<'i> {
             just(b'#').ignore_then(none_of(b'\n').repeated().to_slice().map(ByteStr::new));
         let ws = one_of(b"\t \n\r").repeated().at_least(1);
 
+        let dash = just(b'-')
+            .repeated()
+            .at_least(1)
+            .to_slice()
+            .map(str::from_utf8)
+            .unwrapped();
+
         choice((
-            just(b'(').map(|_| Self::LParen),
-            just(b')').map(|_| Self::RParen),
-            just(b'|').map(|_| Self::Pipe),
+            just(b'(').to(Self::LParen),
+            just(b')').to(Self::RParen),
+            just(b'|').to(Self::Pipe),
+            just(b'=').to(Self::Eq),
+            dash.map(Self::Dash),
             sqstring.map(Self::String),
             dqstring.map(Self::String),
             sqfstring.map(Self::FString),
             dqfstring.map(Self::FString),
             comment.map(Self::Comment),
-            ws.map(|_| Self::Whitespace),
+            ws.to(Self::Whitespace),
             ident().map(Self::Ident),
         ))
     }

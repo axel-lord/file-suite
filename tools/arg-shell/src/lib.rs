@@ -9,12 +9,13 @@ pub use bytestr::ByteStr;
 
 use crate::{ast::Ast, token::Token, withspan::WithSpan};
 
-mod alias;
-mod ast;
-mod bytestr;
-mod smallvec;
-mod token;
-mod withspan;
+pub mod alias;
+pub mod ast;
+pub mod bytestr;
+pub mod exec;
+pub mod smallvec;
+pub mod token;
+pub mod withspan;
 
 /// command line interface for arg-shell.
 #[derive(Debug, ::clap::Parser)]
@@ -66,7 +67,7 @@ impl ::file_suite_common::Run for Cli {
                 let mut stdout = stdout.lock();
                 for WithSpan { value: token, span } in values {
                     match token {
-                        Token::LParen | Token::RParen => {
+                        Token::LParen | Token::RParen | Token::Eq => {
                             stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))
                         }
                         Token::Pipe => {
@@ -79,7 +80,7 @@ impl ::file_suite_common::Run for Cli {
                             stdout.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))
                         }
                         Token::Comment(..) => stdout.set_color(&ColorSpec::new().set_bold(true)),
-                        Token::Ident(..) | Token::Whitespace => {
+                        Token::Ident(..) | Token::Whitespace | Token::Dash(..) => {
                             stdout.set_color(&ColorSpec::new().set_reset(true))
                         }
                     }

@@ -1,3 +1,5 @@
+//! Wrapper implementation for smallvec.
+
 use ::chumsky::container::Container;
 use ::derive_more::{AsMut, AsRef, Deref, DerefMut, From, Index, IndexMut, Into, IntoIterator};
 

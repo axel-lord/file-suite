@@ -1,88 +1,76 @@
-use ::chumsky::{IterParser, Parser, select, span::SimpleSpan};
+//! Abstract syntax tree implementation.
+
+use ::std::borrow::Cow;
+
+use ::chumsky::{Parser, select, span::SimpleSpan};
 
 use crate::{
     ByteStr,
-    alias::{ByteParser, TokenParser},
+    alias::TokenParser,
+    ast::arg::{Arg, FString},
     smallvec::SmallVec,
-    token::{Token, ident},
+    token::Token,
     withspan::WithSpan,
 };
 
-/// A Fragment of an fstring.
+pub mod arg;
+
+/// Variable scope.
 #[derive(Debug, Clone, Copy)]
-pub enum FStringFragment<'i> {
-    Text(&'i ByteStr),
-    Lookup(&'i str),
+pub struct Variables<'a> {
+    top: &'a [(Cow<'a, str>, Cow<'a, [u8]>)],
+    next: Option<&'a Variables<'a>>,
 }
 
-impl<'i> FStringFragment<'i> {
-    pub fn parser() -> impl ByteParser<'i, Self> + Clone + Copy {
-        use ::chumsky::prelude::*;
-        use FStringFragment::{Lookup, Text};
+impl<'a> Variables<'a> {
+    /// Get a variable by name.
+    pub fn get(&'a self, name: &str) -> Option<SmallVec<1, &'a ByteStr>> {
+        let mut v = Some(self);
 
-        choice((
-            just(b"{{").to(Text(ByteStr::new(b"{"))),
-            just(b"}}").to(Text(ByteStr::new(b"}"))),
-            just(br"\\").to(Text(ByteStr::new(br"\"))),
-            just(br#"\""#).to(Text(ByteStr::new(br#"""#))),
-            just(br"\'").to(Text(ByteStr::new(b"'"))),
-            just(br"\n").to(Text(ByteStr::new(b"\n"))),
-            just(br"\t").to(Text(ByteStr::new(b"\t"))),
-            just(br"\r").to(Text(ByteStr::new(b"\r"))),
-            ident().delimited_by(just(b'{'), just(b'}')).map(Lookup),
-            none_of(br"{}\")
-                .repeated()
-                .at_least(1)
-                .to_slice()
-                .map(ByteStr::new)
-                .map(Text),
-        ))
+        while let Some(variables) = v.take() {
+            for (key, value) in variables.top {
+                if key.as_ref() == name {
+                    return Some(SmallVec([ByteStr::new(value)].into()));
+                }
+            }
+            v = variables.next;
+        }
+
+        None
     }
-}
-
-/// A format string.
-#[derive(Debug, Clone)]
-pub struct FString<'i>(SmallVec<3, FStringFragment<'i>>);
-
-impl<'i> FString<'i> {
-    pub fn parser() -> impl ByteParser<'i, Self> + Clone + Copy {
-        FStringFragment::parser().repeated().collect().map(Self)
-    }
-}
-
-/// Arguments for calls.
-#[derive(Debug, Clone)]
-pub enum Arg<'i> {
-    String(WithSpan<&'i ByteStr>),
-    FString(FString<'i>),
-    Group(Ast<'i>),
 }
 
 /// Command line call.
 #[derive(Debug, Clone)]
-pub struct Cmdline<'i>(Vec<Arg<'i>>);
+pub struct Cmdline<'i>(pub Vec<Arg<'i>>);
 
 /// Calls, builtins and commands.
 #[derive(Debug, Clone)]
 pub enum Call<'i> {
+    /// Call a command line-
     Cmd(Cmdline<'i>),
+    /// Pipe stdin.
     Stdin(SimpleSpan),
+    /// Pipe to stdout.
     Stdout(SimpleSpan),
+    /// Pipe to stderr.
     Stderr(SimpleSpan),
 }
 
 /// Create a parser to parse a specific keyword.
-fn kw<'i>(kw: &'static str) -> impl TokenParser<'i, SimpleSpan> {
+fn kw<'i>(kw: &'static str) -> impl TokenParser<'i, SimpleSpan> + Clone + Copy {
     select! {
         WithSpan { value: Token::Ident(kw_str), span } if kw_str == kw => span,
     }
+    .labelled(kw)
 }
 
 /// Calls separated by pipes.
 #[derive(Debug, Clone)]
-pub struct Ast<'i>(Vec<Call<'i>>);
+pub struct Ast<'i>(pub Vec<Call<'i>>);
 
 impl<'i> Ast<'i> {
+    /// Get a parser for an ast.
     pub fn parser() -> impl TokenParser<'i, Self> + Clone {
         use ::chumsky::prelude::*;
 
@@ -90,9 +78,12 @@ impl<'i> Ast<'i> {
             .filter(|token: &WithSpan<Token>| token.is_whitespace() || token.is_comment())
             .repeated();
 
+        let ident = select! {
+            WithSpan { value: Token::Ident(s), span } => WithSpan::from((ByteStr::new(s.as_bytes()), span)),
+        };
+
         let string = select! {
             WithSpan { value: Token::String(byte_str), span } => WithSpan::from((byte_str, span)),
-            WithSpan { value: Token::Ident(s), span } => WithSpan::from((ByteStr::new(s.as_bytes()), span)),
         };
 
         let fstring_parser = FString::parser();
@@ -124,6 +115,7 @@ impl<'i> Ast<'i> {
 
             let arg = choice((
                 string.map(Arg::String),
+                ident.map(Arg::String),
                 group.map(Arg::Group),
                 fstring.map(Arg::FString),
             ))
@@ -131,18 +123,22 @@ impl<'i> Ast<'i> {
 
             let cmdline = arg.repeated().at_least(1).collect::<Vec<_>>().map(Cmdline);
 
-            let streams = select! {
-                WithSpan { value: Token::Ident(s), span } if s == "stdin" => Call::Stdin(span),
-                WithSpan { value: Token::Ident(s), span } if s == "stdout" => Call::Stdout(span),
-                WithSpan { value: Token::Ident(s), span } if s == "stderr" => Call::Stderr(span),
-            }
-            .padded_by(skip);
+            let padded_kw = |k: &'static str| kw(k).padded_by(skip);
 
-            let call = choice((streams, cmdline.map(Call::Cmd)));
+            let call = choice((
+                padded_kw("stdin").map(Call::Stdin),
+                padded_kw("stdout").map(Call::Stdout),
+                padded_kw("stderr").map(Call::Stderr),
+                Parser::map(cmdline, Call::Cmd),
+            ));
 
-            call.separated_by(any().filter(|token: &WithSpan<Token>| token.is_pipe()))
-                .collect::<Vec<_>>()
-                .map(Self)
+            // rust-analyzer (not cargo build) finds the wrong map function if
+            // used in the normal way.
+            Parser::map(
+                call.separated_by(any().filter(|token: &WithSpan<Token>| token.is_pipe()))
+                    .collect::<Vec<_>>(),
+                Self,
+            )
         })
     }
 }

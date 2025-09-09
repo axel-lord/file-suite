@@ -1,14 +1,18 @@
+//! Wrapper attaching a span.
+
 use ::chumsky::span::SimpleSpan;
 use ::derive_more::{AsMut, AsRef, Deref, DerefMut};
 
 /// A value with a span.
 #[derive(Debug, Clone, Copy, Deref, DerefMut, AsRef, AsMut, PartialEq, Eq, Hash)]
 pub struct WithSpan<T> {
+    /// Value to attach span to.
     #[deref]
     #[deref_mut]
     #[as_ref]
     #[as_mut]
     pub value: T,
+    /// Attached span.
     pub span: SimpleSpan,
 }
 

@@ -1,3 +1,5 @@
+//! Trait "aliases"
+
 use ::chumsky::{Parser, extra};
 
 use crate::{token::Token, withspan::WithSpan};

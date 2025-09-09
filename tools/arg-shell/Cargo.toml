@@ -13,6 +13,7 @@ chumsky.workspace = true
 bytemuck = { workspace = true, features = ["derive"] }
 termcolor.workspace = true
 smallvec = { workspace = true, features = ["union", "const_generics", "const_new", "write"] }
+enum_dispatch.workspace = true
 
 [lints]
 workspace = true
