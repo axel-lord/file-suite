@@ -43,14 +43,16 @@ impl<'i> Token<'i> {
     pub fn parser() -> impl ByteParser<'i, Self> {
         use ::chumsky::prelude::*;
 
-        let sqstring = just(b'\'')
-            .ignore_then(none_of(b'\'').repeated().to_slice())
-            .then_ignore(just(b'\''))
-            .map(ByteStr::new);
-        let dqstring = just(b'"')
-            .ignore_then(none_of(b'"').repeated().to_slice())
-            .then_ignore(just(b'"'))
-            .map(ByteStr::new);
+        let qstr = |delim: u8| {
+            none_of([delim])
+                .repeated()
+                .to_slice()
+                .delimited_by(just(delim), just(delim))
+                .map(ByteStr::new)
+        };
+
+        let sqstring = qstr(b'\'');
+        let dqstring = qstr(b'"');
 
         let fstr = |delim: u8| {
             let start = [b'f', delim];
@@ -71,16 +73,20 @@ impl<'i> Token<'i> {
         let ws = one_of(b"\t \n\r").repeated().at_least(1);
 
         choice((
-            just(b'(').to(Self::LParen),
-            just(b')').to(Self::RParen),
-            just(b'|').to(Self::Pipe),
-            sqstring.map(Self::String),
-            dqstring.map(Self::String),
-            sqfstring.map(Self::FString),
-            dqfstring.map(Self::FString),
-            comment.map(Self::Comment),
-            ws.to(Self::Whitespace),
-            ident().map(Self::Ident),
+            just(b'(').to(Self::LParen).labelled("Left Parentheses"),
+            just(b')').to(Self::RParen).labelled("Right Parentheses"),
+            just(b'|').to(Self::Pipe).labelled("Pipe"),
+            sqstring.map(Self::String).labelled("Single Quoted String"),
+            dqstring.map(Self::String).labelled("Double Quoted String"),
+            sqfstring
+                .map(Self::FString)
+                .labelled("Single Quoted Format String"),
+            dqfstring
+                .map(Self::FString)
+                .labelled("Double Quoted Format String"),
+            comment.map(Self::Comment).labelled("Comment"),
+            ws.to(Self::Whitespace).labelled("Whitespace"),
+            ident().map(Self::Ident).labelled("Identifier"),
         ))
     }
 }

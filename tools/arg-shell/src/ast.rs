@@ -96,7 +96,7 @@ impl<'i> Ast<'i> {
                 string.map(Arg::String),
                 ident.map(Arg::String),
                 group.map(Arg::Group),
-                fstring.map(Arg::FString),
+                fstring.map(crate::ast::arg::FString::new).map(Arg::FString),
             ))
             .padded_by(skip);
 

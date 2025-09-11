@@ -6,6 +6,51 @@ use crate::ByteStr;
 
 pub mod arg;
 pub mod fstring;
+pub mod ast {
+    //! Execute asts.
+
+    use ::std::marker::PhantomData;
+
+    use crate::exec::Exec;
+
+    /// [Exec] implementor for ast.
+    #[derive(Debug)]
+    pub struct Ast<'ast> {
+        _p: PhantomData<&'ast ()>,
+    }
+
+    impl<'ast> Ast<'ast> {
+        /// Create an ast exec from some data.
+        pub fn from_ast(ast: &mut crate::ast::Ast<'ast>) -> Self {
+            Self { _p: PhantomData }
+        }
+    }
+
+    impl Exec for Ast<'_> {}
+}
+pub mod cmdline {
+    //! Execute single command line calls.
+
+    use ::std::marker::PhantomData;
+
+    use crate::exec::Exec;
+
+    /// [Exec] implementor for cmdline.
+    #[derive(Debug)]
+    pub struct Cmdline<'cmdline> {
+        _p: PhantomData<&'cmdline ()>,
+    }
+
+    impl<'cmdline> Exec for Cmdline<'cmdline> {}
+
+    impl<'cmdline> Cmdline<'cmdline> {
+        /// Create from an ast node.
+        pub fn from_ast(node: &mut crate::ast::Cmdline<'cmdline>) -> Self {
+            todo!()
+        }
+    }
+}
+pub mod call {}
 
 /// Result of trying to accept some bytes.
 #[must_use]

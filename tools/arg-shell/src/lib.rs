@@ -57,7 +57,11 @@ impl ::file_suite_common::Run for Cli {
             println!("{values:#?}");
         }
 
-        if let Ok(values) = values.into_result() {
+        for err in values.errors() {
+            eprintln!("at  {}, {err}", err.span());
+        }
+
+        if let Some(values) = values.output() {
             if print_ast {
                 let ast = Ast::parser().parse(values.as_slice());
                 println!("{ast:#?}");
