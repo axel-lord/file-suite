@@ -6,51 +6,9 @@ use crate::ByteStr;
 
 pub mod arg;
 pub mod fstring;
-pub mod ast {
-    //! Execute asts.
-
-    use ::std::marker::PhantomData;
-
-    use crate::exec::Exec;
-
-    /// [Exec] implementor for ast.
-    #[derive(Debug)]
-    pub struct Ast<'ast> {
-        _p: PhantomData<&'ast ()>,
-    }
-
-    impl<'ast> Ast<'ast> {
-        /// Create an ast exec from some data.
-        pub fn from_ast(ast: &mut crate::ast::Ast<'ast>) -> Self {
-            Self { _p: PhantomData }
-        }
-    }
-
-    impl Exec for Ast<'_> {}
-}
-pub mod cmdline {
-    //! Execute single command line calls.
-
-    use ::std::marker::PhantomData;
-
-    use crate::exec::Exec;
-
-    /// [Exec] implementor for cmdline.
-    #[derive(Debug)]
-    pub struct Cmdline<'cmdline> {
-        _p: PhantomData<&'cmdline ()>,
-    }
-
-    impl<'cmdline> Exec for Cmdline<'cmdline> {}
-
-    impl<'cmdline> Cmdline<'cmdline> {
-        /// Create from an ast node.
-        pub fn from_ast(node: &mut crate::ast::Cmdline<'cmdline>) -> Self {
-            todo!()
-        }
-    }
-}
-pub mod call {}
+pub mod ast;
+pub mod cmdline;
+pub mod call;
 
 /// Result of trying to accept some bytes.
 #[must_use]
@@ -106,5 +64,25 @@ pub trait Exec {
     fn close(&mut self, env: &mut Env, row: &mut impl Write) -> ::std::io::Result<usize> {
         _ = (env, row);
         Ok(0)
+    }
+}
+
+/// Trait for ast nodes that may be used as arguments.
+pub trait Arg {
+    /// Write argument to writer.
+    ///
+    /// Returns count of written bytes.
+    fn write_arg(self, buf: &mut impl Write) -> ::std::io::Result<usize>;
+
+    /// Get argument as written to type C.
+    #[inline]
+    fn get_arg<C>(self) -> ::std::io::Result<C>
+    where
+        C: Default + Write,
+        Self: Sized,
+    {
+        let mut w = C::default();
+        self.write_arg(&mut w)?;
+        Ok(w)
     }
 }

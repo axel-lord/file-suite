@@ -1,5 +1,9 @@
 //! Tokens used by parser.
 
+use ::std::iter::once;
+
+use ::chumsky::{error::RichPattern, label::LabelError, util::MaybeRef};
+
 use crate::{ByteStr, alias::ByteParser};
 
 /// Token
@@ -36,6 +40,62 @@ pub fn ident<'i>() -> impl ByteParser<'i, &'i str> + Clone + Copy {
         .to_slice()
         .map(str::from_utf8)
         .unwrapped()
+}
+
+/// Parser parsing a raw string, NOT including leading r.
+pub fn rstring<'i>() -> impl ByteParser<'i, &'i ByteStr> + Clone + Copy {
+    use ::chumsky::prelude::*;
+    custom(|inp| {
+        let mut leading = b"".as_slice();
+        let start = inp.cursor();
+        let delim;
+        loop {
+            let before = inp.cursor();
+            match inp.next() {
+                Some(b'#') => {
+                    leading = inp.slice_since((&start)..);
+                }
+                Some(d @ (b'"' | b'\'')) => {
+                    delim = d;
+                    break;
+                }
+                other => {
+                    return Err(
+                        <Rich<u8> as LabelError<&[u8], RichPattern<u8>>>::expected_found(
+                            [b'"', b'\'', b'#']
+                                .map(MaybeRef::Val)
+                                .map(RichPattern::Token),
+                            other.map(From::from),
+                            inp.span_since(&before),
+                        ),
+                    );
+                }
+            }
+        }
+
+        loop {
+            let before = inp.cursor();
+            match inp.next() {
+                Some(d) if d == delim => {
+                    
+                }
+                None => {
+                    return Err(
+                        <Rich<u8> as LabelError<&[u8], RichPattern<u8>>>::expected_found(
+                            once(RichPattern::Token(MaybeRef::Val(delim))),
+                            None,
+                            inp.span_since(&before),
+                        ),
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        println!("{}", delim);
+
+        Ok(ByteStr::new(b""))
+    })
 }
 
 impl<'i> Token<'i> {

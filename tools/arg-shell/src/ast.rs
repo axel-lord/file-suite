@@ -43,7 +43,7 @@ pub struct Cmdline<'i>(pub Vec<Arg<'i>>);
 /// Calls, builtins and commands.
 #[derive(Debug, Clone)]
 pub enum Call<'i> {
-    /// Call a command line-
+    /// Call a command line.
     Cmd(Cmdline<'i>),
     /// Pipe stdin.
     Stdin(SimpleSpan),
