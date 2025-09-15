@@ -18,4 +18,3 @@ impl<'ast> Ast<'ast> {
 }
 
 impl Exec for Ast<'_> {}
-

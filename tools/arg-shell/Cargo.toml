@@ -14,6 +14,7 @@ bytemuck = { workspace = true, features = ["derive"] }
 termcolor.workspace = true
 smallvec = { workspace = true, features = ["union", "const_generics", "const_new", "write"] }
 enum_dispatch.workspace = true
+pretty_assertions.workspace = true
 
 [lints]
 workspace = true

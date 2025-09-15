@@ -5,10 +5,10 @@ use ::std::io::Write;
 use crate::ByteStr;
 
 pub mod arg;
-pub mod fstring;
 pub mod ast;
-pub mod cmdline;
 pub mod call;
+pub mod cmdline;
+pub mod fstring;
 
 /// Result of trying to accept some bytes.
 #[must_use]

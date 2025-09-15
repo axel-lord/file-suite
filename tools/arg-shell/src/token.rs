@@ -46,17 +46,18 @@ pub fn ident<'i>() -> impl ByteParser<'i, &'i str> + Clone + Copy {
 pub fn rstring<'i>() -> impl ByteParser<'i, &'i ByteStr> + Clone + Copy {
     use ::chumsky::prelude::*;
     custom(|inp| {
-        let mut leading = b"".as_slice();
-        let start = inp.cursor();
+        let mut leading = 0;
         let delim;
+        let start;
         loop {
             let before = inp.cursor();
             match inp.next() {
                 Some(b'#') => {
-                    leading = inp.slice_since((&start)..);
+                    leading += 1;
                 }
                 Some(d @ (b'"' | b'\'')) => {
                     delim = d;
+                    start = inp.cursor();
                     break;
                 }
                 other => {
@@ -73,14 +74,20 @@ pub fn rstring<'i>() -> impl ByteParser<'i, &'i ByteStr> + Clone + Copy {
             }
         }
 
+        let parser = just(b'#').repeated().exactly(leading).lazy();
+
         loop {
             let before = inp.cursor();
             match inp.next() {
                 Some(d) if d == delim => {
-                    
+                    let snap = inp.save();
+                    match inp.parse(parser) {
+                        Ok(..) => break Ok(ByteStr::new(inp.slice(&start..&before))),
+                        Err(..) => inp.rewind(snap),
+                    }
                 }
                 None => {
-                    return Err(
+                    break Err(
                         <Rich<u8> as LabelError<&[u8], RichPattern<u8>>>::expected_found(
                             once(RichPattern::Token(MaybeRef::Val(delim))),
                             None,
@@ -91,10 +98,6 @@ pub fn rstring<'i>() -> impl ByteParser<'i, &'i ByteStr> + Clone + Copy {
                 _ => {}
             }
         }
-
-        println!("{}", delim);
-
-        Ok(ByteStr::new(b""))
     })
 }
 
@@ -148,5 +151,20 @@ impl<'i> Token<'i> {
             ws.to(Self::Whitespace).labelled("Whitespace"),
             ident().map(Self::Ident).labelled("Identifier"),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ::chumsky::Parser;
+    use ::pretty_assertions::assert_eq;
+
+    #[test]
+    fn parse_rstring() {
+        let parser = rstring();
+
+        let result = parser.parse(b"##'hello'##").into_result();
+        assert_eq!(result, Ok(ByteStr::new(b"hello")));
     }
 }
