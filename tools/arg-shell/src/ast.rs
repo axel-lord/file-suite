@@ -97,16 +97,10 @@ pub mod new {
     pub enum Chain<'i> {
         /// Src - Cmd... - Sink
         SrcCmdSink(Src<'i>, Vec<Cmd<'i>>, Sink<'i>),
-        /// Src - Cmd...
-        SrcCmd(Src<'i>, Vec<Cmd<'i>>),
         /// Cmd... - Sink
         CmdSink(Vec<Cmd<'i>>, Sink<'i>),
-        /// Cmd...
-        Cmd(Vec<Cmd<'i>>),
         /// Src - Sink
         SrcSink(Src<'i>, Sink<'i>),
-        /// Src
-        Src(Src<'i>),
     }
 }
 

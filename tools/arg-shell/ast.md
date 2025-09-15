@@ -10,19 +10,17 @@
 
 ## Chain
     - `Src`, `Cmd`..., `Sink`
-    - `Src`, `Cmd`...
     - `Cmd`..., `Sink`
-    - `Cmd`...,
     - `Src`, `Sink`
-    - `Src`
 
-    Sink requires some input.
+    Sink requires some input, is required, and is implied to be Default if missing.
 
 ## Expr
     - `Chain`
     - ...
 
 ## Sink
+    - Default
     - File
     - Stdout
     - Stderr
