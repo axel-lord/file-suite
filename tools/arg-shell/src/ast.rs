@@ -11,6 +11,105 @@ use crate::{
 
 pub mod arg;
 
+pub mod new {
+    //! new ast impl.
+
+    use ::std::sync::OnceLock;
+
+    use crate::{ByteStr, alias::ByteParser, withspan::WithSpan};
+
+    /// Placeholder variant which may not exist.
+    type PlaceHolderVariant<'i> = (
+        ::core::convert::Infallible,
+        ::core::marker::PhantomData<&'i ()>,
+    );
+
+    /// Ast expression.
+    #[derive(Debug, Clone)]
+    pub enum Expr<'i> {
+        /// Unused variant.
+        _P(PlaceHolderVariant<'i>),
+    }
+
+    /// Src expression.
+    #[derive(Debug, Clone)]
+    pub enum Src<'i> {
+        /// Unused.
+        _P(PlaceHolderVariant<'i>),
+    }
+
+    /// Sink expression.
+    #[derive(Debug, Clone)]
+    pub enum Sink<'i> {
+        /// Unused.
+        _P(PlaceHolderVariant<'i>),
+    }
+
+    /// An fstring argument.
+    #[derive(Debug, Clone)]
+    pub struct FString<'i> {
+        content: WithSpan<&'i ByteStr>,
+        cache: OnceLock<
+            Result<crate::exec::fstring::FString<'i>, Vec<::chumsky::error::Rich<'i, u8>>>,
+        >,
+    }
+
+    impl<'i> FString<'i> {
+        /// Create a new instance from content.
+        #[inline]
+        pub const fn new(content: WithSpan<&'i ByteStr>) -> Self {
+            Self {
+                content,
+                cache: OnceLock::new(),
+            }
+        }
+
+        /// Get parsed fstring.
+        pub fn parsed(
+            &self,
+            parser: &impl ByteParser<'i, crate::exec::fstring::FString<'i>>,
+        ) -> Result<&'_ crate::exec::fstring::FString<'i>, &'_ [::chumsky::error::Rich<'i, u8>]>
+        {
+            self.cache
+                .get_or_init(|| parser.parse(self.content.as_bytes()).into_result())
+                .as_ref()
+                .map_err(|err| err.as_slice())
+        }
+    }
+
+    /// Ast argument.
+    #[derive(Debug, Clone)]
+    pub enum Arg<'i> {
+        /// String argument.
+        String(WithSpan<&'i ByteStr>),
+        /// FString argument.
+        FString(FString<'i>),
+        /// Expression argument.
+        Expr(Expr<'i>),
+    }
+
+    /// Ast command.
+    #[derive(Debug, Clone)]
+    pub struct Cmd<'i>(pub Vec<Arg<'i>>);
+
+    /// Ast command chain.
+    #[derive(Debug, Clone)]
+    pub enum Chain<'i> {
+        /// Src - Cmd... - Sink
+        SrcCmdSink(Src<'i>, Vec<Cmd<'i>>, Sink<'i>),
+        /// Src - Cmd...
+        SrcCmd(Src<'i>, Vec<Cmd<'i>>),
+        /// Cmd... - Sink
+        CmdSink(Vec<Cmd<'i>>, Sink<'i>),
+        /// Cmd...
+        Cmd(Vec<Cmd<'i>>),
+        /// Src - Sink
+        SrcSink(Src<'i>, Sink<'i>),
+        /// Src
+        Src(Src<'i>),
+    }
+}
+
 /// Variable scope.
 #[derive(Debug, Clone, Copy)]
 pub struct Variables<'a> {
