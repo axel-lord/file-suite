@@ -27,6 +27,8 @@ pub mod new {
     /// Ast expression.
     #[derive(Debug, Clone)]
     pub enum Expr<'i> {
+        /// Expression is a chained command.
+        Chain(Chain<'i>),
         /// Unused variant.
         _P(PlaceHolderVariant<'i>),
     }
