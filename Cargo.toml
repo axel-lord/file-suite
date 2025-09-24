@@ -27,6 +27,7 @@ members = [
   "tools/re-tile",
   "tools/read-structured",
   "tools/recursive-lowercase",
+  "tools/common-prefix",
 ]
 resolver = "2"
 default-members = ["file-suite"]
@@ -62,6 +63,7 @@ clap_complete = "4.5.47"
 color-eyre = "0.6.3"
 compile-nested = { path = "tools/compile-nested" }
 completions-cli = { path = "libs/completions-cli" }
+common-prefix = { path = "tools/common-prefix" }
 convert_case = "0.8.0"
 crossbeam = "0.8.4"
 derive_more = "2.0.1"
