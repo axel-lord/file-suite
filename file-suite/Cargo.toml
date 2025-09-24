@@ -14,6 +14,7 @@ group-by-pattern.workspace = true
 log.workspace = true
 path-is-utf8.workspace = true
 pipe-size.workspace = true 
+common-prefix.workspace = true
 
 [build-dependencies]
 file-suite-build.workspace = true

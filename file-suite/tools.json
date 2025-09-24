@@ -3,5 +3,6 @@
   "generate-keyfile",
   "group-by-pattern",
   "path-is-utf8",
-  "pipe-size"
+  "pipe-size",
+  "common-prefix"
 ]
