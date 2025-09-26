@@ -199,6 +199,8 @@ impl ::file_suite_common::Run for Cli {
 
                 for item in items {
                     stdout.write_all(&[delim])?;
+                    stdout.write_all(item)?;
+                    stdout.write_all(&[delim])?;
                     stdout.write_all(&item[len..])?;
                 }
 
