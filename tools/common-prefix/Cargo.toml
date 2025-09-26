@@ -6,8 +6,11 @@ license = "MIT OR Apache-2.0"
 authors = ["Axel Lord"]
 
 [dependencies]
+regex.workspace = true
 clap = { workspace = true, features = ["derive"] }
 file-suite-common.workspace = true
+itertools.workspace = true
+tap.workspace = true
 
 [lints]
 workspace = true
