@@ -10,7 +10,7 @@ use ::std::{
 
 use ::file_suite_common::ExitCodeError;
 use ::rayon::prelude::*;
-use ::toml_edit::{DocumentMut, Item, Table, Value};
+use ::toml_edit::{DocumentMut, InlineTable, Item, Table, Value};
 
 /// Tool to manipulate cargo dependencies.
 #[derive(Debug, ::clap::Parser)]
@@ -66,11 +66,14 @@ impl ::file_suite_common::Run for Cli {
                     sort_workspace(&workspace)?;
                 }
             }
-            Tool::Uninherit { workspace } => uninherit(&workspace)?,
+            Tool::Uninherit { workspace: _ } => unimplemented!("uninherit is not yet implemented"),
         }
         Ok(())
     }
 }
+
+/// Sections which list dependencies.
+const DEPENDENCY_SECTIONS: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// Fucntion to reduce exit codes.
 ///
@@ -87,12 +90,122 @@ const fn reduce_exit_code(
     }
 }
 
+/// Get a failure exit code error.
+///
+/// # Errors
+/// Always returns FAILURE exit code.
+const fn failure<T>() -> Result<T, ExitCodeError> {
+    Err(ExitCodeError(ExitCode::FAILURE))
+}
+
 /// Move workspace dependencies to members.
 ///
 /// # Errors
 /// If workspace or member toml files cannot be read/parsed.
-fn uninherit(_workspace: &Path) -> Result<(), ExitCodeError> {
-    unimplemented!()
+fn uninherit(workspace_path: &Path) -> Result<(), ExitCodeError> {
+    let WsPath {
+        directory,
+        manifest,
+    } = WsPath::from(workspace_path);
+    let Some(directory) = directory else {
+        ::log::error!("workspace path {workspace_path:?} has not parent directory");
+        return failure();
+    };
+
+    let mut doc = read_doc(&manifest)?;
+
+    let Some(workspace) = doc.get_mut("workspace") else {
+        ::log::warn!("cargo manifest at {workspace_path:?} has no workspace section");
+        return failure();
+    };
+
+    let members = find_members(directory, workspace);
+
+    let Some(workspace_deps) = workspace
+        .get("dependencies")
+        .and_then(|item| item.as_table())
+    else {
+        ::log::warn!("cargo manifest at {workspace_path:?} has no workspace dependencies section");
+        return failure();
+    };
+
+    members
+        .into_par_iter()
+        .map(|path| {
+            let WsPath {
+                directory: _,
+                manifest,
+            } = WsPath::from(path.as_path());
+            let mut doc = read_doc(&manifest)?;
+
+            for section in DEPENDENCY_SECTIONS {
+                let Some(Item::Table(dependencies)) = doc.get_mut(section) else {
+                    continue;
+                };
+
+                for (key, value) in dependencies.iter_mut() {
+                    let Some(Item::Value(Value::Boolean(is_workspace))) = value.get("workspace")
+                    else {
+                        continue;
+                    };
+                    if !is_workspace.value() {
+                        continue;
+                    }
+
+                    let Some(mut workspace_dep) = workspace_deps.get(&key).cloned() else {
+                        ::log::warn!("could not get workspace dependency {key} for {manifest:?}",);
+                        continue;
+                    };
+
+                    if let Some(features) = value.get("features") {
+                        workspace_dep = Item::Value(Value::InlineTable(match workspace_dep {
+                            Item::Table(table) => table.into_inline_table(),
+                            Item::Value(Value::InlineTable(table)) => table,
+                            Item::Value(version @ Value::String(_)) => {
+                                let mut table = InlineTable::new();
+                                table.insert("version", version);
+                                table
+                            }
+                            _ => {
+                                ::log::warn!(
+                                    "could not get workspace dependency {key} for {manifest:?}"
+                                );
+                                continue;
+                            }
+                        }));
+
+                        if let Some(Item::Value(Value::Array(_features))) =
+                            workspace_dep.get_mut("features")
+                        {
+                        } else {
+                            workspace_dep["features"] = features.clone();
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        })
+        .reduce(|| Ok(()), reduce_exit_code)?;
+
+    if let Item::Table(table) = workspace {
+        table.remove("dependencies");
+    }
+
+    Ok(())
+}
+
+/// Find workspace members of document.
+fn find_members(workspace_directory: &Path, workspace: &Item) -> Vec<PathBuf> {
+    if let Some(Item::Value(Value::Array(members))) = workspace.get("members") {
+        members
+            .iter()
+            .filter_map(|member| member.as_str())
+            .map(|relative| workspace_directory.join(relative))
+            .collect()
+    } else {
+        Vec::new()
+    }
 }
 
 /// Sort a toml item if possible.
@@ -104,14 +217,13 @@ fn sort_item(item: Option<&mut Item>) {
 
 /// Sort dependency headers of table.
 fn sort_deps_in_table(table: &mut Table) {
-    sort_item(table.get_mut("dependencies"));
-    sort_item(table.get_mut("dev-dependencies"));
-    sort_item(table.get_mut("build-dependencies"));
-
+    for section in DEPENDENCY_SECTIONS {
+        sort_item(table.get_mut(section));
+    }
     if let Some(Item::Table(table)) = table.get_mut("workspace") {
-        sort_item(table.get_mut("dependencies"));
-        sort_item(table.get_mut("dev-dependencies"));
-        sort_item(table.get_mut("build-dependencies"));
+        for section in DEPENDENCY_SECTIONS {
+            sort_item(table.get_mut(section));
+        }
     }
 }
 
