@@ -5,17 +5,17 @@ edition = "2024"
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-dep-manip.workspace = true
 color-eyre.workspace = true
+common-prefix.workspace = true
 compile-nested.workspace = true
 completions-cli.workspace = true
+dep-manip.workspace = true
 file-suite-common.workspace = true
 generate-keyfile.workspace = true
 group-by-pattern.workspace = true
 log.workspace = true
 path-is-utf8.workspace = true
 pipe-size.workspace = true 
-common-prefix.workspace = true
 
 [build-dependencies]
 file-suite-build.workspace = true

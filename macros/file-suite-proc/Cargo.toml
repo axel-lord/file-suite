@@ -9,8 +9,8 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-run-derive = { workspace = true }
 array-expr = { workspace = true }
+run-derive = { workspace = true }
 
 [lints]
 workspace = true

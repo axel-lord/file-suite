@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 proc-macro2 = { workspace = true }
-syn = { workspace = true, features = ["full", "extra-traits"] }
 quote = { workspace = true }
 rand.workspace = true
+syn = { workspace = true, features = ["full", "extra-traits"] }
 
 [lints]
 workspace = true

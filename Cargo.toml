@@ -62,11 +62,12 @@ chumsky = "0.10.1"
 clap = "4.5.36"
 clap_complete = "4.5.47"
 color-eyre = "0.6.3"
+common-prefix = { path = "tools/common-prefix" }
 compile-nested = { path = "tools/compile-nested" }
 completions-cli = { path = "libs/completions-cli" }
-common-prefix = { path = "tools/common-prefix" }
 convert_case = "0.8.0"
 crossbeam = "0.8.4"
+dep-manip = { path = "tools/dep-manip" }
 derive_more = "2.0.1"
 either = "1.15.0"
 env_logger = "0.11.8"
@@ -119,7 +120,6 @@ tokens-rc = { path = "macros/tokens-rc" }
 tokio = "1.40.0"
 tokio-stream = "0.1.16"
 toml = "0.8.20"
+toml_edit = "0.23.7"
 walkdir = "2.5.0"
 wrap-blocking-attr-impl = { path = "macros/wrap-blocking-attr-impl" }
-dep-manip = { path = "tools/dep-manip" }
-toml_edit = "0.23.7"

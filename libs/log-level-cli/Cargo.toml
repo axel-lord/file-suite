@@ -8,9 +8,9 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 env_logger = { workspace = true }
+file-suite-proc.workspace = true
 log = { workspace = true }
 patharg = { workspace = true }
-file-suite-proc.workspace = true
 
 [lints]
 workspace = true

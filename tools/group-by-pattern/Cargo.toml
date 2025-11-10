@@ -4,19 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+chumsky.workspace = true
 clap = { workspace = true, features = ["derive"] }
 file-suite-common = { workspace = true }
 hashbrown = { workspace = true, features = ["rayon"] }
 insensitive-buf.workspace = true
-parse-fmt.workspace = true
-chumsky.workspace = true
 log.workspace = true
+parse-fmt.workspace = true
 rayon.workspace = true
 regex.workspace = true
 rustc-hash.workspace = true
+smallvec = { workspace = true, features = ["const_new", "const_generics", "write", "union"] }
 tap.workspace = true
 thiserror.workspace = true
-smallvec = { workspace = true, features = ["const_new", "const_generics", "write", "union"] }
 
 [lints]
 workspace = true

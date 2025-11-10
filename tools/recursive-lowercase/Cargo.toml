@@ -8,8 +8,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 color-eyre = { workspace = true }
-log = { workspace = true }
 insensitive-buf = { workspace = true }
+log = { workspace = true }
 
 [lints]
 workspace = true

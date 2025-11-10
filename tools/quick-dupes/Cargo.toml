@@ -8,13 +8,13 @@ authors = ["Axel Lord"]
 [dependencies]
 bytesize = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-log-level-cli = { workspace = true }
 color-eyre = { workspace = true }
 derive_more = { workspace = true, features = ["constructor", "is_variant"] }
 env_logger = { workspace = true }
 insensitive-buf = { workspace = true }
 libc = { workspace = true }
 log = { workspace = true }
+log-level-cli = { workspace = true }
 patharg = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }

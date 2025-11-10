@@ -8,9 +8,9 @@ authors = ["Axel Lord"]
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 file-suite-common.workspace = true
-toml_edit.workspace = true
 log.workspace = true
 rayon.workspace = true
+toml_edit.workspace = true
 
 [lints]
 workspace = true
