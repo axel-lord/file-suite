@@ -4,5 +4,6 @@
   "group-by-pattern",
   "path-is-utf8",
   "pipe-size",
-  "common-prefix"
+  "common-prefix",
+  "dep-manip"
 ]

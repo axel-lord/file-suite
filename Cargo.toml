@@ -18,7 +18,9 @@ members = [
   "macros/tokens-rc",
   "macros/wrap-blocking-attr",
   "macros/wrap-blocking-attr-impl",
+  "tools/common-prefix",
   "tools/compile-nested",
+  "tools/dep-manip",
   "tools/generate-keyfile",
   "tools/group-by-pattern",
   "tools/path-is-utf8",
@@ -27,7 +29,6 @@ members = [
   "tools/re-tile",
   "tools/read-structured",
   "tools/recursive-lowercase",
-  "tools/common-prefix",
 ]
 resolver = "2"
 default-members = ["file-suite"]
@@ -120,3 +121,5 @@ tokio-stream = "0.1.16"
 toml = "0.8.20"
 walkdir = "2.5.0"
 wrap-blocking-attr-impl = { path = "macros/wrap-blocking-attr-impl" }
+dep-manip = { path = "tools/dep-manip" }
+toml_edit = "0.23.7"

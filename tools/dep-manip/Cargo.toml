@@ -1,0 +1,16 @@
+[package]
+name = "dep-manip"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Axel Lord"]
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+file-suite-common.workspace = true
+toml_edit.workspace = true
+log.workspace = true
+rayon.workspace = true
+
+[lints]
+workspace = true
